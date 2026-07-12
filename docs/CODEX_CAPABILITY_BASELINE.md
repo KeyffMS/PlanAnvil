@@ -1,93 +1,129 @@
 # PlanAnvil — Codex Capability Baseline
 
-> Verification date: 2026-07-12
-> Tested model: `gpt-5.6-sol`
-> Purpose: record reproducible runtime findings that affect PlanAnvil architecture.
+> **Baseline version:** 2.1  
+> **Review date:** 2026-07-12  
+> **Purpose:** define current expected Codex behavior and reproducible release tests.  
+> **Authority:** current official OpenAI documentation has precedence.
 
-This file records observed capability tests. It does not replace current official OpenAI documentation. Re-run critical tests when Codex behavior or configuration changes.
+## 1. Evidence model
 
-## Result summary
+Expected behavior uses one source:
 
-| ID | Result | Finding | PlanAnvil decision |
-|---|---|---|---|
-| C01 | PASS | Repository skill discovered from `.agents/skills`; legacy root `skills/` was not native-discovered | Use `.agents/skills/plan-anvil` |
-| C02 | PASS | `allow_implicit_invocation: false` prevented implicit activation and allowed explicit `$skill` activation | Require explicit PlanAnvil activation |
-| C03 | RUNTIME VARIANCE | Grandchild started despite a test configured with `max_depth = 1` | Do not treat `max_depth` as the sole topology control |
-| C04 | PASS | Nested grandchild execution worked | Nesting is technically possible, but PlanAnvil contract remains flat |
-| C05 | PASS | Fresh subagent read an untracked, uncommitted file | File handoffs work without commits; clean-worktree policy remains independent |
-| C06 | PASS_STRONG with limitation | Path hook blocked five production-path write methods and allowed a test-path write; runtime reported `agent_type: default` | Use path hooks plus post-diff validation; do not trust agent type alone |
-| C07 | PASS_STRONG | Hook blocked stash, reset, clean, wrappers, dynamic command construction, and an equivalent reset path in the tested set | Use Git allowlist hook as defense in depth, plus Git postcondition checks |
-| C08 | PASS | `PreCompact` stopped manual compaction | Delay compaction until checkpoint when required |
-| C09 | PASS with usability limitation | `PreCompact` stopped auto-compaction, but repeated blocking made the session unusable above threshold | Never create a permanent block loop; checkpoint then allow compact |
-| C10 | PASS | `PostCompact` plus `SessionStart(compact)` restored a recovery pointer | Implement file-and-Git recovery after compact |
-| C11 | PASS | Root session loaded root instructions; nested override loaded only when session CWD was in its scope | Explicitly map and hand off nested instructions |
-| C12 | PASS | `project_doc_max_bytes` truncated automatic instruction loading | Hash, size, and explicitly read full instruction files |
-| C13 | EXPECTED FAIL | `SubagentStart` ran but `continue: false` did not stop agent start | Use `SubagentStart` for audit and context only |
-| C14 | PASS | Planning worktree and branch isolated planning artifacts and preserved source worktree | Require planning worktree isolation |
-| C15 | PASS | Blind reviewer detected defect before implementer report; comparison detected false claims; blind report hash remained unchanged | Require immutable blind review then comparison |
-| C16 | PASS with permission limitation | Plan-only prototype stopped after validation; `workspace-write` could not write `.git`, while higher permission mode created planning worktree safely | Run Git capability test and report permission requirement before planning |
+```text
+DOCUMENTED
+CONTRACT_DEFINED
+```
 
-## Architectural conclusions
+Test execution uses one result:
 
-### Native skill and activation
+```text
+NOT_RUN
+REPRODUCED
+FAILED
+BLOCKED
+```
 
-- Canonical path: `.agents/skills/plan-anvil/`.
-- Implicit invocation must be disabled.
-- Explicit `$plan-anvil` invocation remains available.
+`DOCUMENTED` means current official OpenAI documentation defines the expected behavior.
+
+`CONTRACT_DEFINED` means the behavior is enforced by PlanAnvil's deterministic implementation.
+
+`REPRODUCED` requires a committed, sanitized evidence package. Informal observations and remembered runtime behavior are not valid architecture inputs.
+
+## 2. Required evidence package
+
+Each test directory contains:
+
+```text
+CXX/
+├── README.md
+├── fixture/
+├── prompt.txt
+├── config/
+├── run-command.txt
+├── expected.json
+├── actual.sanitized.json
+├── evaluation.json
+└── hashes.json
+```
+
+The README records the test objective, date, Codex version, model, operating system, permission mode, fixture commit, setup, cleanup and sanitization.
+
+Do not commit session transcripts, credentials, private paths, unrelated Git databases or user data.
+
+## 3. Current capability matrix
+
+| ID | Expected behavior | Source | Evidence | Contract decision |
+|---|---|---|---|---|
+| C01 | Repository skills are discovered from `.agents/skills` | DOCUMENTED | NOT_RUN | Use `.agents/skills/plan-anvil` |
+| C02 | `allow_implicit_invocation: false` disables implicit invocation | DOCUMENTED | NOT_RUN | Require explicit `$plan-anvil` activation |
+| C03 | `agents.max_depth = 1` permits direct children and prevents deeper descendants | DOCUMENTED | NOT_RUN | Use depth `1` for the flat topology and audit actual evidence as an additional control |
+| C04 | Nested agents are available when configured depth permits them | DOCUMENTED | NOT_RUN | Generated execution remains deliberately flat |
+| C05 | Planning-agent handoffs use explicit files and hashes | CONTRACT_DEFINED | NOT_RUN | Reject missing, stale or out-of-root briefs |
+| C06 | `PreToolUse` covers supported calls but not every equivalent path | DOCUMENTED | NOT_RUN | Hooks plus mandatory postcondition validation |
+| C07 | The Git guard rejects the configured unsafe-command corpus | CONTRACT_DEFINED | NOT_RUN | Git postconditions remain mandatory |
+| C08 | `PreCompact` can stop compaction | DOCUMENTED | NOT_RUN | Delay only until a valid checkpoint exists |
+| C09 | Compaction is allowed after checkpoint creation without a permanent stop loop | CONTRACT_DEFINED | NOT_RUN | Checkpoint, allow, recover and reconcile |
+| C10 | `PostCompact` and `SessionStart` can provide recovery context | DOCUMENTED | NOT_RUN | Inject only a recovery pointer |
+| C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | NOT_RUN | Explicitly map affected instructions |
+| C12 | `project_doc_max_bytes` may truncate automatic instruction loading | DOCUMENTED | NOT_RUN | Read, size and hash complete files explicitly |
+| C13 | `SubagentStart` can add context but is not a startup blocker | DOCUMENTED | NOT_RUN | Context and audit only |
+| C14 | Planning isolation preserves the source branch, SHA, index and files | CONTRACT_DEFINED | NOT_RUN | Planning worktree isolation is mandatory |
+| C15 | Blind review is immutable and detects seeded contract defects | CONTRACT_DEFINED | NOT_RUN | Hash review before separate comparison |
+| C16 | The Git probe accurately reports refs, branches, worktrees, index, commits and cleanup | CONTRACT_DEFINED | NOT_RUN | No artifact generation before required Git capabilities pass |
+
+## 4. Release gate
+
+C01, C02, C03 and C06 through C16 must be `REPRODUCED` before production readiness. C04 and C05 are required when the corresponding agent features are enabled.
+
+## 5. Test requirements
+
+### Activation and discovery
+
+Verify nested-directory discovery, explicit activation, disabled implicit activation and rejection of implementation or existing-plan execution requests.
 
 ### Agent topology
 
-- Codex can run nested agents.
-- PlanAnvil nevertheless generates a flat direct-child topology under Jim.
-- `agents.max_depth` is a configuration aid, not the sole enforcement mechanism.
-- Actual agent-tree auditing is required before checkpoints.
+Run with depth values `0`, `1` and `2`. Record the complete event tree and assert the behavior defined by current official documentation. Agent evidence is audited before a quality gate is accepted.
 
-### Hooks
+### File handoff
 
-- Hooks are useful and tested.
-- `PreToolUse` is defense in depth, not a complete security boundary.
-- `SubagentStart` cannot be used as a hard start blocker.
-- Post-agent diff and Git-state validation remain mandatory.
+Verify explicit brief paths, expected hashes and rejection of missing, stale or escaped paths.
 
-### Git
+### Hooks and Git guards
 
-- Ordinary workspace writes and `.git` metadata writes may have different permission outcomes.
-- PlanAnvil must report Git capability before generating artifacts.
-- Planning artifacts belong in an isolated planning worktree and branch.
+Test direct commands, wrappers, dynamic construction, supported patch and MCP calls, non-intercepted equivalent paths and the configured unsafe Git corpus. Passing requires both preventive behavior and postcondition detection.
 
-### Instructions
+### Compaction and recovery
 
-- Nested instructions must be explicitly discovered for affected paths.
-- Automatically loaded instructions may be truncated.
-- Full instruction files must be explicitly read and hashed.
+Verify manual and automatic triggers, delay without a checkpoint, allowance after a checkpoint, absence of a permanent loop, recovery-pointer injection and reconstruction from files and Git.
 
-### Compaction
+### Project instructions
 
-- Manual and automatic compaction can be delayed.
-- Permanent blocking above the threshold is not viable.
-- Required flow: checkpoint, allow compaction, recover pointer, reconcile from files and Git.
+Verify root instructions, nested overrides, fallback names, precedence, directory scope, byte limits and explicit complete-file reads.
 
-### Plan-only boundary
+### Git isolation
 
-The tested prototype successfully:
+Assert source immutability, correct planning base, allowed-path-only changes, cleanup, detached-HEAD handling, signing policy and repository-hook outcomes.
 
-- refused to implement product code;
-- created only planning artifacts;
-- used an isolated planning branch and worktree when Git permissions allowed;
-- performed independent validation;
-- stopped after validation.
+### Blind review
 
-This behavior is mandatory for the production skill.
+Use seeded defects including missing rollback, uncovered requirements, risks without controls, unapproved public behavior, inconsistent base SHA and generator/executor boundary violations. The blind report and its metadata sidecar remain unchanged during comparison.
 
-## Evidence retention
+### Git capability matrix
 
-The original capability-test repository contained:
+Record separate outcomes for ordinary file writes, temporary refs, branches, linked worktrees, index updates, commits, signing, repository hooks and cleanup under every supported permission mode.
 
-```text
-results/C01 ... results/C16
-.codex/hooks/
-.codex/agents/
-tests/prompts/
-```
+## 6. Architecture rule
 
-The PlanAnvil repository should retain sanitized test prompts and expected outcomes, but must not commit session transcripts, private paths, credentials, or unrelated Git object databases.
+An active architecture decision may rely only on:
+
+1. current official OpenAI documentation; or
+2. a `REPRODUCED` contract test consistent with that documentation.
+
+A disagreement blocks the affected release work until the current behavior is verified and the contract is corrected.
+
+## 7. Evidence retention
+
+Sanitize usernames, home directories, private repository URLs, session identifiers, credentials and proprietary source content.
+
+Retain structural event data, sanitized command arguments, hashes, expected and actual decisions and the minimal fixture source required to evaluate the test.
