@@ -28,8 +28,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .bootstrap/part-* > /tmp/plananvil.tar.gz.b64
+          cat \
+            .bootstrap/part-00 \
+            .bootstrap/fix-01-00 \
+            .bootstrap/fix-01-01 \
+            .bootstrap/fix-01-02 \
+            .bootstrap/fix-01-03 \
+            .bootstrap/part-02 \
+            .bootstrap/part-03 \
+            .bootstrap/fix-04-00 \
+            .bootstrap/fix-04-01 \
+            .bootstrap/part-05 \
+            .bootstrap/part-06 \
+            .bootstrap/part-07 \
+            .bootstrap/part-08 \
+            .bootstrap/part-09 \
+            .bootstrap/part-10 \
+            .bootstrap/part-11 \
+            .bootstrap/part-12 \
+            > /tmp/plananvil.tar.gz.b64
           base64 --decode /tmp/plananvil.tar.gz.b64 > /tmp/plananvil.tar.gz
+          tar -tzf /tmp/plananvil.tar.gz >/dev/null
           tar -xzf /tmp/plananvil.tar.gz -C .
           rm -rf .bootstrap .github/workflows/materialize-plananvil.yml
       - name: Validate implementation
