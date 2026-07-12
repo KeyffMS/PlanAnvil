@@ -34,6 +34,8 @@ jobs:
             .bootstrap/fix-01-01 \
             .bootstrap/fix-01-02 \
             .bootstrap/fix-01-03 \
+            .bootstrap/fix-01-04 \
+            .bootstrap/fix-01-05 \
             .bootstrap/part-02 \
             .bootstrap/part-03 \
             .bootstrap/fix-04-00 \
@@ -47,7 +49,9 @@ jobs:
             .bootstrap/part-11 \
             .bootstrap/part-12 \
             > /tmp/plananvil.tar.gz.b64
+          test "$(sha256sum /tmp/plananvil.tar.gz.b64 | cut -d' ' -f1)" = "d5eb34452b058a1e7aa7d07446dfb1e1bd2477ce7efe21db180ec366f20e6d10"
           base64 --decode /tmp/plananvil.tar.gz.b64 > /tmp/plananvil.tar.gz
+          test "$(sha256sum /tmp/plananvil.tar.gz | cut -d' ' -f1)" = "addffaecbf114a6a7fff2dff227b50fe66a47c14f1fb62df88113b49636e29d2"
           tar -tzf /tmp/plananvil.tar.gz >/dev/null
           tar -xzf /tmp/plananvil.tar.gz -C .
           rm -rf .bootstrap .github/workflows/materialize-plananvil.yml
