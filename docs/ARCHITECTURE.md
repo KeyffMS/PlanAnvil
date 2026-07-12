@@ -1,20 +1,20 @@
 # PlanAnvil — Architecture
 
-> This document explains how the implementation satisfies `IMPLEMENTATION_SPEC.md`.  
+> This document explains how the implementation satisfies `IMPLEMENTATION_SPEC.md` version 2.1.  
 > It is subordinate to the implementation specification and current official OpenAI documentation.
 
 ## 1. Architectural split
 
-PlanAnvil has two strictly separated products in one output flow:
+PlanAnvil has two strictly separated layers:
 
-| Layer | Exists during PlanAnvil run | Modifies product code | Responsibility |
+| Layer | Active during PlanAnvil run | Modifies product code | Responsibility |
 |---|---:|---:|---|
-| Generator runtime | Yes | No | Inspect, profile, plan, validate, commit planning artifacts |
-| Generated execution contract | Document only | Later, in a separate run | Describe controlled implementation, testing, integration, and recovery |
+| Generator runtime | Yes | No | Inspect, profile, generate, validate and commit the plan |
+| Generated execution contract | Document only | Later, in a separate run | Control implementation, testing, integration and recovery |
 
-The generator never instantiates Jim, Jenny, an implementation agent, or Winston Wolfe. Those are role definitions written into the generated plan.
+The generator never starts Jim, Jenny, an implementation agent or Winston Wolfe. These are definitions written into the generated plan.
 
-The generator may use its own read-only profiler and reviewer agents. Their names and permissions are distinct from future execution roles.
+The generator may use its own read-only profiler and reviewer agents. Their identities, permissions and outputs are separate from future execution roles.
 
 ## 2. Components
 
@@ -25,50 +25,31 @@ $plan-anvil
 Skill controller
     |
     +--> Read-only source preflight
-    |
     +--> Git capability probe
-    |
     +--> Planning worktree manager
-    |
     +--> Repository profiler
-    |
     +--> Instruction mapper
-    |
     +--> Goal analyzer
-    |
     +--> Artifact generator
-    |
     +--> Deterministic validator
-    |
     +--> Blind plan reviewer
-    |
     +--> Comparison validator
-    |
     +--> Planning commit writer
-    |
     `--> Final reporter and hard stop
 ```
 
-### 2.1 Skill controller
+The controller is the only component allowed to advance canonical state.
 
-The controller implements the state machine and is the only component allowed to advance the run state.
-
-It must not contain business-specific planning knowledge that belongs in references or templates.
-
-### 2.2 Deterministic scripts
-
-Canonical scripts are Python 3.11+ and standard-library-only.
-
-Each command:
+Core deterministic scripts use Python 3.11+ and the standard library. Each command:
 
 - accepts explicit paths and identifiers;
 - emits structured JSON to stdout;
 - writes diagnostics to stderr;
 - uses stable exit codes;
-- never parses conversational text as authoritative state;
-- is safe to rerun unless documented otherwise.
+- never treats conversation text as canonical state;
+- is safe to rerun unless explicitly documented otherwise.
 
-Suggested commands:
+Canonical entry points include:
 
 ```text
 preflight.py
@@ -84,274 +65,199 @@ validate_diff.py
 commit_plan.py
 ```
 
-### 2.3 Planning agents
-
-Project-scoped agents live under `.codex/agents/`.
-
-`plan-anvil-profiler`:
-
-- read-only;
-- gathers repository evidence;
-- does not make final product decisions;
-- writes only through the controller's approved report path when write access is required.
-
-`plan-anvil-reviewer`:
-
-- fresh context;
-- read-only;
-- receives plan evidence but not planner reasoning;
-- produces one immutable blind report.
-
-Custom agent configuration is convenience and reproducibility support, not the sole permission boundary.
-
-### 2.4 Hooks
-
-Project hooks live in `.codex/hooks.json` and `.codex/hooks/*.py`.
-
-Hooks may:
-
-- warn about unexpected tool paths;
-- deny supported destructive Git commands;
-- deny supported writes outside approved planning paths;
-- record subagent identifiers and parent relationships;
-- delay compaction until a durable checkpoint exists.
-
-Hooks cannot replace deterministic postconditions.
-
-The controller must operate correctly when hooks are disabled or untrusted, while recording that hook enforcement was unavailable.
-
 ## 3. State machine
 
 ```text
 NEW
- |
- v
-SOURCE_PREFLIGHT
- | failure -> BLOCKED_BY_GIT_STATE
- v
-GIT_CAPABILITY_CHECK
- | failure -> BLOCKED_BY_GIT_PERMISSIONS or runtime-specific blocker
- v
-PLANNING_WORKTREE_READY
- v
-PROFILE_READY
- v
-INSTRUCTION_MAP_READY
- v
-ANALYSIS_READY
- v
-ARTIFACTS_GENERATED
- v
-DETERMINISTICALLY_VALID
- v
-BLIND_REVIEW_WRITTEN
- v
-COMPARISON_VALID
- v
-PLAN_COMMITTED
- v
-STOPPED
+→ SOURCE_PREFLIGHT_PASSED
+→ GIT_READY
+→ PLANNING_WORKTREE_READY
+→ PROFILE_READY
+→ INSTRUCTION_MAP_READY
+→ ANALYSIS_READY
+→ ARTIFACTS_GENERATED
+→ DETERMINISTICALLY_VALID
+→ BLIND_REVIEW_WRITTEN
+→ COMPARISON_VALID
+→ PLAN_COMMITTED
+→ STOPPED
 ```
 
 No state may be skipped.
 
-A state transition is valid only when:
+A transition is valid only when:
 
 - required input hashes match;
-- previous state postconditions pass;
-- canonical `state.json` is atomically updated;
-- the new state names exactly one next action.
+- the previous state's postconditions pass;
+- `state.json` is atomically updated;
+- the new state identifies exactly one next action.
 
-## 4. Filesystem ownership
+Failures use explicit blocking or failure states and preserve evidence.
+
+## 4. Filesystem and branch ownership
 
 ### 4.1 Source worktree
 
 The source worktree is read-only for the generator.
 
-Allowed operations:
+Allowed operations are file reads, Git reads, configuration reads and demonstrably non-mutating diagnostics.
 
-- file reads;
-- Git status and history reads;
-- repository configuration reads;
-- non-mutating command discovery.
+File writes, index changes, branch switching, commits, cleanup and profile creation are forbidden.
 
-Forbidden operations:
-
-- file writes;
-- index changes;
-- branch switching;
-- commits;
-- cleanup;
-- profile creation.
-
-### 4.2 Planning worktree
+### 4.2 Planning worktree and control root
 
 The planning worktree is the only repository worktree writable by the generator.
 
-Allowed paths are restricted to:
-
-```text
-.pursue/
-.gitignore or equivalent ignore file, only for PlanAnvil local artifacts
-documentation files explicitly required for the generated plan
-```
-
-The allowed-path validator compares both filesystem snapshots and Git diffs.
-
-### 4.3 External temporary directory
-
-Git probes may use an external temporary parent directory.
-
-Temporary paths must:
-
-- be outside every repository worktree;
-- include the run ID;
-- be removed on success;
-- be preserved with a pointer when cleanup fails.
-
-## 5. Durable planning root
-
-The planning worktree is retained after PlanAnvil stops.
-
-It contains:
+Allowed committed locations are:
 
 ```text
 .pursue/SYSTEM_PROFILE.md
-.pursue/SYSTEM_PROFILE.local.md
 .pursue/runs/<RUN-ID>/
+.gitignore or equivalent ignore rules required by PlanAnvil
+plan-specific documentation explicitly required by the contract
 ```
 
-The final output contains:
+The planning worktree remains the durable control root during later execution.
 
-- absolute planning-worktree path;
-- relative and absolute plan paths;
-- planning branch;
-- planning commit;
-- base branch and SHA.
+The later executor:
 
-A later execution run reads the plan from this durable planning root and creates implementation worktrees from `BASE_SHA`. It does not implement on the planning branch.
+- reads `PLAN.md` and stage briefs from the control root;
+- writes state, checkpoints, reports and evidence to the control root;
+- may commit those control artifacts to the planning branch;
+- modifies product code and tests only in task or integration worktrees.
 
-## 6. Data model
+`PLAN.md`, stage briefs and approved acceptance criteria are immutable during execution unless the generated change protocol creates a versioned replacement and repeats validation.
 
-Human contracts:
+### 4.3 Ignored local state
+
+Machine-specific paths are stored only in ignored local files:
+
+```text
+.pursue/SYSTEM_PROFILE.local.md
+.pursue/runs/<RUN-ID>/local-state.json
+```
+
+`local-state.json` contains absolute source, planning and local-profile paths and local hashes.
+
+It is never committed or pushed.
+
+Committed `manifest.json` contains repository identity, branches, SHAs and repository-relative paths only.
+
+The final terminal report may display absolute paths transiently.
+
+### 4.4 External temporary directory
+
+Git probes use an external temporary parent directory outside every repository worktree.
+
+Temporary resources:
+
+- include the run ID;
+- are removed after successful verification;
+- are reported precisely when cleanup fails;
+- block real plan generation when cleanup cannot be verified.
+
+## 5. Data model
+
+Human-readable contracts:
 
 - `PLAN.md`;
 - `stages/STAGE-*.md`;
 - narrative reports.
 
-Canonical machine state:
+Committed canonical state:
 
 - `manifest.json`;
 - `state.json`;
 - `compliance.json`;
 - `traceability.json`;
-- risk and checkpoint JSON files.
+- risk files;
+- checkpoint and report sidecars.
 
-JSON schema version is independent from plan contract version.
+Ignored local state:
 
-All canonical JSON uses:
+- `local-state.json`;
+- `SYSTEM_PROFILE.local.md`.
 
-- UTF-8;
-- LF line endings;
-- sorted keys when written by deterministic scripts;
-- two-space indentation;
-- terminal newline;
-- RFC 3339 UTC timestamps;
-- SHA-256 hashes.
+Canonical JSON uses UTF-8, LF line endings, sorted keys, two-space indentation, a terminal newline, RFC 3339 UTC timestamps and SHA-256 hashes.
 
-## 7. Atomic writes and concurrency
+## 6. Atomic writes and locks
 
-A canonical file update uses:
+Mutable canonical state is updated using:
 
 ```text
-read current state
-→ validate expected revision
+read and validate current revision
+→ build complete replacement
 → write sibling temporary file
-→ flush and fsync file
+→ flush and fsync where supported
 → atomic replace
 → fsync containing directory where supported
 → reread and validate
 ```
 
-`state.json` contains a monotonic `revision`.
+`state.json` contains a monotonic revision.
 
-An execution lock is an atomic directory or exclusive-create file with:
+Generation and execution locks use exclusive-create semantics and record run ID, host, process or session identity, creation time, heartbeat and owner command.
 
-- run ID;
-- process ID where available;
-- hostname;
-- session ID where available;
-- creation time;
-- last heartbeat;
-- owner command.
+A lock is stale only when its timeout elapsed and owner liveness or session evidence confirms inactivity.
 
-A lock may be considered stale only after both:
+A non-stale lock is never removed automatically.
 
-- its configured timeout elapsed;
-- the owner process or session cannot be confirmed active.
+## 7. Git architecture
 
-PlanAnvil never deletes a non-stale lock automatically.
+### 7.1 Probe versus real planning worktree
 
-## 8. Git architecture
+The probe creates disposable refs, a branch and a linked worktree. It verifies every Git operation required by the real generator, including an actual commit under current identity, signing and hook policy.
 
-### 8.1 Probe versus real worktree
+`GIT_READY` is impossible when the commit check is skipped or fails.
 
-The probe creates disposable Git metadata and a disposable linked worktree. It proves the actual operations required later, including commit viability.
+The real planning worktree is created only after probe cleanup and source-state revalidation succeed.
 
-The real planning worktree is created only after the probe is fully cleaned and the source repository is revalidated.
+### 7.2 Commit policy
 
-### 8.2 Commit policy
-
-Planning commits include only allowed artifacts.
-
-Before commit:
+Before a planning or control commit:
 
 - validate allowed paths;
-- validate no product paths changed;
-- validate source worktree identity and status;
-- validate planning worktree branch and base;
-- validate all canonical schemas;
-- run blind review and comparison.
+- validate no product code or tests exist in the control branch diff;
+- validate source worktree identity and cleanliness;
+- validate branch and base identity;
+- validate canonical schemas;
+- validate local files are ignored and absent from the index;
+- validate blind review and comparison where required.
 
-Commit signing follows repository policy. If signing is required and unavailable, PlanAnvil stops rather than disabling signing silently.
+Commit signing follows repository policy. PlanAnvil never disables signing or hooks silently.
 
-### 8.3 Push policy
+### 7.3 Push policy
 
-Push is outside the default run.
+Push is outside the default PlanAnvil run.
 
-A separate explicit user request is required, and the profile must confirm that pushing a planning branch does not trigger an unsafe deployment or external action.
+A separate explicit request is required and the profile must confirm that pushing the planning branch will not trigger unsafe deployment or external actions.
 
-## 9. Instruction architecture
+## 8. Instruction architecture
 
-Instruction discovery has two sources:
+Instruction discovery combines:
 
-1. Codex documented discovery and precedence;
-2. explicit filesystem scanning for every affected stage scope.
+1. documented Codex discovery and precedence;
+2. explicit scanning for every affected path scope.
 
-The explicit map is authoritative for PlanAnvil validation.
+The explicit instruction map is authoritative for validation.
 
-Each fresh planning agent receives:
+Each planning agent receives exact instruction paths, expected hashes, the full-read requirement and affected scope.
 
-- exact instruction paths;
-- expected hashes;
-- full-read requirement;
-- affected path scope.
+If an instruction changes after mapping, dependent analysis is stale.
 
-If a file changes after mapping, dependent analysis is stale.
+## 9. Blind review
 
-## 10. Blind review architecture
-
-The controller prepares a review bundle containing only:
+The controller builds a review bundle containing only:
 
 - original user goal;
 - evidence index;
 - profiles;
 - instruction map;
-- generated plan;
-- stage briefs;
-- traceability;
-- risks;
+- generated plan and stages;
+- traceability and risks;
 - deterministic validation output.
+
+The reviewer does not receive planner reasoning or self-review.
 
 The reviewer writes:
 
@@ -360,11 +266,23 @@ reports/plan-review/blind-review.md
 reports/plan-review/blind-review.json
 ```
 
-The controller hashes both files before exposing planner self-review.
+Both files are hashed before the comparison phase. Comparison writes new artifacts and never edits the blind review.
 
-Comparison writes a new artifact. It never edits the blind review.
+## 10. Optional planning agents
 
-## 11. Hook and trust modes
+Optional project-scoped agents live under `.codex/agents/`.
+
+`plan-anvil-profiler` is read-only and gathers repository evidence.
+
+`plan-anvil-reviewer` receives fresh context and writes one immutable blind report.
+
+Custom agent configuration is convenience and reproducibility support, not the sole permission boundary.
+
+The core generator must remain functional without custom agents by dispatching equivalent fresh read-only roles through supported runtime mechanisms.
+
+## 11. Optional hooks and trust modes
+
+Optional project hooks live in `.codex/hooks.json`, inline `.codex/config.toml`, or `.codex/hooks/` scripts.
 
 The runtime records one hook mode:
 
@@ -377,70 +295,79 @@ HOOKS_UNAVAILABLE
 
 Only `HOOKS_TRUSTED` permits a report to claim hook enforcement.
 
-All modes still require postcondition validation.
+Hooks may warn, deny supported destructive commands or paths, record agent relationships and delay compaction until a durable checkpoint exists.
 
-Project `.codex/` configuration may be ignored in an untrusted project. The implementation must detect this rather than assuming agent or hook configuration loaded.
+Hooks never replace deterministic postconditions.
 
-## 12. Cross-platform command contract
+For JSON definitions, use `commandWindows` for a Windows override. TOML may use `command_windows` or `commandWindows` as supported by current official documentation.
 
-Each hook entry defines:
+Commands run from the session working directory, so repository-local hooks resolve scripts from the Git root.
 
-- `command` for POSIX systems;
-- `commandWindows` or `command_windows` for Windows;
-- explicit timeout;
-- no dependence on the launch directory beyond the documented session `cwd`;
-- repository-root resolution through Git rather than fragile relative paths.
+## 12. Cross-platform contract
 
-Python scripts use `pathlib`, `subprocess` argument arrays, and no shell unless shell semantics are the subject of a controlled test.
+Canonical scripts use `pathlib`, `os`, `tempfile`, `json`, `hashlib`, `subprocess` argument arrays and other standard-library facilities.
+
+They avoid shell execution unless shell semantics are the subject of a controlled test.
+
+Path validation:
+
+- rejects traversal and symlink escapes;
+- handles case-insensitive filesystems;
+- normalizes repository-relative matching to POSIX separators;
+- rejects `.git` writes except through dedicated Git commands;
+- treats submodules as separate boundaries unless explicitly in scope.
 
 ## 13. Security boundaries
 
-No single mechanism is a security boundary.
+No single mechanism is a complete security boundary.
 
 Controls combine:
 
 - Codex sandbox and approval mode;
 - project instructions;
-- custom role configuration;
-- hooks where trusted;
-- write-path allowlists;
+- optional custom roles;
+- optional trusted hooks;
+- path allowlists;
 - Git and filesystem snapshots;
 - deterministic postconditions;
 - immutable evidence;
 - checkpoint rejection.
 
-Secrets are excluded by content scanning, filename rules, profile prompts, and final diff review.
+Secrets and local paths are excluded through profile rules, schema separation, ignored local files, filename rules, content checks and final diff validation.
 
 ## 14. Failure handling
 
-A failure produces:
+A failure records:
 
 - explicit status;
 - failed state and phase;
 - preserved evidence;
 - safe remediation;
-- no destructive cleanup.
+- any temporary resources left behind.
 
-If a disposable probe cannot be cleaned, PlanAnvil reports exact refs, branches, and worktrees left behind. It does not continue to real plan generation.
+PlanAnvil never hides a failure with stash, reset, clean or destructive cleanup.
 
 ## 15. Packaging
 
-v1 is implemented as a repository skill plus project-scoped `.codex` integration.
-
-An optional installer may copy:
+The v1 core package is:
 
 ```text
 .agents/skills/plan-anvil/
+```
+
+Optional defense-in-depth integration may additionally provide:
+
+```text
 .codex/agents/plan-anvil-*.toml
 .codex/hooks.json
 .codex/hooks/plan-anvil-*.py
 ```
 
-The installer must:
+An optional installer:
 
-- show every destination;
-- refuse to overwrite conflicting files without explicit approval;
-- merge configuration deterministically or stop;
-- not enable trust automatically.
+- shows every destination;
+- refuses conflicting overwrites without explicit approval;
+- merges configuration deterministically or stops;
+- never enables project trust automatically.
 
 Plugin packaging is a later distribution option and must preserve the same product boundary.
