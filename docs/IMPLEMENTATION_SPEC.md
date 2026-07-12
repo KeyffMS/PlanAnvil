@@ -1,76 +1,261 @@
 # PlanAnvil — Implementation Specification
 
-> **Repository:** https://github.com/KeyffMS/PlanAnvil  
-> **Document purpose:** provide the implementing agent with a complete and unambiguous product contract.  
-> **Important:** this document describes what must be built. It is not the final `SKILL.md`.
+> **Repository:** https://github.com/KeyffMS/PlanAnvil
+> **Document purpose:** define the complete product contract for the first production-ready implementation.
+> **Target runtime:** native OpenAI Codex, optimized for GPT-5.6 Sol.
+> **Important:** this document defines what must be built. It is not the final `SKILL.md`.
 
 ## 1. Product goal
 
-Build **PlanAnvil**, a Codex skill whose only responsibility is to generate a rigorous, test-driven, auditable implementation plan for a software-engineering goal.
+Build **PlanAnvil**, a Codex-native skill whose only responsibility is to generate a rigorous, test-driven, auditable implementation contract for a software-engineering goal.
 
-PlanAnvil must **create the plan but never execute it**. The generated plan must contain a complete execution prompt and all instructions required by a later Codex run to carry out the work autonomously.
+PlanAnvil must **create and validate a plan but never execute it**.
 
-The output must be suitable for long-running repository work with:
+A generated plan must be suitable for a separate later Codex run that can perform long-running repository work with:
 
 - strict Git isolation;
 - mandatory project-instruction discovery;
-- environment profiling;
-- small atomic stages;
+- repository and environment profiling;
+- atomic, independently verifiable stages;
+- acceptance criteria defined before tests;
 - risk-driven testing;
-- independent verification;
-- resumable state;
-- production-safe branch testing;
-- explicit rollback procedures;
+- independent blind verification;
+- resumable file-based state;
+- explicit production and rollback procedures;
 - minimal memory usage in the main orchestrator context.
 
-## 2. Authoritative sources
+PlanAnvil is not a general coding agent, task manager, autonomous executor, or wrapper around another development framework.
 
-Before implementing PlanAnvil, re-read the current official OpenAI documentation. Do not rely on remembered behavior, unofficial posts, or assumptions.
+## 2. Codex compatibility problems and required solutions
+
+PlanAnvil must be designed around current documented Codex behavior and the verified capability baseline in `docs/CODEX_CAPABILITY_BASELINE.md`.
+
+### 2.1 Native skill location
+
+Repository skills must use the native Codex location:
+
+```text
+.agents/skills/plan-anvil/
+```
+
+Do not use a repository-root `skills/` directory as the active Codex installation path.
+
+The final skill must use:
+
+```yaml
+policy:
+  allow_implicit_invocation: false
+```
+
+PlanAnvil may still provide installation tooling, but its canonical checked-in form must remain Codex-native.
+
+### 2.2 Agent depth is a capability, not a security boundary
+
+Codex supports nested subagents. Capability tests also showed that a grandchild could start even in a test configured with `agents.max_depth = 1`.
+
+Therefore:
+
+- PlanAnvil may acknowledge that nested agents are technically possible;
+- the generated execution contract must still use a flat topology;
+- all technical agents must be direct children of Jim;
+- no security or correctness guarantee may depend only on `agents.max_depth`;
+- an unexpected descendant is a contract violation;
+- results from an unauthorized descendant must not satisfy a quality gate.
+
+PlanAnvil may recommend `agents.max_depth = 1` as defense in depth, but it must independently audit the actual agent tree.
+
+### 2.3 `SubagentStart` is audit-only
+
+`SubagentStart` may be used to:
+
+- log the agent identifier and type;
+- inject mandatory project instructions;
+- record parent-child relationships;
+- detect an unauthorized agent;
+- add a model-visible warning.
+
+It must not be treated as a guaranteed start blocker. A capability test confirmed that returning `continue: false` did not prevent the subagent from starting.
+
+### 2.4 Hooks are defense in depth, not the sole enforcement boundary
+
+`PreToolUse` hooks may block known Bash commands, `apply_patch` writes, and supported MCP tool calls. Tests confirmed effective blocking of forbidden paths and destructive Git commands in the tested runtime.
+
+However, PlanAnvil must follow the official limitation that hooks do not intercept every equivalent tool path.
+
+Therefore every write boundary requires all of:
+
+1. least-privilege sandbox configuration;
+2. explicit agent instructions;
+3. `PreToolUse` allowlists or denylists where supported;
+4. post-agent filesystem and Git diff verification;
+5. checkpoint rejection when unauthorized changes are found.
+
+Hooks must never be the only control protecting production code, tests, Git history, or stateful resources.
+
+### 2.5 Nested `AGENTS.md` files are not loaded merely because a path is discussed
+
+Capability testing confirmed that a nested instruction file becomes active based on the session working directory and documented instruction discovery, not merely because an agent plans to touch a nested path.
+
+Therefore PlanAnvil must explicitly:
+
+- discover every applicable instruction file;
+- calculate its directory scope;
+- calculate precedence;
+- detect truncation risk;
+- include the exact applicable instruction paths in every stage brief;
+- require every fresh agent to read the full applicable files before work.
+
+### 2.6 Instruction files may be truncated
+
+Codex limits the combined automatically loaded instruction size through `project_doc_max_bytes`. Capability testing confirmed real truncation behavior.
+
+The profiler must:
+
+- record the configured limit when discoverable;
+- record the byte size and hash of every instruction file;
+- detect when automatic loading could be incomplete;
+- explicitly read full instruction files during profiling;
+- mark the instruction map invalid if a critical file cannot be read in full.
+
+### 2.7 Git metadata writes may require higher permissions
+
+Creating refs, branches, commits, and worktrees requires writes under `.git`. Capability testing confirmed that a standard `workspace-write` sandbox may permit normal file edits while blocking Git metadata writes.
+
+PlanAnvil must run a Git capability test before creating planning artifacts and report one of:
+
+```text
+GIT_READY
+GIT_READ_ONLY
+GIT_WRITE_RESTRICTED
+GIT_DIRTY
+GIT_OPERATION_IN_PROGRESS
+NOT_A_GIT_REPOSITORY
+```
+
+When the result is `GIT_READ_ONLY` or `GIT_WRITE_RESTRICTED`, PlanAnvil must stop and explain that one of the following is required:
+
+- a Codex permission mode that permits Git metadata writes; or
+- a planning branch and worktree created manually by the user.
+
+PlanAnvil must never attempt to grant itself higher privileges, invoke `sudo`, or bypass the sandbox.
+
+### 2.8 Compaction must use checkpoint, compact, and recovery
+
+`PreCompact` can stop both manual and automatic compaction. Tests confirmed this behavior, but also showed that permanently blocking automatic compaction after crossing the threshold can make a session practically unusable.
+
+The required policy is:
+
+```text
+CHECKPOINT
+→ ALLOW COMPACTION
+→ POST-COMPACT EVENT
+→ SESSION RECOVERY CONTEXT
+→ RECONCILIATION
+→ CONTINUE
+```
+
+`PreCompact` may delay compaction only long enough to ensure a valid checkpoint exists. It must not create an endless stop loop.
+
+`PostCompact` and `SessionStart` with source `compact` may be used to restore a minimal recovery pointer. The real source of truth remains the filesystem and Git, not hook-provided memory.
+
+### 2.9 Unsupported mechanisms are removed, not simulated
+
+If a requirement has no current documented and tested Codex mechanism, it must be removed from the active implementation contract.
+
+It must not be:
+
+- silently approximated;
+- claimed as supported;
+- hidden behind an undocumented command;
+- shipped as `PARTIALLY_SUPPORTED` behavior.
+
+The removal and reason must be recorded in `docs/OPENAI_COMPLIANCE.md`.
+
+## 3. Authoritative sources and compatibility record
+
+Before implementing or updating PlanAnvil, re-read current official OpenAI documentation. Do not rely only on remembered behavior, unofficial posts, or prior test results.
 
 At minimum verify:
 
-- GPT-5.6 prompt guidance:  
-  https://developers.openai.com/api/docs/guides/prompt-guidance-gpt-5p6
-- Codex skills documentation;
-- Codex subagent documentation;
-- `AGENTS.md` instruction hierarchy;
-- Codex configuration and context-management documentation;
-- any official documentation governing the command or mechanism used to execute a generated long-running plan.
+- GPT-5.6 prompt guidance;
+- Codex skill format and skill discovery;
+- `allow_implicit_invocation` behavior;
+- Codex subagents and configuration;
+- `AGENTS.md` discovery and precedence;
+- project instruction size limits;
+- hooks and their documented enforcement limits;
+- sandbox and permission modes;
+- Git worktree support;
+- compaction and recovery mechanisms.
 
 Record in the repository:
 
-- every official URL used;
+- each official URL used;
 - verification date;
+- Codex version when discoverable;
+- GPT model slug used for capability tests;
 - relevant compatibility notes;
-- unsupported or undocumented assumptions;
+- documented limitations;
+- capability-test identifiers and evidence paths;
 - a compliance checklist.
 
-The implementation must not claim support for a model name, command, hook, or configuration option unless it is confirmed in current official documentation.
+No model name, command, hook, field, or configuration option may be claimed unless it is confirmed in current official documentation or reproducibly capability-tested and not contradicted by official documentation.
 
-## 3. Core boundary
+## 4. Core product boundary
 
 PlanAnvil must:
 
-1. inspect the repository and its profiles;
-2. analyze the user goal;
-3. create a structured plan directory;
-4. generate a complete `PLAN.md` execution contract;
-5. generate supporting manifests, state templates, risk templates, test templates, and compliance records;
-6. stop after plan generation and validation.
+1. verify the repository and Git capabilities;
+2. create or validate system profiles;
+3. discover project instructions;
+4. analyze the user goal;
+5. create an isolated planning branch and worktree;
+6. create one isolated run directory;
+7. generate a stable `PLAN.md` contract;
+8. generate atomic stage briefs and supporting artifacts;
+9. independently validate the plan;
+10. commit only planning and profile artifacts on the planning branch;
+11. stop after plan generation and validation.
 
 PlanAnvil must not:
 
 - modify application code;
+- write application tests;
 - implement the requested feature;
+- execute a generated stage;
 - run migrations;
 - deploy code;
-- execute the generated plan;
-- merge the feature into the base branch;
-- hide, stash, reset, clean, or commit unrelated user changes.
+- restart services;
+- switch a live production system;
+- create a task implementation branch;
+- create an integration merge for implemented code;
+- merge or push to the base branch;
+- use `git stash`, `git reset`, or `git clean` to conceal or discard work;
+- integrate with or export to Superpowers;
+- execute another framework's workflow.
 
-## 4. Mandatory clean-worktree precondition
+The planning branch is not an implementation branch.
 
-PlanAnvil may start only when the repository worktree is clean.
+## 5. Final generator behavior
+
+After a plan is committed and independently validated, PlanAnvil must:
+
+1. display the planning branch and commit SHA;
+2. display the final plan status;
+3. display critical assumptions and unknowns;
+4. display the exact path of `PLAN.md`;
+5. state that no implementation was executed;
+6. stop.
+
+It may ask one next-step question:
+
+> Start a separate Codex execution run for this plan? That run will later request explicit approval before any local integration merge or live-system test.
+
+Answering this question must not cause the current PlanAnvil run to execute the plan.
+
+## 6. Mandatory clean-worktree precondition
+
+PlanAnvil may begin only when the source worktree is clean.
 
 The preflight must verify:
 
@@ -81,35 +266,121 @@ The preflight must verify:
 - no merge in progress;
 - no rebase in progress;
 - no cherry-pick in progress;
-- no revert in progress.
+- no revert in progress;
+- no bisect or other repository operation that makes planning unsafe.
 
-When the repository is not clean, PlanAnvil must stop and explain the detected condition. It must not run `git stash`, `git reset`, `git clean`, or create a commit to conceal the state.
+When the source worktree is not clean, PlanAnvil must stop and explain the exact detected condition.
 
-## 5. `AGENTS.md` is mandatory and authoritative
+It must never:
 
-PlanAnvil and every generated execution plan must require discovery and enforcement of all applicable:
+- run `git stash`;
+- run `git reset`;
+- run `git clean`;
+- run an equivalent destructive cleanup command;
+- create a commit to conceal unrelated changes;
+- move user files to another location to simulate cleanliness.
+
+## 7. Git capability test
+
+The Git capability test runs after the clean-worktree check and before any planning artifact is written.
+
+### 7.1 Read-only checks
+
+Verify:
+
+- `git` is available;
+- the directory is inside a Git repository;
+- repository root can be resolved;
+- current branch can be resolved, or detached-HEAD state is identified;
+- `HEAD` can be resolved;
+- the repository has no active unsafe operation;
+- worktree status is clean;
+- existing worktrees can be listed;
+- remote configuration and deployment-trigger implications can be inspected without network writes.
+
+### 7.2 Safe Git metadata probe
+
+When permitted, perform a non-destructive metadata probe:
+
+```text
+create temporary ref pointing to current HEAD
+→ verify ref
+→ delete temporary ref
+→ confirm branch, HEAD, index, worktree, and files are unchanged
+```
+
+The probe must use a unique namespace such as:
+
+```text
+refs/plananvil/probes/<RUN-ID>
+```
+
+It must not create a commit or switch branches.
+
+### 7.3 Result handling
+
+`GIT_READY` allows PlanAnvil to create the planning worktree.
+
+`GIT_READ_ONLY` or `GIT_WRITE_RESTRICTED` stops PlanAnvil before plan generation and presents exact remediation options.
+
+`GIT_DIRTY`, `GIT_OPERATION_IN_PROGRESS`, or `NOT_A_GIT_REPOSITORY` always stop PlanAnvil.
+
+## 8. Project instructions
+
+PlanAnvil and every generated execution plan must discover and enforce all applicable:
 
 - `AGENTS.md`;
 - `AGENTS.override.md`;
-- nested instruction files supported by current Codex documentation.
+- configured fallback instruction filenames supported by Codex;
+- nested instruction files within affected directories.
 
 The profiler must record:
 
-- file locations;
-- scope by directory;
+- absolute or repository-relative location;
+- file hash;
+- byte size;
+- full-read status;
+- directory scope;
 - precedence;
+- affected stages;
 - conflicts;
-- instructions relevant to each planned stage.
+- truncation risk;
+- safety-critical rules.
 
-The generated plan must require each fresh subagent to re-read the instructions applicable to the files it will inspect or modify.
+### 8.1 Conflict-resolution rule
 
-If the plan conflicts with an applicable project instruction, the project instruction wins. The conflict must be logged and the plan must be adjusted or stopped.
+Use documented scope and precedence first.
 
-## 6. Environment profiler
+Where instructions remain genuinely ambiguous, prefer the interpretation that best preserves:
 
-PlanAnvil requires a profiler component or companion skill.
+- documented project intent;
+- safety boundaries;
+- expected user outcome;
+- existing architectural conventions;
+- minimal unnecessary change.
 
-If the profiles do not exist, profile creation is mandatory before goal analysis begins.
+This implements the principle:
+
+> Preserve the spirit and purpose of the project rather than exploiting a narrow literal reading.
+
+The chosen interpretation and evidence must be logged.
+
+An inferred interpretation must never override an explicit prohibition concerning:
+
+- security;
+- secrets;
+- personal or protected data;
+- destructive operations;
+- production deployment;
+- irreversible state changes;
+- branch protection;
+- legal or compliance obligations.
+
+A remaining safety-critical conflict blocks the plan. A non-critical conflict may be resolved by best judgment with a recorded rationale.
+
+## 9. Environment profiler
+
+If profiles do not exist or are invalid, profile creation is mandatory before goal analysis.
 
 The profiler creates:
 
@@ -118,11 +389,11 @@ The profiler creates:
 .pursue/SYSTEM_PROFILE.local.md
 ```
 
-### 6.1 `SYSTEM_PROFILE.md`
+### 9.1 `SYSTEM_PROFILE.md`
 
-This file is versioned in Git and contains information safe for repository storage:
+This versioned file contains repository-safe information:
 
-- repository structure;
+- repository identity and structure;
 - languages, frameworks, and runtimes;
 - dependency managers;
 - build commands;
@@ -130,15 +401,20 @@ This file is versioned in Git and contains information safe for repository stora
 - linters and static-analysis tools;
 - architecture overview;
 - Git conventions;
+- branch protection assumptions;
 - general deployment rules;
 - general rollback rules;
 - persistent-state technologies;
-- `AGENTS.md` map;
-- known quality gates.
+- instruction-file map;
+- known quality gates;
+- PlanAnvil activation policy;
+- plan-depth policy;
+- risk thresholds;
+- permitted planning artifact locations.
 
-### 6.2 `SYSTEM_PROFILE.local.md`
+### 9.2 `SYSTEM_PROFILE.local.md`
 
-This file is local and must be ignored by Git. It contains machine- and production-specific information:
+This ignored local file contains machine- and environment-specific information:
 
 - local paths;
 - service names;
@@ -146,27 +422,38 @@ This file is local and must be ignored by Git. It contains machine- and producti
 - restart commands;
 - cache and queue behavior;
 - deployment steps;
-- branch/commit switching procedure;
+- branch or commit switching procedure;
 - production verification procedure;
 - local rollback procedure;
-- infrastructure limitations.
+- infrastructure limitations;
+- permission mode required for Git metadata writes;
+- known CI or deployment triggers caused by pushes.
 
-It must never contain secrets, passwords, API keys, SSH keys, private certificates, database credentials, or copied `.env` contents.
+It must never contain:
 
-### 6.3 Evidence status
+- passwords;
+- API keys;
+- SSH private keys;
+- private certificates;
+- database credentials;
+- copied `.env` contents;
+- session cookies;
+- access tokens.
 
-Every important profile fact must have one status:
+### 9.3 Evidence status
 
-- `VERIFIED` — confirmed by a file, command, or configuration;
+Every important profile fact must use one status:
+
+- `VERIFIED` — confirmed by a file, command, configuration, or reproducible check;
 - `USER_CONFIRMED` — explicitly confirmed by the user;
 - `INFERRED` — reasoned but unconfirmed;
 - `UNKNOWN` — unresolved.
 
-Verified facts must record their evidence source.
+Verified facts must record evidence paths or commands.
 
-### 6.4 Profile freshness
+### 9.4 Profile freshness
 
-Profile validity must be based primarily on signatures or hashes of relevant files, including:
+Profile validity must be based primarily on hashes of:
 
 - all applicable instruction files;
 - dependency manifests and lockfiles;
@@ -174,9 +461,10 @@ Profile validity must be based primarily on signatures or hashes of relevant fil
 - build configuration;
 - quality-tool configuration;
 - deployment scripts;
-- migration/state-management files.
+- migration and state-management files;
+- PlanAnvil activation configuration.
 
-Use statuses such as:
+Use statuses:
 
 - `VALID`;
 - `PARTIALLY_STALE`;
@@ -184,17 +472,17 @@ Use statuses such as:
 - `UNVERIFIABLE`;
 - `VALID_WITH_UNKNOWNS`.
 
-The local profile requires a lightweight revalidation after 30 days even when repository signatures have not changed.
+The local profile requires lightweight revalidation after 30 days even when repository hashes have not changed.
 
-### 6.5 Profiler permissions
+### 9.5 Profiler permissions
 
 The profiler may perform read-only and demonstrably non-destructive diagnostics:
 
 - file inspection;
 - Git read operations;
 - version checks;
-- linting;
-- static analysis;
+- linting when side effects are ruled out;
+- static analysis when side effects are ruled out;
 - service-status reads;
 - safe health checks;
 - verified dry runs.
@@ -206,15 +494,41 @@ It must not:
 - run migrations;
 - restart services;
 - clear caches;
-- switch branches during profiling;
+- switch the source worktree branch;
 - mutate production data;
 - run tests whose side effects cannot be ruled out.
 
-## 7. Repository layout to implement
+## 10. Configurable activation policy
 
-Create a clear skill repository with progressive disclosure. The implementing agent may refine names only when required by current official Codex skill conventions.
+PlanAnvil must activate explicitly when the user invokes `$plan-anvil`.
 
-Recommended structure:
+Automatic recommendation or activation thresholds must be configured in `SYSTEM_PROFILE.md`, not hard-coded globally.
+
+Example:
+
+```yaml
+plananvil:
+  activation_policy:
+    explicit_request_always: true
+    implicit_invocation_allowed: false
+    recommend_when:
+      minimum_files: 3
+      minimum_domains: 2
+      public_api_change: true
+      stateful_change: true
+      irreversible_change: true
+      migration: true
+      production_procedure_required: true
+      risk_at_least: HIGH
+```
+
+The profile may define a lighter or stricter boundary for a specific repository.
+
+Ordinary coding questions and immediate fixes must not activate PlanAnvil implicitly.
+
+## 11. Repository layout to implement
+
+Use progressive disclosure and the native Codex skill path.
 
 ```text
 PlanAnvil/
@@ -225,51 +539,97 @@ PlanAnvil/
 ├── docs/
 │   ├── IMPLEMENTATION_SPEC.md
 │   ├── OPENAI_COMPLIANCE.md
+│   ├── CODEX_CAPABILITY_BASELINE.md
 │   ├── ARCHITECTURE.md
 │   └── EXAMPLES.md
-├── skills/
-│   └── plan-anvil/
-│       ├── SKILL.md
-│       ├── references/
-│       │   ├── planning-contract.md
-│       │   ├── profiler-contract.md
-│       │   ├── git-contract.md
-│       │   ├── testing-contract.md
-│       │   ├── recovery-contract.md
-│       │   └── openai-sources.md
-│       ├── templates/
-│       │   ├── PLAN.md
-│       │   ├── manifest.md
-│       │   ├── state.md
-│       │   ├── compliance.md
-│       │   ├── risk-card.md
-│       │   ├── checkpoint.md
-│       │   ├── agent-report.md
-│       │   └── incident-report.md
-│       ├── scripts/
-│       │   ├── preflight.*
-│       │   ├── profile.*
-│       │   ├── validate-profile.*
-│       │   ├── scaffold-run.*
-│       │   └── validate-plan.*
-│       └── tests/
-│           ├── activation/
-│           ├── preflight/
-│           ├── profiler/
-│           ├── plan-generation/
-│           ├── safety/
-│           └── fixtures/
+├── .agents/
+│   └── skills/
+│       └── plan-anvil/
+│           ├── SKILL.md
+│           ├── agents/
+│           │   └── openai.yaml
+│           ├── references/
+│           │   ├── planning-contract.md
+│           │   ├── profiler-contract.md
+│           │   ├── git-contract.md
+│           │   ├── testing-contract.md
+│           │   ├── recovery-contract.md
+│           │   ├── hooks-contract.md
+│           │   └── openai-sources.md
+│           ├── templates/
+│           │   ├── PLAN.md
+│           │   ├── stage-brief.md
+│           │   ├── manifest.md
+│           │   ├── state.md
+│           │   ├── compliance.md
+│           │   ├── risk-card.md
+│           │   ├── checkpoint.md
+│           │   ├── agent-report.md
+│           │   ├── plan-review.md
+│           │   └── incident-report.md
+│           ├── scripts/
+│           │   ├── preflight.*
+│           │   ├── test-git-capabilities.*
+│           │   ├── profile.*
+│           │   ├── validate-profile.*
+│           │   ├── map-instructions.*
+│           │   ├── scaffold-run.*
+│           │   ├── validate-plan.*
+│           │   └── validate-agent-diff.*
+│           └── tests/
+│               ├── activation/
+│               ├── preflight/
+│               ├── git-capabilities/
+│               ├── profiler/
+│               ├── instructions/
+│               ├── plan-generation/
+│               ├── hooks/
+│               ├── compaction/
+│               ├── safety/
+│               └── fixtures/
 └── examples/
     ├── small-change/
     ├── stateful-change/
-    └── blocked-plan/
+    ├── blocked-plan/
+    └── git-write-restricted/
 ```
 
-Do not add complexity without a concrete purpose. Keep `SKILL.md` focused and move detailed contracts into references and templates.
+Keep `SKILL.md` focused on activation, boundaries, the top-level workflow, and required outputs. Move detailed rules to references, templates, and deterministic scripts.
 
-## 8. One isolated directory per generated plan
+## 12. Planning branch and worktree
 
-Every invocation creates a separate timestamped run directory:
+After `GIT_READY`, each invocation creates an isolated planning worktree and branch:
+
+```text
+pursue/plan/<PLAN-ID>/<slug>
+```
+
+Store:
+
+```text
+SOURCE_WORKTREE
+BASE_BRANCH
+BASE_SHA
+PLANNING_BRANCH
+PLANNING_WORKTREE
+```
+
+The source worktree must remain on its original branch and `HEAD`.
+
+The planning branch may contain only:
+
+- `.pursue/SYSTEM_PROFILE.md` updates;
+- allowed ignore-rule updates needed for `.pursue/SYSTEM_PROFILE.local.md`;
+- run artifacts;
+- PlanAnvil-generated documentation directly required for the plan.
+
+It must not contain product implementation or product tests.
+
+At completion, PlanAnvil commits planning artifacts on the planning branch. It must not push unless the user separately and explicitly requests a push and the profile confirms the push is safe.
+
+## 13. One isolated directory per generated plan
+
+Every invocation creates:
 
 ```text
 .pursue/runs/<TIMESTAMP>_<PLAN-ID>_<SLUG>/
@@ -281,7 +641,7 @@ Timestamp format:
 YYYYMMDDTHHMMSSZ
 ```
 
-Recommended contents:
+Required contents:
 
 ```text
 .pursue/runs/<RUN-ID>/
@@ -289,9 +649,15 @@ Recommended contents:
 ├── manifest.md
 ├── state.md
 ├── compliance.md
+├── stages/
+│   ├── STAGE-01.md
+│   ├── STAGE-02.md
+│   └── ...
 ├── checkpoints/
 ├── reports/
+│   ├── profiling/
 │   ├── analysis/
+│   ├── plan-review/
 │   ├── implementation/
 │   ├── verification/
 │   ├── jenny/
@@ -307,145 +673,294 @@ Recommended contents:
 └── final/
 ```
 
-`PLAN.md` is the execution source of truth. Detailed logs and reports belong in supporting files, with short references in `PLAN.md`.
+`PLAN.md` is the stable execution contract. Stage-specific details belong in `stages/*.md`.
 
-## 9. Required `PLAN.md` contents
+## 14. Stable contract versus execution details
 
-Every generated plan must contain at least:
+PlanAnvil must describe primarily **what must be true**, not pre-write the full implementation.
 
-1. plan identity;
-2. execution prompt;
+`PLAN.md` contains stable decisions and guardrails:
+
+- outcome;
+- scope;
+- constraints;
+- acceptance criteria;
+- risk controls;
+- stage boundaries;
+- evidence requirements;
+- Git and recovery rules.
+
+Stage briefs contain bounded execution details:
+
+- exact affected paths known at planning time;
+- applicable instructions;
+- interfaces and invariants;
+- acceptance criteria;
+- risks and required tests;
+- commands that are already verified as stable;
+- command-discovery rules for commands that depend on runtime state.
+
+Do not include:
+
+- full speculative production-code implementations;
+- invented method signatures without repository evidence;
+- stale line numbers presented as permanent truth;
+- exact deployment commands not verified by the local profile;
+- placeholders such as `TBD`, `TODO`, or “add appropriate tests”.
+
+Exact code and state-dependent commands are determined during the separate execution run using the current repository state and profile.
+
+## 15. Required `PLAN.md` contents
+
+Every `PLAN.md` must contain:
+
+1. plan identity and contract version;
+2. separate execution-run prompt;
 3. expected outcome;
 4. definition of done;
-5. stop conditions;
-6. scope;
-7. out-of-scope items;
-8. assumptions;
-9. unknowns;
-10. evidence sources;
-11. applicable project instructions;
-12. system summary;
-13. affected components;
-14. data/state flow;
-15. dependencies;
-16. change classification;
-17. atomic stages;
-18. acceptance criteria;
-19. risk register;
-20. risk-to-test matrix;
-21. testing procedure;
-22. Git procedure;
-23. production verification procedure;
-24. rollback procedure;
-25. context-management rules;
-26. resume/reconciliation procedure;
-27. plan-change log;
-28. execution status model;
-29. next action;
-30. final-report requirements.
+5. generator stop boundary;
+6. executor stop conditions;
+7. scope;
+8. out-of-scope items;
+9. assumptions;
+10. unknowns and criticality;
+11. evidence sources;
+12. applicable project instructions;
+13. instruction-conflict resolutions;
+14. system summary;
+15. affected components;
+16. data and state flow;
+17. dependencies;
+18. change classification;
+19. stable stage index;
+20. acceptance criteria;
+21. requirement-to-stage traceability;
+22. risk register;
+23. risk-to-control matrix;
+24. testing procedure;
+25. Git procedure;
+26. integration procedure;
+27. production verification procedure;
+28. rollback procedure;
+29. context-management rules;
+30. agent topology and permissions;
+31. resume and reconciliation procedure;
+32. plan-change log;
+33. execution status model;
+34. next action;
+35. final-report requirements.
 
-## 10. Atomic-stage rules
+## 16. Atomic-stage rules
 
-Each stage must represent one small logical change, preferably centered on one:
+Each stage represents one logical, independently testable result.
 
-- class;
-- service;
-- component;
-- module;
-- domain;
-- endpoint;
-- business flow;
-- coherent UI element.
-
-A stage may modify multiple files only when every file is directly required for that single logical outcome.
+A stage may modify multiple files only when every file is directly required for that single outcome.
 
 Split a stage when:
 
-- it spans multiple domains;
-- it changes independent responsibilities;
-- it needs independent acceptance criteria;
+- it spans independent domains;
+- it changes unrelated responsibilities;
+- parts need independent acceptance criteria;
 - parts can be deployed or rolled back separately;
 - parts have different risk profiles;
-- multiple independent commits are required;
-- the goal cannot be summarized in one short sentence.
+- independent commits are required;
+- the outcome cannot be expressed in one short sentence.
 
-Each stage must have its own:
+Each stage must have:
 
-- analysis;
+- a stable identifier that is never renumbered;
+- one-sentence outcome;
+- scope and exclusions;
+- affected paths or path-discovery procedure;
+- applicable instruction files;
+- dependencies;
+- conflicts with other stages;
 - acceptance criteria;
 - risks;
-- tests;
+- required tests or other controls;
+- one modifier role at a time;
 - independent verification;
-- commit;
-- checkpoint.
+- one coherent commit;
+- one verified checkpoint.
 
-## 11. Acceptance criteria
+Reordering must not change stable identifiers.
 
-Acceptance criteria are mandatory and must be defined before tests and implementation.
+## 17. Traceability
+
+Every important item must be traceable through stable identifiers:
+
+```text
+Requirement
+→ Stage
+→ Acceptance criterion
+→ Risk
+→ Test or other control
+→ Evidence artifact
+→ Verification result
+```
+
+A generated traceability table must identify:
+
+- uncovered requirements;
+- stages without a requirement;
+- criteria without evidence;
+- risks without controls;
+- tests without linked behavior;
+- public behavior without explicit user approval where required.
+
+A critical traceability gap blocks `READY` status.
+
+## 18. Acceptance criteria and best-effort planning
+
+Acceptance criteria are defined before tests and implementation.
 
 Each criterion must:
 
 - have a stable identifier;
-- be objectively verifiable;
-- identify its test or evidence;
-- remain inside stage scope.
+- be objectively verifiable where reasonably possible;
+- identify its test or evidence type;
+- remain inside stage scope;
+- avoid subjective language without a measurable definition.
 
-Once implementation begins, criteria are frozen. Any change requires:
+### 18.1 Non-critical ambiguity
 
-- a recorded reason;
-- versioned replacement;
-- renewed scope analysis;
-- renewed risk analysis;
-- renewed Jenny review;
-- retained history.
+For a non-critical ambiguity, PlanAnvil must:
 
-## 12. Generated execution architecture
+- make the best supported interpretation;
+- record it as `INFERRED` or `UNKNOWN`;
+- state the evidence;
+- state how it will be verified later;
+- continue when safe.
 
-The plan must define the following autonomous execution roles.
+### 18.2 Critical ambiguity
 
-### 12.1 Jim — main orchestrator
+The plan cannot become `READY` when missing information prevents safe definition of:
 
-Jim manages the process but never performs technical implementation.
+- expected behavior;
+- a critical acceptance test;
+- data migration behavior;
+- rollback;
+- public API behavior;
+- production switching;
+- an irreversible operation;
+- security or permission behavior.
+
+Use:
+
+```text
+BLOCKED_BY_CRITICAL_UNKNOWN
+```
+
+Retain the partial plan and all completed analysis.
+
+Once execution begins, acceptance criteria are frozen. A change requires a recorded reason, versioned replacement, renewed scope and risk analysis, renewed Jenny review, and retained history.
+
+## 19. Generated execution architecture
+
+The plan must define a separate execution run with the following roles.
+
+### 19.1 Jim — main orchestrator
+
+Jim manages execution but never performs technical implementation.
 
 Jim may:
 
-- read and update plan/state files;
-- launch subagents;
+- read and update plan and state files;
+- launch direct-child agents;
 - enforce sequencing;
 - manage checkpoints;
 - evaluate quality gates;
-- manage Git branches and commits;
+- manage allowed branches, worktrees, and commits;
 - record concise summaries;
-- stop the process when required.
+- stop execution.
 
 Jim must not:
 
 - modify product code;
-- write tests;
-- repair implementation;
-- perform opportunistic edits;
-- substitute for a technical subagent.
+- write or modify tests;
+- repair an implementation;
+- make opportunistic technical edits;
+- substitute for a technical agent;
+- accept evidence produced by an unauthorized descendant.
 
-### 12.2 Fresh stage agents
+### 19.2 Flat agent topology
 
-Each stage uses fresh, sequential agents for:
+Required topology:
 
-1. analysis;
-2. implementation;
-3. independent verification.
+```text
+Jim
+├── analysis agent
+├── Jenny
+├── implementation agent
+├── independent verifier
+└── Winston Wolfe when required
+```
 
-Only one technical agent may work at a time. No concurrent code modification is allowed.
+All technical agents are direct children of Jim.
 
-### 12.3 Independent verifier
+The plan must prohibit children from spawning descendants even though Codex may technically support it.
 
-Verification is two-phase:
+`SubagentStart` may log the actual tree. Before every checkpoint, Jim must compare the observed tree with the authorized tree.
 
-1. **Blind technical review:** receives goal, scope, criteria, risks, risk-test matrix, base commit, diff, test results, and applicable instructions, but not the implementer’s reasoning.
-2. **Comparison phase:** after recording an independent conclusion, receives the implementer report and checks for discrepancies or omitted effects.
+### 19.3 Concurrency
 
-## 13. Jenny — test specialist
+Only one agent may modify repository files at a time.
 
-Jenny is a test-focused nested agent.
+Read-only analysis agents may run concurrently only when:
+
+- the profile allows it;
+- they do not mutate files or external systems;
+- their outputs are isolated;
+- concurrency does not weaken blind review.
+
+Jenny and the production-code implementer must never modify files concurrently.
+
+### 19.4 File handoffs
+
+Each agent receives a short file-based brief, not accumulated conversation history.
+
+A dispatch contains only:
+
+- role and stage identifier;
+- brief path;
+- required instruction paths;
+- allowed write paths;
+- report path;
+- explicit stop conditions.
+
+Full logs, diffs, and reasoning remain in artifacts.
+
+## 20. Independent plan and implementation verification
+
+### 20.1 Plan verification
+
+Before `READY`, a fresh plan verifier receives:
+
+- user goal;
+- stable `PLAN.md`;
+- stage briefs;
+- profiles;
+- instruction map;
+- traceability matrix;
+- risks and controls;
+- validation outputs.
+
+It must not receive the planner's reasoning or self-review report until it has written and hashed an independent conclusion.
+
+The comparison phase then receives the planner report and checks for omissions or discrepancies.
+
+### 20.2 Implementation verification
+
+During the later execution run, verification is also two-phase:
+
+1. **Blind technical review:** goal, scope, criteria, risks, base commit, diff, test evidence, and instructions, without implementer reasoning.
+2. **Comparison:** immutable blind conclusion plus implementer report.
+
+The blind artifact must not be modified during comparison.
+
+## 21. Jenny — test specialist
+
+Jenny is a direct child of Jim and a test-focused modifier.
 
 Jenny receives:
 
@@ -455,46 +970,70 @@ Jenny receives:
 - risks;
 - affected components;
 - system profile;
-- applicable instructions.
+- applicable instructions;
+- allowed write-path list.
 
 Jenny must:
 
-1. analyze the task;
-2. analyze risks;
-3. build a `risk → test` matrix;
-4. evaluate existing coverage;
-5. design missing tests;
-6. create missing tests;
-7. validate that the tests themselves are meaningful;
+1. analyze the task and risks;
+2. build a `risk → test/control` matrix;
+3. evaluate existing coverage;
+4. design missing tests;
+5. create missing tests;
+6. validate that tests fail for the intended reason;
+7. validate test meaning and independence;
 8. run the required test cycle;
 9. store full artifacts;
 10. return a concise structured report.
 
-Jenny may modify only test code, fixtures, mocks, test data, and test infrastructure. Jenny must never modify production code.
+Jenny may modify only:
 
-The implementation must use only agent-nesting capabilities that are currently documented by OpenAI. Verify required depth and configuration before encoding them.
+- test code;
+- fixtures;
+- mocks;
+- test data;
+- explicitly approved test infrastructure.
 
-## 14. Mandatory test cycle
+Jenny must never modify production code.
 
-Every implementation stage must enforce:
+### 21.1 Jenny enforcement
+
+Use defense in depth:
+
+- restricted sandbox where supported;
+- explicit allowlisted paths;
+- `PreToolUse` path guard where supported;
+- post-run diff verification;
+- rejection of the phase if any unauthorized path changed.
+
+Do not trust only the reported custom agent type. Capability tests showed that the runtime may report `agent_type: default` even when a named profile was requested.
+
+If unauthorized changes exist, Jim must stop the phase and preserve evidence. He must not hide or erase the violation automatically.
+
+## 22. Mandatory test cycle
+
+Every behavior-adding implementation stage must enforce:
 
 ```text
 GREEN BASELINE
 → EXPECTED RED
 → IMPLEMENTATION
 → FULL GREEN
+→ INDEPENDENT VERIFICATION
 ```
 
 Rules:
 
-- Existing relevant behavior must be green before the change.
-- Missing regression coverage must be created before production implementation.
-- New-behavior tests must fail for the intended reason before implementation.
-- A test failing because of syntax, configuration, dependency, fixture, or infrastructure errors does not satisfy expected red.
-- After implementation, new tests, targeted tests, regression tests, linting, static analysis, and profile-defined quality checks must be green.
-- If a new test is already green before implementation, Jenny must determine whether the feature already exists, the test is weak, or the task definition is wrong.
+- relevant existing behavior must be green first;
+- missing regression coverage is created before production implementation;
+- new-behavior tests must fail for the intended reason;
+- syntax, configuration, dependency, fixture, or infrastructure failures do not satisfy expected red;
+- after implementation, new tests, targeted tests, regression tests, linting, static analysis, and profile-defined checks must pass;
+- an unexpectedly green pre-implementation test requires investigation of existing behavior, test weakness, or task definition.
 
-## 15. Risk register
+Stages that do not add testable software behavior must define an equivalent evidence cycle rather than fake a red test.
+
+## 23. Risk register and adaptive depth
 
 Risk levels:
 
@@ -502,7 +1041,11 @@ Risk levels:
 - `MEDIUM`;
 - `HIGH`.
 
-Low risks may use a compact record.
+Every risk requires:
+
+- a test;
+- another control; or
+- an explicit explanation why no direct test applies.
 
 Medium and high risks require a full card containing:
 
@@ -514,63 +1057,88 @@ Medium and high risks require a full card containing:
 - probability;
 - impact;
 - detection method;
-- linked tests;
+- linked criteria;
+- linked tests or controls;
 - mitigation;
 - rollback;
 - status.
 
-Every risk must have a test, another control, or an explicit explanation for why no test applies.
+High-risk changes automatically receive:
 
-Jenny may increase a risk level. Reducing a risk level requires evidence, justification, and retained history.
+- deeper repository research;
+- more explicit unknown analysis;
+- additional review lenses;
+- stricter evidence requirements;
+- production and rollback validation;
+- a user checkpoint before any irreversible or live-system action.
 
-## 16. Autofix and strategy reset
+Jenny may increase risk. Reducing risk requires evidence, justification, and retained history.
 
-A failed stage may use two strategies with three attempts each.
+## 24. Safe document autofix
 
-### Strategy A
+PlanAnvil may automatically fix only changes that do not alter meaning, including:
+
+- spelling;
+- Markdown formatting;
+- broken internal links;
+- invalid references to existing stable identifiers;
+- mechanically detectable template omissions whose content is already unambiguous.
+
+It must request approval before changing:
+
+- scope;
+- outcome;
+- public behavior;
+- architecture decisions;
+- risk level downward;
+- acceptance criteria meaning;
+- irreversible operations;
+- deployment or rollback behavior.
+
+## 25. Execution retry and strategy reset
+
+The generated execution plan uses two strategies with three attempts each.
 
 ```text
-ATTEMPT-A1
-ATTEMPT-A2
-ATTEMPT-A3
+STRATEGY-A: ATTEMPT-A1, ATTEMPT-A2, ATTEMPT-A3
+STRATEGY-B: ATTEMPT-B1, ATTEMPT-B2, ATTEMPT-B3
 ```
 
-These are short tactical fixes within the original approach.
-
-After three failures:
+After three failed attempts:
 
 - mark Strategy A `REJECTED`;
-- forbid a fourth variation of the same approach;
-- run a new high-effort analysis;
-- create a materially different solution hypothesis;
+- prohibit a fourth variation of the same approach;
+- perform new high-effort analysis;
+- create a materially different hypothesis;
 - redo risks and tests;
-- restore a safe stage baseline before Strategy B.
+- start Strategy B from the last verified checkpoint.
 
-### Strategy B
+After six total implementation failures, stop the process.
 
-```text
-ATTEMPT-B1
-ATTEMPT-B2
-ATTEMPT-B3
-```
+Infrastructure-only failures do not consume an implementation attempt unless caused by the implementation.
 
-Strategy B must represent a genuinely different diagnosis or implementation design.
+### 25.1 Baseline restoration without hiding work
 
-After six total failures, stop the entire process.
+Do not use stash, reset, or clean to conceal a failed attempt.
 
-Infrastructure-only test failures do not consume an implementation attempt unless caused by the implementation itself. They must still be recorded.
+Prefer:
 
-## 17. Winston Wolfe — damage-control reporter
+- checkpoint commits;
+- a new isolated attempt worktree or branch created from the last verified checkpoint;
+- preservation of the failed attempt for audit;
+- explicit cleanup only after user approval or documented safe retention policy.
 
-After both strategies fail, Jim launches a fresh read-only agent named **Winston Wolfe**.
+## 26. Winston Wolfe
+
+After both strategies fail, Jim launches a fresh read-only direct child named **Winston Wolfe**.
 
 Winston must not modify code or perform a seventh attempt.
 
-Winston produces a clear incident report containing:
+The incident report contains:
 
-1. what is failing;
-2. which criteria remain unmet;
-3. both attempted strategies;
+1. failing behavior;
+2. unmet criteria;
+3. both strategies;
 4. why they failed;
 5. confirmed facts;
 6. unconfirmed hypotheses;
@@ -587,33 +1155,20 @@ Final failure status:
 BLOCKED_BY_UNRESOLVED_FAILURE
 ```
 
-## 18. Main-context memory discipline
+## 27. Main-context memory discipline
 
-The main orchestrator context must remain short.
+Jim's context must remain short.
 
-Jim should receive concise structured summaries rather than:
+Jim receives concise summaries rather than:
 
 - raw terminal logs;
 - full stack traces;
 - complete diffs;
-- complete test output;
+- full test output;
 - long code exploration;
 - lengthy implementer reasoning.
 
-Detailed artifacts belong in the run directory.
-
-Jim reads full artifacts only for:
-
-- `FAIL`;
-- `BLOCKED`;
-- `INCONCLUSIVE`;
-- high risk;
-- conflicting agent reports;
-- strategy reset;
-- recovery/reconciliation;
-- Winston Wolfe analysis.
-
-Example summary:
+Example:
 
 ```text
 Stage: STAGE-03
@@ -622,62 +1177,73 @@ Result: PASS
 Criteria: 6/6
 Tests: 42 passed, 0 failed
 Risks: 0 HIGH, 1 LOW
+Agent tree: COMPLIANT
+Write scope: COMPLIANT
 Artifact: reports/verification/STAGE-03.md
-Next action: create stage commit
+Next action: create verified checkpoint
 ```
 
-## 19. Context compaction policy
+Jim reads full artifacts only for failure, blockers, high risk, conflicting reports, strategy reset, recovery, unauthorized writes, unauthorized agents, or Winston analysis.
 
-The generated plan must prevent uncontrolled automatic compaction of Jim’s main context when current official Codex capabilities permit it.
+## 28. Compaction and recovery policy
 
-Manual, controlled compaction is allowed only after a completed stage and a complete checkpoint containing:
+Before compaction, ensure a checkpoint contains:
 
-- stage result;
+- stage and phase result;
 - test evidence;
 - current SHA;
-- Git state;
-- open/closed risks;
+- branch and worktree;
+- clean or explained Git status;
+- open and closed risks;
+- actual agent-tree audit;
+- write-scope audit;
 - next action;
 - recovery instructions.
 
-After compaction, Jim must re-read the plan, state, checkpoint, profiles, and actual Git state before continuing.
+A `PreCompact` hook may stop compaction only when no valid checkpoint exists. Once the checkpoint exists, compaction must be allowed.
 
-Do not hard-code an undocumented hook, command, or configuration option. Implement this policy only with currently documented mechanisms and explain any platform limitation.
+After compaction:
 
-## 20. Plan changes during execution
+1. `PostCompact` records the event;
+2. `SessionStart` may inject only the recovery pointer;
+3. Jim reads `manifest.md`, `state.md`, the latest checkpoint, profiles, and Git state;
+4. Jim reconciles actual state;
+5. execution continues only on an acceptable reconciliation result.
+
+Do not rely on conversational memory or hook context as the source of truth.
+
+## 29. Plan changes during execution
 
 Jim may autonomously:
 
 - clarify descriptions;
-- reorder stages;
-- split an oversized stage;
+- reorder stages without renumbering them;
+- split an oversized stage using new stable identifiers;
 - add missing tests;
 - add risks;
-- change technical implementation without changing the outcome.
+- change technical implementation while preserving the approved outcome.
 
-Jim may add a new stage only when it:
+Jim may add a stage only when it:
 
 - is necessary for the original goal;
 - remains in the same domain;
 - adds no new business feature;
 - is atomic;
-- has its own criteria, risks, tests, and commit;
+- has criteria, risks, tests, and a commit;
 - is not irreversible.
 
-Jim must stop for user approval when a change:
+Jim must request user approval when a change:
 
-- adds a new business objective;
-- introduces a new unrelated domain;
-- changes public API beyond the original requirement;
+- adds a business objective;
+- introduces an unrelated domain;
+- changes public behavior or API beyond the approved requirement;
 - introduces an unexpected destructive migration;
 - is irreversible;
 - materially changes the expected result.
 
-## 21. Git model
+## 30. Git model for execution
 
-Every versioned change requires a dedicated branch.
-
-### 21.1 Feature-plan branch
+The generated plan requires a dedicated task branch:
 
 ```text
 pursue/<PLAN-ID>/<slug>
@@ -688,52 +1254,46 @@ Store:
 ```text
 BASE_BRANCH
 BASE_SHA
+TASK_BRANCH
 ```
 
-Each completed atomic stage ends in one coherent commit containing implementation and its required tests.
+Each completed atomic stage ends in one coherent commit containing the implementation and required tests.
 
-### 21.2 Profile branch
+Jim generates concrete Git commands immediately before execution from the current profile and repository state.
 
-Use a profile branch when profiling changes versioned files:
+Record all executed Git commands.
 
-```text
-pursue/profile/<TIMESTAMP>-system-profile
-```
+Never:
 
-A local ignored profile alone does not require a branch when no versioned file changes.
+- force-push;
+- rewrite the base branch;
+- discard user work;
+- push to the base branch automatically.
 
-### 21.3 Git commands
+Hooks may block known destructive commands, but Jim must also verify postconditions and actual Git state.
 
-The plan must describe logical Git procedures. Jim generates concrete commands immediately before execution using the current profile, current branch, remote configuration, and worktree state.
-
-Record all executed Git commands in artifacts.
-
-Never force-push, rewrite the base branch, or discard user work.
-
-## 22. Task and integration branches
+## 31. Integration branch and local testing
 
 After all automated stages pass, Jim must:
 
-1. push the task branch;
+1. push the task branch only when the profile confirms that push is safe;
 2. create an integration branch from the current base branch;
 3. merge the task branch into the integration branch;
 4. run post-merge tests;
-5. push the integration branch;
-6. never push changes to the base branch automatically.
+5. push the integration branch only when explicitly allowed;
+6. never push or merge to the base branch automatically.
 
-Recommended integration branch:
+Recommended branch:
 
 ```text
 pursue/integration/<PLAN-ID>/<slug>
 ```
 
-Automatic branch push is allowed only when the system profile confirms that it will not trigger unsafe deployment or workflows.
+Before local integration testing or switching a live worktree, Jim must request explicit user approval.
 
-## 23. Local production verification
+## 32. Local production verification
 
-The user may have no staging environment and may edit the live production worktree directly.
-
-The plan must support testing a specific integration commit on the live system only after automated verification and explicit user consent.
+The generated plan may support testing a specific integration commit on a live system only after automated verification and explicit user consent.
 
 Before switching, store:
 
@@ -744,27 +1304,25 @@ INTEGRATION_BRANCH
 INTEGRATION_MERGE_SHA
 ```
 
-Jim must present:
+Jim presents:
 
 - concise change summary;
 - open risks;
 - rollback procedure;
-- exactly 10 manual test scenarios;
-- a request for permission to switch the live system.
+- a set of manual test scenarios sized by the profile;
+- a request for permission.
 
-Each manual scenario uses:
+The default number of scenarios may be 10, but the profile may require more or fewer based on risk and system complexity.
+
+Each scenario uses:
 
 ```text
 initial state > action A > action B > expected result
 ```
 
-The 10 scenarios must cover the primary flow, errors, regressions, compatibility, medium/high risks, permissions, edge data, failure behavior, and the most important user journey.
+Exact switch, build, cache, restart, and rollback commands must come from `SYSTEM_PROFILE.local.md` and be revalidated immediately before use.
 
-The exact branch/commit switch, build, cache, service-restart, and rollback commands must come from `SYSTEM_PROFILE.local.md`.
-
-## 24. Stateful-change model
-
-PlanAnvil must be storage-technology agnostic.
+## 33. Stateful-change model
 
 Classify every stage as:
 
@@ -772,7 +1330,7 @@ Classify every stage as:
 - `STATEFUL`;
 - `IRREVERSIBLE`.
 
-For any stateful change use:
+For stateful changes use:
 
 ```text
 DISCOVER
@@ -786,23 +1344,21 @@ DISCOVER
 
 Rules:
 
-- discover all state stores and consumers;
+- discover every state store and consumer;
 - create and verify a technology-appropriate recovery point;
-- introduce backward-compatible expansion first;
+- expand backward-compatibly first;
 - make migration resumable and idempotent or checkpointed;
-- maintain old/new compatibility during switching when needed;
+- maintain old/new compatibility during switching where required;
 - observe integrity, errors, performance, and rollback viability;
-- perform destructive contraction only in a separate later plan.
+- perform destructive contraction in a separate later plan.
 
-This applies to databases, document stores, key-value stores, files, object storage, caches, queues, streams, indexes, configuration stores, and external stateful APIs.
+An irreversible step always requires separate explicit user approval.
 
-An irreversible step requires explicit user approval and may not proceed autonomously.
+## 34. Resume and reconciliation
 
-## 25. Resume and reconciliation
+The execution run must be resumable without previous conversation memory.
 
-The generated plan must be resumable without relying on previous conversational memory.
-
-On resume, Jim initially reads only:
+Initially read only:
 
 ```text
 manifest.md
@@ -817,27 +1373,42 @@ Then reconcile:
 - repository identity;
 - branch;
 - `HEAD`;
-- worktree;
+- worktree status;
 - active Git operations;
-- applicable instructions;
+- applicable instructions and hashes;
 - profile signatures;
 - required artifacts;
-- execution lock.
+- execution lock;
+- agent-tree audit state;
+- last write-scope audit.
 
-Use an execution lock to prevent concurrent runs of the same plan.
+Use an execution lock to prevent concurrent execution of the same plan.
 
 Possible results:
 
 - `EXACT_MATCH` — continue from `NEXT_ACTION`;
-- `RECOVERABLE_DIRTY_STATE` — inspect without automatic reset/clean/stash;
-- `EXTERNAL_DIVERGENCE` — analyze external changes and stop if unsafe;
-- `INVALID_CHECKPOINT` — return to the last fully evidenced checkpoint.
+- `RECOVERABLE_DIRTY_STATE` — inspect and stop for a safe decision; never auto-stash/reset/clean;
+- `EXTERNAL_DIVERGENCE` — analyze external changes and stop when unsafe;
+- `INVALID_CHECKPOINT` — use the last fully evidenced checkpoint;
+- `UNAUTHORIZED_AGENT_ACTIVITY` — reject affected evidence and stop;
+- `UNAUTHORIZED_WRITE_SCOPE` — preserve evidence and stop.
 
 Never trust `state.md` without matching Git and artifact evidence.
 
-## 26. Final status model
+## 35. Status model
 
-Use at least:
+Plan generation statuses:
+
+```text
+PLAN_READY
+BLOCKED_BY_CRITICAL_UNKNOWN
+BLOCKED_BY_GIT_STATE
+BLOCKED_BY_GIT_PERMISSIONS
+BLOCKED_BY_INSTRUCTION_CONFLICT
+PLAN_VALIDATION_FAILED
+```
+
+Execution statuses required in generated plans:
 
 ```text
 READY_FOR_LOCAL_INTEGRATION_TEST
@@ -847,60 +1418,76 @@ USER_REJECTED
 BLOCKED_BY_UNRESOLVED_FAILURE
 ```
 
-`USER_ACCEPTED` completes the plan but does not authorize merge or push to the base branch. Final base-branch integration requires a separate explicit user decision.
+`USER_ACCEPTED` does not authorize merge or push to the base branch. Base-branch integration requires a separate explicit decision.
 
-## 27. Naming conventions
-
-Recommended identifiers:
+## 36. Naming conventions
 
 ```text
-Plan:        PG-YYYYMMDD-HHMMSS-XXXX
-Task branch: pursue/<PLAN-ID>/<slug>
-Integration: pursue/integration/<PLAN-ID>/<slug>
-Profile:     pursue/profile/<TIMESTAMP>-system-profile
-Stage:       STAGE-01, STAGE-02, STAGE-03.01
-Criterion:   AC-03-01
-Risk:        RISK-03-01
-Test:        TEST-03-01
-Strategy:    STRATEGY-A, STRATEGY-B
-Attempt:     ATTEMPT-A1 ... ATTEMPT-B3
-Checkpoint:  CHECKPOINT-03-ANALYSIS, CHECKPOINT-03-VERIFIED
+Plan:             PG-YYYYMMDD-HHMMSS-XXXX
+Planning branch:  pursue/plan/<PLAN-ID>/<slug>
+Task branch:      pursue/<PLAN-ID>/<slug>
+Integration:      pursue/integration/<PLAN-ID>/<slug>
+Stage:            STAGE-01, STAGE-02, STAGE-03A
+Criterion:        AC-03-01
+Requirement:      REQ-03-01
+Risk:             RISK-03-01
+Test/control:     CTRL-03-01
+Strategy:         STRATEGY-A, STRATEGY-B
+Attempt:          ATTEMPT-A1 ... ATTEMPT-B3
+Checkpoint:       CHECKPOINT-03-ANALYSIS, CHECKPOINT-03-VERIFIED
 ```
 
-## 28. Skill activation contract
+Identifiers must remain stable. Deleted identifiers are not reused.
 
-PlanAnvil should activate explicitly, not for ordinary coding questions.
+## 37. Skill activation contract
 
-Its final skill description must clearly state:
+The final description must clearly state:
 
-- it generates a plan but does not execute it;
+- PlanAnvil generates and validates a plan but does not execute it;
 - it requires a Git repository;
-- it requires a clean worktree;
+- it requires a clean source worktree;
+- it tests Git metadata permissions before writing;
 - it creates or validates system profiles;
-- it creates versioned planning artifacts;
-- it is not for implementing an existing plan or making an immediate code fix.
+- activation thresholds are repository-configurable;
+- it creates versioned planning artifacts on an isolated planning branch;
+- it is not for implementing an existing plan or making an immediate fix;
+- it has no Superpowers integration.
 
-## 29. Required tests for PlanAnvil itself
+Implicit invocation must be disabled.
 
-Implement automated or reproducible tests for:
+## 38. Required tests for PlanAnvil
 
-### Activation
+### 38.1 Activation
 
-- explicit planning request activates it;
-- ordinary code question does not;
-- immediate implementation request does not unless the user explicitly requests a PlanAnvil plan;
+- native discovery from `.agents/skills`;
+- explicit `$plan-anvil` activation;
+- implicit invocation disabled;
+- ordinary code question does not activate;
+- immediate implementation request does not bypass plan-only behavior;
 - execution of an existing plan does not activate the generator.
 
-### Preflight
+### 38.2 Preflight
 
 - clean repository;
 - modified file;
 - staged change;
 - untracked file;
-- merge/rebase/cherry-pick/revert state;
-- conflict state.
+- conflict;
+- merge, rebase, cherry-pick, revert, or bisect state;
+- no use of stash/reset/clean.
 
-### Profiling
+### 38.3 Git capabilities
+
+- `GIT_READY`;
+- Git unavailable;
+- not a repository;
+- metadata write denied;
+- safe temporary-ref probe;
+- planning worktree isolation;
+- source branch and `HEAD` unchanged;
+- no product files on planning branch.
+
+### 38.4 Profiling
 
 - no profiles;
 - missing local profile;
@@ -908,119 +1495,186 @@ Implement automated or reproducible tests for:
 - changed instruction files;
 - changed test configuration;
 - unknown facts;
-- attempted secret capture.
+- attempted secret capture;
+- activation-policy creation;
+- missing critical deployment or rollback information.
 
-### Plan generation
+### 38.5 Instructions
 
-- small change;
+- root instruction discovery;
+- nested override discovery;
+- scope and precedence;
+- nested instructions not auto-loaded merely from discussed paths;
+- truncation by `project_doc_max_bytes`;
+- explicit full-file read;
+- ambiguous conflict resolved by project intent;
+- explicit safety prohibition never overridden.
+
+### 38.6 Plan generation
+
+- small change below configured recommendation threshold;
+- explicit invocation for a small change;
 - large feature;
 - multi-domain request;
 - missing tests;
 - stateful change;
 - irreversible proposal;
-- incomplete requirements;
-- conflict with project instructions.
+- incomplete non-critical requirements handled best-effort;
+- critical unknown blocks `PLAN_READY`;
+- stable IDs survive reorder and split;
+- requirement-to-test traceability.
 
-### Structure
-
-- unique run directory;
-- valid timestamp;
-- complete manifest;
-- complete `PLAN.md` sections;
-- valid identifiers;
-- execution prompt;
-- stop conditions;
-- supporting artifact links.
-
-### Safety
+### 38.7 Plan-only safety
 
 - generator never modifies product code;
-- no destructive Git cleanup;
-- no secret persistence;
-- no undocumented OpenAI mechanism is asserted;
-- no base-branch push;
-- no force-push.
+- generator never writes product tests;
+- generator never executes a stage;
+- no migration or deployment;
+- no base-branch push or merge;
+- planning artifacts only;
+- exact stop token or equivalent observable stop state after validation.
 
-### Generated execution contract
+### 38.8 Hooks and write boundaries
 
-- Jim cannot modify code/tests;
+- allowed test-path write;
+- forbidden production-path writes through multiple tool forms;
+- destructive Git command blocking;
+- post-diff catches a deliberately bypassed or unobserved write;
+- hooks disabled still leave post-diff validation effective;
+- custom agent-type mismatch does not weaken enforcement.
+
+### 38.9 Agent topology
+
+- flat authorized topology;
+- nested agent capability probe;
+- unauthorized descendant detected;
+- unauthorized descendant result rejected;
+- `SubagentStart` used for audit, not blocking;
+- one file-modifying agent at a time.
+
+### 38.10 Compaction and recovery
+
+- manual compaction delayed until checkpoint;
+- automatic compaction delayed until checkpoint;
+- no permanent auto-compaction stop loop;
+- `PostCompact` event recorded;
+- `SessionStart(compact)` injects recovery pointer;
+- state reconstructed from files and Git;
+- invalid checkpoint rejected.
+
+### 38.11 Generated execution contract
+
+- Jim cannot modify code or tests;
 - Jenny cannot modify production code;
-- independent blind verification exists;
-- one technical agent at a time;
-- concise main-context summaries;
-- resume reconciliation;
-- two-strategy autofix;
+- blind verification exists and remains immutable;
+- two-strategy retry model;
 - Winston after six failures;
 - task and integration branch workflow;
-- 10 manual test scenarios.
+- explicit user approval before live test;
+- irreversible changes blocked for approval.
 
-## 30. Implementation acceptance criteria
+## 39. Implementation acceptance criteria
 
-The implementing agent may consider PlanAnvil complete only when:
+PlanAnvil is complete only when:
 
-1. the skill follows current official Codex skill format;
-2. `SKILL.md` has correct metadata and narrow activation rules;
-3. detailed behavior is split into references/templates rather than bloating `SKILL.md`;
-4. preflight blocks dirty repositories safely;
-5. profiler creates and validates both profiles;
-6. local profile is ignored and secret-safe;
-7. each invocation creates an isolated run directory;
-8. generated `PLAN.md` contains every required contract section;
-9. generated plans define Jim, Jenny, verification agents, and Winston correctly;
-10. generated plans enforce atomic stages and acceptance criteria;
-11. generated plans enforce risk-driven red/green testing;
-12. generated plans enforce the 2 × 3 autofix model;
-13. generated plans preserve short main-orchestrator context;
-14. generated plans support safe checkpoints and resume reconciliation;
-15. generated plans implement task/integration branch isolation;
-16. generated plans support user-approved live integration testing and rollback;
-17. stateful plans are technology agnostic;
-18. all PlanAnvil tests pass;
-19. OpenAI compliance documentation has no known unresolved contradiction;
-20. README explains installation, activation, outputs, safety boundaries, and examples.
+1. it follows the current native Codex skill format;
+2. it is installed under `.agents/skills/plan-anvil`;
+3. implicit invocation is disabled;
+4. `SKILL.md` remains narrow and uses progressive disclosure;
+5. preflight blocks dirty repositories without hiding changes;
+6. the Git capability test returns explicit statuses;
+7. planning branch and worktree isolation are verified;
+8. the source worktree remains unchanged;
+9. both profiles are created and validated;
+10. the local profile is ignored and secret-safe;
+11. activation policy is stored in the profile;
+12. every invocation creates an isolated run directory;
+13. `PLAN.md` is a stable contract and stages use separate briefs;
+14. stage and traceability identifiers remain stable;
+15. non-critical unknowns use best effort;
+16. critical unknowns block readiness;
+17. plans define the flat Jim-centered topology;
+18. plans do not rely on `max_depth` for security;
+19. `SubagentStart` is audit-only;
+20. write restrictions use defense in depth;
+21. post-agent diffs are mandatory;
+22. risk-driven red/green testing is enforced;
+23. blind plan verification is implemented;
+24. the 2 × 3 retry model is generated;
+25. Winston cannot modify code;
+26. checkpoint, compact, recovery, and reconciliation are implemented;
+27. task and integration branch isolation is generated;
+28. live testing and rollback require explicit approval;
+29. stateful plans are technology agnostic;
+30. no Superpowers integration exists;
+31. unsupported Codex mechanisms are absent from active behavior;
+32. all required tests pass;
+33. `OPENAI_COMPLIANCE.md` contains no unresolved contradiction;
+34. README explains installation, activation, outputs, safety, permissions, and examples.
 
-## 31. Required implementation workflow
+## 40. Required implementation workflow
 
 The implementing agent must:
 
-1. clone or open https://github.com/KeyffMS/PlanAnvil;
+1. open the PlanAnvil repository;
 2. read repository instructions and this specification;
 3. verify a clean worktree;
 4. create a dedicated implementation branch;
 5. verify current official OpenAI documentation;
-6. write the architecture and compliance notes first;
-7. implement the minimal valid skill skeleton;
-8. implement templates and profile contracts;
-9. implement safe helper scripts;
-10. implement tests;
-11. run the complete quality gate;
-12. review all generated examples;
-13. confirm no secrets or machine-specific paths are committed;
-14. commit in coherent units;
-15. push only the implementation branch;
-16. provide a final report with test evidence, known limitations, and exact next steps.
+6. read `CODEX_CAPABILITY_BASELINE.md` and reproduce critical tests where needed;
+7. write architecture and compliance notes first;
+8. implement the minimal native skill skeleton;
+9. implement preflight and Git capability tests;
+10. implement profiles and instruction mapping;
+11. implement templates and stable identifiers;
+12. implement optional hooks as defense in depth;
+13. implement mandatory postcondition validators;
+14. implement plan validation and blind review;
+15. implement compaction recovery workflow;
+16. implement automated and reproducible tests;
+17. run the complete quality gate;
+18. review generated examples;
+19. confirm no secrets or machine-specific paths are committed;
+20. confirm no product code can be modified by the generator;
+21. commit in coherent units;
+22. push only the implementation branch when explicitly authorized;
+23. provide a final report with evidence and exact next steps.
 
-## 32. Non-goals
+## 41. Non-goals
 
 PlanAnvil does not:
 
 - execute the generated plan;
-- automatically merge to the base branch;
-- automatically push the base branch;
+- implement product code or tests;
+- automatically merge or push the base branch;
+- automatically elevate Codex permissions;
 - create a staging environment;
 - guarantee reversibility of inherently irreversible actions;
 - manage secrets;
-- override project instructions;
-- permit parallel code modification;
+- ignore explicit safety instructions in favor of inferred intent;
+- allow parallel code modification;
+- rely solely on hooks for security;
+- rely solely on `agents.max_depth` for topology control;
+- use `SubagentStart` as a start blocker;
+- permanently block compaction after the context threshold is exceeded;
+- integrate with Superpowers;
+- export Superpowers-compatible plans;
 - run destructive tests on production;
-- make the final business-acceptance decision for the user.
+- make the final business-acceptance decision.
 
 ---
 
 ## Handoff instruction to the implementing agent
 
-Treat this document as the product contract for the first implementation of PlanAnvil.
+Treat this document as the authoritative product contract.
 
-Where this specification conflicts with current official OpenAI documentation, follow the official documentation, record the conflict in `docs/OPENAI_COMPLIANCE.md`, and preserve the product intent using a documented supported mechanism.
+Where it conflicts with current official OpenAI documentation:
 
-Do not silently omit a requirement. Mark anything that cannot be implemented with current documented Codex capabilities as `BLOCKED`, `PARTIALLY_SUPPORTED`, or `REQUIRES_USER_CONFIGURATION`, and explain the exact reason.
+1. stop the affected implementation work;
+2. reproduce the capability with an isolated test when safe;
+3. follow current documented behavior;
+4. record the conflict and evidence in `docs/OPENAI_COMPLIANCE.md`;
+5. preserve the product intent using a documented and tested mechanism;
+6. remove any requirement that still cannot be implemented safely.
+
+Do not silently omit, simulate, or overstate a capability.
