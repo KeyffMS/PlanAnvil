@@ -17,11 +17,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: agent/implement-plananvil-skill
-      - name: Diagnose archive fragments
+      - name: Restore implementation archive
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum \
+          cat \
             .bootstrap/part-00 \
             .bootstrap/fix-01-00 \
             .bootstrap/fix-01-01 \
@@ -37,13 +37,35 @@ jobs:
             .bootstrap/part-06 \
             .bootstrap/part-07 \
             .bootstrap/part-08 \
-            .bootstrap/part-09 \
+            .bootstrap/fix-09-00 \
+            .bootstrap/fix-09-01 \
+            .bootstrap/fix-09-02 \
             .bootstrap/part-10 \
-            .bootstrap/part-11 \
+            .bootstrap/fix-11-00 \
+            .bootstrap/fix-11-01 \
+            .bootstrap/fix-11-02 \
             .bootstrap/part-12 \
-            > .bootstrap/diagnostic.txt
+            > /tmp/plananvil.tar.gz.b64
+          test "$(sha256sum /tmp/plananvil.tar.gz.b64 | cut -d' ' -f1)" = "d5eb34452b058a1e7aa7d07446dfb1e1bd2477ce7efe21db180ec366f20e6d10"
+          base64 --decode /tmp/plananvil.tar.gz.b64 > /tmp/plananvil.tar.gz
+          test "$(sha256sum /tmp/plananvil.tar.gz | cut -d' ' -f1)" = "addffaecbf114a6a7fff2dff227b50fe66a47c14f1fb62df88113b49636e29d2"
+          tar -tzf /tmp/plananvil.tar.gz >/dev/null
+          tar -xzf /tmp/plananvil.tar.gz -C .
+          rm -rf .bootstrap .github/workflows/materialize-plananvil.yml
+      - name: Validate implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s .agents/skills/plan-anvil/tests -v
+          python -m compileall -q .agents/skills/plan-anvil .codex/hooks
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          git diff --check
+      - name: Commit materialized implementation
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .bootstrap/diagnostic.txt
-          git commit -m "Record PlanAnvil fragment diagnostics"
+          git add -A
+          git commit -m "Implement PlanAnvil skill"
           git push origin HEAD:agent/implement-plananvil-skill
