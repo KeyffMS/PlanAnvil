@@ -17,11 +17,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: agent/implement-plananvil-skill
-      - name: Restore implementation archive
+      - name: Diagnose archive fragments
         shell: bash
         run: |
           set -euo pipefail
-          cat \
+          sha256sum \
             .bootstrap/part-00 \
             .bootstrap/fix-01-00 \
             .bootstrap/fix-01-01 \
@@ -41,37 +41,9 @@ jobs:
             .bootstrap/part-10 \
             .bootstrap/part-11 \
             .bootstrap/part-12 \
-            > /tmp/plananvil.tar.gz.b64
-          actual_b64="$(sha256sum /tmp/plananvil.tar.gz.b64 | cut -d' ' -f1)"
-          expected_b64="d5eb34452b058a1e7aa7d07446dfb1e1bd2477ce7efe21db180ec366f20e6d10"
-          if [ "$actual_b64" != "$expected_b64" ]; then
-            printf 'actual_b64=%s\nexpected_b64=%s\n' "$actual_b64" "$expected_b64" > .bootstrap/diagnostic.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .bootstrap/diagnostic.txt
-            git commit -m "Record PlanAnvil archive diagnostic"
-            git push origin HEAD:agent/implement-plananvil-skill
-            exit 1
-          fi
-          base64 --decode /tmp/plananvil.tar.gz.b64 > /tmp/plananvil.tar.gz
-          test "$(sha256sum /tmp/plananvil.tar.gz | cut -d' ' -f1)" = "addffaecbf114a6a7fff2dff227b50fe66a47c14f1fb62df88113b49636e29d2"
-          tar -tzf /tmp/plananvil.tar.gz >/dev/null
-          tar -xzf /tmp/plananvil.tar.gz -C .
-          rm -rf .bootstrap .github/workflows/materialize-plananvil.yml
-      - name: Validate implementation
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m unittest discover -s .agents/skills/plan-anvil/tests -v
-          python -m compileall -q .agents/skills/plan-anvil .codex/hooks
-          find . -type d -name __pycache__ -prune -exec rm -rf {} +
-          git diff --check
-      - name: Commit materialized implementation
-        shell: bash
-        run: |
-          set -euo pipefail
+            > .bootstrap/diagnostic.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Implement PlanAnvil skill"
+          git add .bootstrap/diagnostic.txt
+          git commit -m "Record PlanAnvil fragment diagnostics"
           git push origin HEAD:agent/implement-plananvil-skill
