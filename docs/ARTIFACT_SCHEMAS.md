@@ -1,39 +1,39 @@
 # PlanAnvil — Artifact Schemas
 
 > Canonical machine state is JSON. Markdown is used for human-readable contracts and narrative reports.  
-> The implementation MUST ship actual JSON Schema files under `.agents/skills/plan-anvil/schemas/`.
+> The implementation MUST ship matching JSON Schema files under `.agents/skills/plan-anvil/schemas/`.
 
 ## 1. General conventions
 
 All canonical JSON documents MUST:
 
-- use UTF-8;
+- use UTF-8 and LF line endings;
 - use schema version `1.0.0` for the first implementation;
 - use RFC 3339 UTC timestamps;
-- use SHA-256 hashes written as lowercase hexadecimal;
-- reject unknown required-enum values;
-- permit forward-compatible optional fields only when the schema explicitly allows them;
+- use SHA-256 hashes as lowercase hexadecimal prefixed with `sha256:`;
+- reject unknown enum values;
+- reject unspecified fields unless a schema explicitly permits them;
 - end with a newline;
 - be written atomically.
 
-Common identifier formats:
+Identifier formats:
 
 ```text
-Plan:       PG-YYYYMMDD-HHMMSS-XXXX
-Run:        YYYYMMDDTHHMMSSZ_<PLAN-ID>_<slug>
-Stage:      STAGE-01, STAGE-02, STAGE-03A
+Plan:        PG-YYYYMMDD-HHMMSS-XXXX
+Run:         YYYYMMDDTHHMMSSZ_<PLAN-ID>_<slug>
+Stage:       STAGE-01, STAGE-02, STAGE-03A
 Requirement: REQ-03-01
-Criterion:  AC-03-01
-Risk:       RISK-03-01
-Control:    CTRL-03-01
-Checkpoint: CHECKPOINT-03-VERIFIED
+Criterion:   AC-03-01
+Risk:        RISK-03-01
+Control:     CTRL-03-01
+Checkpoint:  CHECKPOINT-03-VERIFIED
 ```
 
 Deleted identifiers are never reused.
 
 ## 2. `manifest.json`
 
-Purpose: immutable run identity and path map. It is created once and may only receive additive, version-compatible metadata before the first checkpoint.
+Purpose: immutable run identity and path map.
 
 Required shape:
 
@@ -70,17 +70,15 @@ Required shape:
 
 Validation rules:
 
-- paths under `paths` are relative to `run_root` unless explicitly documented otherwise;
-- source and planning worktrees must be distinct;
-- base SHA must exist in the repository;
-- planning branch must point to a commit descended from base SHA;
-- repository fingerprint is derived from stable repository identity, not only a local path.
+- source and planning worktrees are distinct;
+- `base_sha` exists in the repository;
+- the planning branch descends from `base_sha`;
+- the repository fingerprint uses stable repository identity, not only a local path;
+- paths are resolved and checked against their documented root.
 
 ## 3. `state.json`
 
 Purpose: current generator or later execution state.
-
-Required shape:
 
 ```json
 {
@@ -103,14 +101,14 @@ Required shape:
 }
 ```
 
-`mode` values:
+Allowed `mode` values:
 
 ```text
 PLAN_GENERATION
 PLAN_EXECUTION
 ```
 
-Generator `status` values:
+Generator states:
 
 ```text
 NEW
@@ -132,17 +130,15 @@ FAILED
 
 Rules:
 
-- `revision` increments by exactly one per accepted update;
+- `revision` increments by exactly one for every accepted update;
 - `next_action` contains exactly one action;
 - terminal states use `next_action.type = "NONE"`;
-- `artifact_hashes` must match files before a transition;
-- a stale revision update is rejected.
+- artifact hashes must match before a transition;
+- stale revision updates are rejected.
 
 ## 4. `compliance.json`
 
-Purpose: run-specific compatibility and enforcement record.
-
-Required shape:
+Purpose: current run-specific compatibility and enforcement record.
 
 ```json
 {
@@ -167,22 +163,22 @@ Required shape:
 }
 ```
 
-Allowed evidence statuses:
+Allowed capability statuses:
 
 ```text
 VERIFIED
 DOCUMENTED
-OBSERVED_UNREPRODUCED
-CONTRADICTED
+FAILED
+BLOCKED
 UNKNOWN
 NOT_APPLICABLE
 ```
 
-A `CONTRADICTED` item that affects active behavior blocks `PLAN_READY`.
+A `FAILED`, `BLOCKED` or `UNKNOWN` capability that is required by active behavior blocks `PLAN_READY`.
+
+The file records only current requirements and current run results. It is not an archive of superseded observations.
 
 ## 5. `traceability.json`
-
-Required shape:
 
 ```json
 {
@@ -239,13 +235,13 @@ Each `risks/RISK-*.json` contains:
   "detection": ["CTRL-03-02"],
   "criteria": ["AC-03-01"],
   "controls": ["CTRL-03-01", "CTRL-03-02"],
-  "mitigation": "Use resumable expand-and-migrate flow.",
-  "rollback": "Restore verified recovery point before switch.",
+  "mitigation": "Use a resumable expand-and-migrate flow.",
+  "rollback": "Restore the verified recovery point before switching.",
   "status": "OPEN"
 }
 ```
 
-Allowed levels:
+Risk levels:
 
 ```text
 LOW
@@ -253,7 +249,7 @@ MEDIUM
 HIGH
 ```
 
-Allowed statuses:
+Risk statuses:
 
 ```text
 OPEN
@@ -263,11 +259,11 @@ CLOSED
 REALIZED
 ```
 
-Only the user may accept an otherwise-unmitigated high risk when policy permits acceptance.
+Only the user may accept an otherwise unmitigated high risk when policy permits acceptance.
 
-## 7. Checkpoint files
+## 7. Checkpoints
 
-A checkpoint is immutable after creation.
+Checkpoint files are immutable after creation.
 
 ```json
 {
@@ -314,7 +310,7 @@ A checkpoint is immutable after creation.
 }
 ```
 
-Checkpoint `result` values:
+Checkpoint results:
 
 ```text
 PASS
@@ -322,17 +318,18 @@ FAIL
 BLOCKED
 ```
 
-A checkpoint is valid only when its Git and artifact evidence still matches.
+A checkpoint is valid only while its Git and artifact evidence still matches.
 
-## 8. Execution lock
+## 8. Generation and execution locks
 
-Canonical path:
+Canonical paths:
 
 ```text
+run-root/.generation-lock
 run-root/.execution-lock
 ```
 
-The lock is created with exclusive-create semantics and contains:
+Each lock is created with exclusive-create semantics and contains:
 
 ```json
 {
@@ -345,26 +342,22 @@ The lock is created with exclusive-create semantics and contains:
   },
   "created_at": "2026-07-12T15:00:00Z",
   "heartbeat_at": "2026-07-12T15:02:00Z",
-  "command": "plan-anvil-execute"
+  "command": "plan-anvil"
 }
 ```
 
-The generator uses an equivalent `.generation-lock`.
-
-A lock cannot be broken automatically merely because its timestamp is old. Owner liveness and session evidence must also be checked.
+A lock cannot be removed automatically merely because its timestamp is old. Owner liveness or session evidence must also show that it is inactive.
 
 ## 9. Reports
 
-Narrative reports are Markdown. Each report has a JSON metadata sidecar with the same basename.
-
-Example:
+Narrative reports are Markdown. Each has a JSON metadata sidecar with the same basename.
 
 ```text
 reports/plan-review/blind-review.md
 reports/plan-review/blind-review.json
 ```
 
-Metadata contains:
+Example sidecar:
 
 ```json
 {
@@ -387,13 +380,11 @@ Metadata contains:
 }
 ```
 
-The comparison phase must verify `markdown_hash` and must not rewrite either blind-review file.
+The comparison phase verifies `markdown_hash` and never rewrites the blind-review files.
 
 ## 10. Stage briefs
 
-Stage briefs remain Markdown because they are execution contracts.
-
-Every file begins with a deterministic metadata block:
+Stage briefs remain Markdown and begin with deterministic metadata:
 
 ```yaml
 ---
@@ -414,44 +405,44 @@ allowed_write_paths:
 ---
 ```
 
-The implementation may use a minimal internal YAML parser only for this restricted frontmatter grammar, or it may generate a JSON sidecar. It must not add a general YAML runtime dependency to the core scripts.
+The implementation may use a restricted internal parser for this exact frontmatter grammar or a JSON sidecar. The core scripts must not add a general YAML runtime dependency.
 
 ## 11. Atomic update protocol
 
 For every mutable canonical JSON file:
 
 1. read and schema-validate the current file;
-2. verify expected revision or expected hash;
-3. construct the complete new document;
-4. write `<name>.tmp.<RUN-ID>` in the same directory;
+2. verify the expected revision or hash;
+3. construct the complete replacement document;
+4. write a sibling temporary file;
 5. flush and fsync;
 6. replace atomically;
-7. fsync the directory where supported;
+7. fsync the containing directory where supported;
 8. reread and validate;
-9. remove no prior checkpoint or evidence.
+9. retain immutable checkpoints and evidence.
 
-On Windows, use an atomic replacement mechanism supported by Python for the same filesystem and fail explicitly when antivirus or file locking prevents replacement.
+On Windows, use an atomic replacement mechanism supported by Python on the same filesystem and fail explicitly when file locking prevents replacement.
 
 ## 12. Path safety
 
-Before any write:
+Before every write:
 
 - resolve the candidate path;
 - reject traversal outside the approved root;
 - reject symlink escapes;
-- compare case-normalized paths on case-insensitive filesystems;
-- reject writes through repository submodules unless explicitly in scope;
-- reject `.git` paths except through dedicated Git commands;
-- record the approved glob and resolved path.
+- normalize case on case-insensitive filesystems;
+- reject submodule writes unless explicitly in scope;
+- reject direct `.git` writes outside dedicated Git commands;
+- record the approved rule and resolved path.
 
-Allowed-path matching is performed on repository-relative POSIX-style paths after safe resolution.
+Allowed-path matching uses repository-relative POSIX-style paths after safe resolution.
 
 ## 13. Schema evolution
 
-Schema changes follow semantic versioning.
+Schema versions follow semantic versioning:
 
 - patch: clarification that does not change accepted documents;
 - minor: backward-compatible optional fields;
 - major: incompatible field or semantic change.
 
-A run keeps the schema version with which it was created. Migration of existing run state is explicit, reversible where possible, and never automatic across a major version.
+A run retains the schema version with which it was created. Major-version migration is explicit and never automatic.
