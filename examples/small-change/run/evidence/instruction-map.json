@@ -1,0 +1,27 @@
+{
+  "affected_paths": [
+    "src/validator.py",
+    "tests/test_validator.py"
+  ],
+  "automatic_byte_limit": 32768,
+  "conflicts": [],
+  "fallback_filenames": [],
+  "files": [
+    {
+      "affected_paths": [
+        "src/validator.py",
+        "tests/test_validator.py"
+      ],
+      "bytes": 120,
+      "full_read": true,
+      "path": "AGENTS.md",
+      "precedence": 0,
+      "safety_critical_rules": [],
+      "scope": ".",
+      "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "truncation_risk": false
+    }
+  ],
+  "generated_at": "2026-07-12T18:00:00Z",
+  "schema_version": "1.1.0"
+}

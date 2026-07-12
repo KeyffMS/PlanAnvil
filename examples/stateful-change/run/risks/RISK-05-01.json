@@ -1,0 +1,26 @@
+{
+  "affected_components": [
+    "database",
+    "application"
+  ],
+  "controls": [
+    "CTRL-05-01"
+  ],
+  "criteria": [
+    "AC-05-01"
+  ],
+  "description": "State may become inconsistent during the staged migration.",
+  "detection": [
+    "CTRL-05-01"
+  ],
+  "id": "RISK-05-01",
+  "impact": "HIGH",
+  "level": "HIGH",
+  "mitigation": "Use backward-compatible, resumable, verified steps.",
+  "probability": "MEDIUM",
+  "rollback": "Restore the verified recovery point or switch reads back before contraction.",
+  "schema_version": "1.1.0",
+  "source": "Fixture analysis",
+  "stage": "STAGE-05",
+  "status": "OPEN"
+}

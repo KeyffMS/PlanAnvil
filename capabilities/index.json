@@ -1,0 +1,135 @@
+{
+  "baseline_version": "2.1",
+  "capabilities": [
+    {
+      "evidence_directory": "capabilities/C01",
+      "expected_behavior": "Repository skills are discovered from .agents/skills",
+      "id": "C01",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C02",
+      "expected_behavior": "allow_implicit_invocation false disables implicit invocation",
+      "id": "C02",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C03",
+      "expected_behavior": "agents.max_depth 1 permits direct children and prevents deeper descendants",
+      "id": "C03",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C04",
+      "expected_behavior": "Nested agents are available when configured depth permits them",
+      "id": "C04",
+      "required": false,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C05",
+      "expected_behavior": "Planning-agent handoffs use explicit files and hashes",
+      "id": "C05",
+      "required": false,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    },
+    {
+      "evidence_directory": "capabilities/C06",
+      "expected_behavior": "PreToolUse covers supported calls but not every equivalent path",
+      "id": "C06",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C07",
+      "expected_behavior": "The Git guard rejects the configured unsafe-command corpus",
+      "id": "C07",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    },
+    {
+      "evidence_directory": "capabilities/C08",
+      "expected_behavior": "PreCompact can stop compaction",
+      "id": "C08",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C09",
+      "expected_behavior": "Compaction is allowed after checkpoint creation without a permanent loop",
+      "id": "C09",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    },
+    {
+      "evidence_directory": "capabilities/C10",
+      "expected_behavior": "PostCompact and SessionStart can provide recovery context",
+      "id": "C10",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C11",
+      "expected_behavior": "Project instructions follow documented directory scope and precedence",
+      "id": "C11",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C12",
+      "expected_behavior": "project_doc_max_bytes may truncate automatic instruction loading",
+      "id": "C12",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C13",
+      "expected_behavior": "SubagentStart can add context but is not a startup blocker",
+      "id": "C13",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "DOCUMENTED"
+    },
+    {
+      "evidence_directory": "capabilities/C14",
+      "expected_behavior": "Planning isolation preserves source branch, SHA, index, and files",
+      "id": "C14",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    },
+    {
+      "evidence_directory": "capabilities/C15",
+      "expected_behavior": "Blind review is immutable and detects seeded contract defects",
+      "id": "C15",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    },
+    {
+      "evidence_directory": "capabilities/C16",
+      "expected_behavior": "Git probe reports refs, branches, worktrees, index, commits, and cleanup",
+      "id": "C16",
+      "required": true,
+      "result": "NOT_RUN",
+      "source": "CONTRACT_DEFINED"
+    }
+  ],
+  "generated_at": "2026-07-12",
+  "release_gate": "Required capabilities must have committed sanitized REPRODUCED evidence before production readiness."
+}

@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+.pursue/SYSTEM_PROFILE.local.md
+.pursue/runs/*/local-state.json
+.pursue/runs/*/.generation-lock
+.pursue/runs/*/.execution-lock

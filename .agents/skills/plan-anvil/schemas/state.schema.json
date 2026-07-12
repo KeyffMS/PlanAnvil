@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/state.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_hashes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/hash"
+      },
+      "type": "object"
+    },
+    "current_phase": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "current_stage": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_checkpoint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "PLAN_GENERATION",
+        "PLAN_EXECUTION"
+      ]
+    },
+    "next_action": {
+      "$ref": "#/$defs/next_action"
+    },
+    "open_blockers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "revision": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "status": {
+      "enum": [
+        "NEW",
+        "SOURCE_PREFLIGHT_PASSED",
+        "GIT_READY",
+        "PLANNING_WORKTREE_READY",
+        "PROFILE_READY",
+        "INSTRUCTION_MAP_READY",
+        "ANALYSIS_READY",
+        "ARTIFACTS_GENERATED",
+        "DETERMINISTICALLY_VALID",
+        "BLIND_REVIEW_WRITTEN",
+        "COMPARISON_VALID",
+        "PLAN_COMMITTED",
+        "STOPPED",
+        "BLOCKED",
+        "FAILED",
+        "EXECUTION_READY",
+        "EXECUTION_IN_PROGRESS",
+        "READY_FOR_LOCAL_INTEGRATION_TEST",
+        "AWAITING_USER_VALIDATION",
+        "USER_ACCEPTED",
+        "USER_REJECTED",
+        "BLOCKED_BY_UNRESOLVED_FAILURE"
+      ]
+    },
+    "updated_at": {
+      "$ref": "#/$defs/timestamp"
+    }
+  },
+  "required": [
+    "schema_version",
+    "revision",
+    "updated_at",
+    "mode",
+    "status",
+    "current_stage",
+    "current_phase",
+    "next_action",
+    "last_checkpoint",
+    "open_blockers",
+    "artifact_hashes"
+  ],
+  "title": "PlanAnvil state",
+  "type": "object"
+}

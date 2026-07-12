@@ -1,0 +1,59 @@
+{
+  "base_branch": "main",
+  "base_sha": "dedb6ab6843bf06d3ac7899aaf37923896915ee7",
+  "cleanup": {
+    "errors": [],
+    "result": "PASS"
+  },
+  "result": "GIT_READY",
+  "schema_version": "1.1.0",
+  "source_snapshot": {
+    "branch": "main",
+    "head": "dedb6ab6843bf06d3ac7899aaf37923896915ee7",
+    "index_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "status_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "steps": [
+    {
+      "id": "create_temporary_ref",
+      "result": "PASS"
+    },
+    {
+      "id": "verify_temporary_ref",
+      "result": "PASS"
+    },
+    {
+      "id": "delete_temporary_ref",
+      "result": "PASS"
+    },
+    {
+      "id": "create_probe_branch",
+      "result": "PASS"
+    },
+    {
+      "id": "create_probe_worktree",
+      "result": "PASS"
+    },
+    {
+      "id": "checkout_probe_worktree",
+      "result": "PASS"
+    },
+    {
+      "id": "create_probe_file",
+      "result": "PASS"
+    },
+    {
+      "id": "update_probe_index",
+      "result": "PASS"
+    },
+    {
+      "id": "create_probe_commit",
+      "result": "PASS"
+    },
+    {
+      "id": "verify_probe_clean",
+      "result": "PASS"
+    }
+  ],
+  "verified_at": "2026-07-12T18:00:00Z"
+}

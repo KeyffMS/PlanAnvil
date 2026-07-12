@@ -1,0 +1,12 @@
+{
+  "classification": "STATEFUL",
+  "implementation_executed": false,
+  "stage_ids": [
+    "STAGE-01",
+    "STAGE-02",
+    "STAGE-03",
+    "STAGE-04",
+    "STAGE-05"
+  ],
+  "status": "PLAN_READY"
+}

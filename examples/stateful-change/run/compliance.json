@@ -1,0 +1,58 @@
+{
+  "capabilities": [
+    {
+      "evidence": [],
+      "id": "CAP-SKILL-DISCOVERY",
+      "required": true,
+      "status": "DOCUMENTED"
+    },
+    {
+      "evidence": [],
+      "id": "CAP-EXPLICIT-ACTIVATION",
+      "required": true,
+      "status": "DOCUMENTED"
+    },
+    {
+      "evidence": [
+        "examples/stateful-change/run/evidence/git-capability.json"
+      ],
+      "id": "CAP-GIT-PROBE",
+      "required": true,
+      "status": "VERIFIED"
+    },
+    {
+      "evidence": [
+        "evidence/instruction-map.json"
+      ],
+      "id": "CAP-INSTRUCTION-MAP",
+      "required": true,
+      "status": "VERIFIED"
+    },
+    {
+      "evidence": [
+        "reports/plan-review/blind-review.md",
+        "reports/plan-review/blind-review.json"
+      ],
+      "id": "CAP-BLIND-REVIEW",
+      "required": true,
+      "status": "VERIFIED"
+    }
+  ],
+  "codex": {
+    "hook_mode": "HOOKS_DISABLED",
+    "model": "fixture",
+    "permission_mode": "fixture",
+    "project_trust": "TRUSTED",
+    "version": "fixture"
+  },
+  "schema_version": "1.1.0",
+  "unsupported": [
+    "Generator execution of implementation stages",
+    "Automatic base-branch push or merge",
+    "Hooks as the sole enforcement boundary"
+  ],
+  "verified_at": "2026-07-12T18:00:00Z",
+  "warnings": [
+    "Golden fixture; not live Codex capability evidence."
+  ]
+}

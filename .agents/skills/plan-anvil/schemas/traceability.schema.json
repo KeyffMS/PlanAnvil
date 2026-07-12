@@ -1,0 +1,230 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/traceability.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "controls": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^CTRL-[0-9]{2}[A-Z]?-[0-9]{2}$",
+            "type": "string"
+          },
+          "verification": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "verification"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "criteria": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "controls": {
+            "items": {
+              "pattern": "^CTRL-[0-9]{2}[A-Z]?-[0-9]{2}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/relative_path"
+            },
+            "type": "array"
+          },
+          "evidence_type": {
+            "enum": [
+              "AUTOMATED_TEST",
+              "STATIC_ANALYSIS",
+              "MANUAL_VERIFICATION",
+              "OBSERVATION",
+              "DOCUMENT_REVIEW",
+              "MIGRATION_EVIDENCE"
+            ]
+          },
+          "id": {
+            "pattern": "^AC-[0-9]{2}[A-Z]?-[0-9]{2}$",
+            "type": "string"
+          },
+          "risks": {
+            "items": {
+              "pattern": "^RISK-[0-9]{2}[A-Z]?-[0-9]{2}$",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "stage": {
+            "$ref": "#/$defs/stage_id"
+          }
+        },
+        "required": [
+          "id",
+          "stage",
+          "risks",
+          "controls",
+          "evidence_type",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "gaps": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "critical": {
+            "type": "boolean"
+          },
+          "detail": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "UNCOVERED_REQUIREMENT",
+              "STAGE_WITHOUT_REQUIREMENT",
+              "CRITERION_WITHOUT_EVIDENCE",
+              "RISK_WITHOUT_CONTROL",
+              "CONTROL_WITHOUT_BEHAVIOR",
+              "PUBLIC_BEHAVIOR_WITHOUT_REQUIRED_APPROVAL"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "critical",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "requirements": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "criteria": {
+            "items": {
+              "pattern": "^AC-[0-9]{2}[A-Z]?-[0-9]{2}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "critical": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^REQ-[0-9]{2}[A-Z]?-[0-9]{2}$",
+            "type": "string"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/$defs/stage_id"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "text": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "critical",
+          "stages",
+          "criteria"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    }
+  },
+  "required": [
+    "schema_version",
+    "requirements",
+    "criteria",
+    "controls",
+    "gaps"
+  ],
+  "title": "PlanAnvil traceability",
+  "type": "object"
+}

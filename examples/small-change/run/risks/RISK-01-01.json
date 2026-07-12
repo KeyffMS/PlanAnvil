@@ -1,0 +1,25 @@
+{
+  "affected_components": [
+    "validator"
+  ],
+  "controls": [
+    "CTRL-01-01"
+  ],
+  "criteria": [
+    "AC-01-01"
+  ],
+  "description": "Normalization could reject valid names.",
+  "detection": [
+    "CTRL-01-01"
+  ],
+  "id": "RISK-01-01",
+  "impact": "MEDIUM",
+  "level": "LOW",
+  "mitigation": "Preserve existing normalization and test valid examples.",
+  "probability": "LOW",
+  "rollback": "Revert the stage commit.",
+  "schema_version": "1.1.0",
+  "source": "Fixture analysis",
+  "stage": "STAGE-01",
+  "status": "OPEN"
+}

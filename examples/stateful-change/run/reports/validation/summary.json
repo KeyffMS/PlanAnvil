@@ -1,0 +1,14 @@
+{
+  "findings": [],
+  "generated_at": "2026-07-12T18:00:00Z",
+  "phase": "pre-review",
+  "result": "PASS",
+  "schema_version": "1.1.0",
+  "validator": "validate_all",
+  "validators": {
+    "artifacts": "PASS",
+    "diff": "PASS",
+    "plan": "PASS",
+    "profile": "PASS"
+  }
+}

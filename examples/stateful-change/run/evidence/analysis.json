@@ -1,0 +1,32 @@
+{
+  "affected_paths": [
+    "migrations/**",
+    "ops/verification/**",
+    "scripts/backfill/**",
+    "src/models/**",
+    "src/status/**",
+    "tests/backfill/**",
+    "tests/integration/**",
+    "tests/migrations/**",
+    "tests/status/**"
+  ],
+  "assumptions": [
+    {
+      "confidence": "VERIFIED",
+      "evidence": [
+        "fixture.md"
+      ],
+      "text": "Fixture evidence defines the planning boundary."
+    }
+  ],
+  "classification": "STATEFUL",
+  "created_at": "2026-07-12T18:00:00Z",
+  "evidence": [
+    "fixture.md"
+  ],
+  "goal_hash": "sha256:0bfb3f3c83377485b723efd0ca5431b44801d5c2e3d7ed673a2642c4ceac7ca7",
+  "markdown_hash": "sha256:88c0e4b2e445880040bbe55062b03a066bd6735bae934bfa8fa16ae03af081bd",
+  "risk": "HIGH",
+  "schema_version": "1.1.0",
+  "unknowns": []
+}

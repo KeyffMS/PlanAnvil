@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "contract_versions": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_schema": {
+          "const": "1.1.0"
+        },
+        "implementation_spec": {
+          "const": "2.1"
+        },
+        "plan_contract": {
+          "const": "1.0.0"
+        }
+      },
+      "required": [
+        "implementation_spec",
+        "plan_contract",
+        "artifact_schema"
+      ],
+      "type": "object"
+    },
+    "created_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "generator_version": {
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "type": "string"
+    },
+    "paths": {
+      "additionalProperties": false,
+      "properties": {
+        "compliance": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "local_state": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "plan": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "repository_profile": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "run_root": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "state": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "traceability": {
+          "$ref": "#/$defs/relative_path"
+        }
+      },
+      "required": [
+        "run_root",
+        "plan",
+        "state",
+        "compliance",
+        "traceability",
+        "repository_profile",
+        "local_state"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "$ref": "#/$defs/plan_id"
+    },
+    "repository": {
+      "additionalProperties": false,
+      "properties": {
+        "base_branch": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "base_sha": {
+          "$ref": "#/$defs/sha"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/hash"
+        },
+        "planning_branch": {
+          "pattern": "^pursue/plan/PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}/[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fingerprint",
+        "base_branch",
+        "base_sha",
+        "planning_branch"
+      ],
+      "type": "object"
+    },
+    "run_id": {
+      "$ref": "#/$defs/run_id"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    }
+  },
+  "required": [
+    "schema_version",
+    "plan_id",
+    "run_id",
+    "created_at",
+    "generator_version",
+    "repository",
+    "paths",
+    "contract_versions"
+  ],
+  "title": "PlanAnvil manifest",
+  "type": "object"
+}

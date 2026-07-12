@@ -1,0 +1,8 @@
+{
+  "classification": "ISOLATED",
+  "implementation_executed": false,
+  "stage_ids": [
+    "STAGE-01"
+  ],
+  "status": "PLAN_READY"
+}

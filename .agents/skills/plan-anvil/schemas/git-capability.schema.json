@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/git-capability.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "base_branch": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "base_sha": {
+      "$ref": "#/$defs/sha"
+    },
+    "cleanup": {
+      "additionalProperties": false,
+      "properties": {
+        "errors": {
+          "maxItems": 0,
+          "type": "array"
+        },
+        "result": {
+          "const": "PASS"
+        }
+      },
+      "required": [
+        "result",
+        "errors"
+      ],
+      "type": "object"
+    },
+    "result": {
+      "const": "GIT_READY"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "source_snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "index_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "status_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "required": [
+        "head",
+        "branch",
+        "status_hash",
+        "index_hash"
+      ],
+      "type": "object"
+    },
+    "steps": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "result": {
+            "const": "PASS"
+          }
+        },
+        "required": [
+          "id",
+          "result"
+        ],
+        "type": "object"
+      },
+      "minItems": 10,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "verified_at": {
+      "$ref": "#/$defs/timestamp"
+    }
+  },
+  "required": [
+    "schema_version",
+    "verified_at",
+    "result",
+    "base_branch",
+    "base_sha",
+    "source_snapshot",
+    "steps",
+    "cleanup"
+  ],
+  "title": "PlanAnvil sanitized Git capability evidence",
+  "type": "object"
+}

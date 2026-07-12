@@ -1,0 +1,7 @@
+{
+  "git_capability": "GIT_WRITE_RESTRICTED",
+  "implementation_executed": false,
+  "plan_created": false,
+  "profile_created": false,
+  "status": "BLOCKED_BY_GIT_PERMISSIONS"
+}

@@ -1,0 +1,150 @@
+{
+  "controls": [
+    {
+      "description": "Verify add backward-compatible history storage.",
+      "id": "CTRL-01-01",
+      "verification": "Record automated and operational evidence before the checkpoint."
+    },
+    {
+      "description": "Verify dual-write old and new status representations.",
+      "id": "CTRL-02-01",
+      "verification": "Record automated and operational evidence before the checkpoint."
+    },
+    {
+      "description": "Verify backfill records with resumable checkpoints.",
+      "id": "CTRL-03-01",
+      "verification": "Record automated and operational evidence before the checkpoint."
+    },
+    {
+      "description": "Verify switch reads after integrity verification.",
+      "id": "CTRL-04-01",
+      "verification": "Record automated and operational evidence before the checkpoint."
+    },
+    {
+      "description": "Verify observe the switch and verify rollback viability.",
+      "id": "CTRL-05-01",
+      "verification": "Record automated and operational evidence before the checkpoint."
+    }
+  ],
+  "criteria": [
+    {
+      "controls": [
+        "CTRL-01-01"
+      ],
+      "evidence": [],
+      "evidence_type": "MIGRATION_EVIDENCE",
+      "id": "AC-01-01",
+      "risks": [
+        "RISK-01-01"
+      ],
+      "stage": "STAGE-01"
+    },
+    {
+      "controls": [
+        "CTRL-02-01"
+      ],
+      "evidence": [],
+      "evidence_type": "AUTOMATED_TEST",
+      "id": "AC-02-01",
+      "risks": [
+        "RISK-02-01"
+      ],
+      "stage": "STAGE-02"
+    },
+    {
+      "controls": [
+        "CTRL-03-01"
+      ],
+      "evidence": [],
+      "evidence_type": "MIGRATION_EVIDENCE",
+      "id": "AC-03-01",
+      "risks": [
+        "RISK-03-01"
+      ],
+      "stage": "STAGE-03"
+    },
+    {
+      "controls": [
+        "CTRL-04-01"
+      ],
+      "evidence": [],
+      "evidence_type": "MIGRATION_EVIDENCE",
+      "id": "AC-04-01",
+      "risks": [
+        "RISK-04-01"
+      ],
+      "stage": "STAGE-04"
+    },
+    {
+      "controls": [
+        "CTRL-05-01"
+      ],
+      "evidence": [],
+      "evidence_type": "MIGRATION_EVIDENCE",
+      "id": "AC-05-01",
+      "risks": [
+        "RISK-05-01"
+      ],
+      "stage": "STAGE-05"
+    }
+  ],
+  "gaps": [],
+  "requirements": [
+    {
+      "criteria": [
+        "AC-01-01"
+      ],
+      "critical": true,
+      "id": "REQ-01-01",
+      "stages": [
+        "STAGE-01"
+      ],
+      "text": "Add backward-compatible history storage."
+    },
+    {
+      "criteria": [
+        "AC-02-01"
+      ],
+      "critical": true,
+      "id": "REQ-02-01",
+      "stages": [
+        "STAGE-02"
+      ],
+      "text": "Dual-write old and new status representations."
+    },
+    {
+      "criteria": [
+        "AC-03-01"
+      ],
+      "critical": true,
+      "id": "REQ-03-01",
+      "stages": [
+        "STAGE-03"
+      ],
+      "text": "Backfill records with resumable checkpoints."
+    },
+    {
+      "criteria": [
+        "AC-04-01"
+      ],
+      "critical": true,
+      "id": "REQ-04-01",
+      "stages": [
+        "STAGE-04"
+      ],
+      "text": "Switch reads after integrity verification."
+    },
+    {
+      "criteria": [
+        "AC-05-01"
+      ],
+      "critical": true,
+      "id": "REQ-05-01",
+      "stages": [
+        "STAGE-05"
+      ],
+      "text": "Observe the switch and verify rollback viability."
+    }
+  ],
+  "schema_version": "1.1.0"
+}

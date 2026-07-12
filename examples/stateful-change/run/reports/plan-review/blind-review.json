@@ -1,0 +1,13 @@
+{
+  "created_at": "2026-07-12T18:00:00Z",
+  "findings": [],
+  "inputs": {
+    "PLAN.md": "sha256:a617c5635cc5575e4c1bb8ba152812b5cfb7696bb2ff6c6a8f45911e8207467b",
+    "reports/validation/summary.json": "sha256:38c78d2ad3bf0e35e32acdc5edcec63ffdb3c18a40192e73fa7b57a39131850d",
+    "traceability.json": "sha256:3a5d1d247c1339edfcb0d1c5e4de37e1852bba5f8efc92e9e15786f73ee1acda"
+  },
+  "markdown_hash": "sha256:0b278c608ef8973584e451cb036f19566af028be8bd5b6c0a4fdac484f30341f",
+  "report_type": "BLIND_PLAN_REVIEW",
+  "result": "PASS",
+  "schema_version": "1.1.0"
+}

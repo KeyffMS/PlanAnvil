@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/lifecycle.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "events": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/relative_path"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "result": {
+            "const": "PASS"
+          },
+          "sequence": {
+            "maximum": 4,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "SOURCE_PREFLIGHT_PASSED",
+              "GIT_READY",
+              "PLANNING_WORKTREE_READY",
+              "PROFILE_READY"
+            ]
+          }
+        },
+        "required": [
+          "sequence",
+          "state",
+          "result",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array"
+    },
+    "recorded_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    }
+  },
+  "required": [
+    "schema_version",
+    "recorded_at",
+    "events"
+  ],
+  "title": "PlanAnvil bootstrap lifecycle evidence",
+  "type": "object"
+}

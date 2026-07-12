@@ -1,0 +1,18 @@
+{
+  "artifact_hashes": {},
+  "current_phase": "REPORT_AND_STOP",
+  "current_stage": null,
+  "last_checkpoint": null,
+  "mode": "PLAN_GENERATION",
+  "next_action": {
+    "target": null,
+    "type": "NONE"
+  },
+  "open_blockers": [
+    "BLOCKED_BY_CRITICAL_UNKNOWN"
+  ],
+  "revision": 12,
+  "schema_version": "1.1.0",
+  "status": "BLOCKED",
+  "updated_at": "2026-07-12T18:00:00Z"
+}

@@ -1,0 +1,38 @@
+{
+  "controls": [
+    {
+      "description": "Focused expected-red and full-suite verification.",
+      "id": "CTRL-01-01",
+      "verification": "The focused test fails for the intended reason and all suites finish green."
+    }
+  ],
+  "criteria": [
+    {
+      "controls": [
+        "CTRL-01-01"
+      ],
+      "evidence": [],
+      "evidence_type": "AUTOMATED_TEST",
+      "id": "AC-01-01",
+      "risks": [
+        "RISK-01-01"
+      ],
+      "stage": "STAGE-01"
+    }
+  ],
+  "gaps": [],
+  "requirements": [
+    {
+      "criteria": [
+        "AC-01-01"
+      ],
+      "critical": true,
+      "id": "REQ-01-01",
+      "stages": [
+        "STAGE-01"
+      ],
+      "text": "Empty display names are rejected without rejecting valid names."
+    }
+  ],
+  "schema_version": "1.1.0"
+}

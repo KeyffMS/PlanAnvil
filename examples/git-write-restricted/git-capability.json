@@ -1,0 +1,8 @@
+{
+  "artifacts_written": false,
+  "failed_operation": "temporary-ref-create",
+  "ok": false,
+  "plan_status": "BLOCKED_BY_GIT_PERMISSIONS",
+  "result": "GIT_WRITE_RESTRICTED",
+  "source_unchanged": true
+}

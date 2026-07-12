@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/checkpoint.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent_tree": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "COMPLIANT",
+            "NON_COMPLIANT",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "artifact_hashes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/hash"
+      },
+      "type": "object"
+    },
+    "created_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "git": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "status": {
+          "enum": [
+            "CLEAN",
+            "DIRTY",
+            "UNKNOWN"
+          ]
+        },
+        "worktree_role": {
+          "enum": [
+            "SOURCE",
+            "PLANNING",
+            "TASK",
+            "INTEGRATION"
+          ]
+        }
+      },
+      "required": [
+        "branch",
+        "head",
+        "worktree_role",
+        "status"
+      ],
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^CHECKPOINT-[0-9]{2}[A-Z]?-[A-Z0-9_-]+$",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "PLAN_GENERATION",
+        "PLAN_EXECUTION"
+      ]
+    },
+    "next_action": {
+      "$ref": "#/$defs/next_action"
+    },
+    "phase": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "recovery": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "BLOCKED"
+      ]
+    },
+    "risks": {
+      "additionalProperties": false,
+      "properties": {
+        "closed": {
+          "items": {
+            "pattern": "^RISK-",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "open": {
+          "items": {
+            "pattern": "^RISK-",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "open",
+        "closed"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "stage": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tests": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "write_scope": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "COMPLIANT",
+            "NON_COMPLIANT",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "evidence"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "created_at",
+    "mode",
+    "stage",
+    "phase",
+    "result",
+    "git",
+    "tests",
+    "risks",
+    "agent_tree",
+    "write_scope",
+    "next_action",
+    "recovery",
+    "artifact_hashes"
+  ],
+  "title": "PlanAnvil checkpoint",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "hooks": {
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/plan-anvil-recovery.py\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess;r=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip());runpy.run_path(str(r/'.codex/hooks/plan-anvil-recovery.py'),run_name='__main__')\"",
+            "statusMessage": "Restoring PlanAnvil recovery pointer",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "manual|auto"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/plan-anvil-compaction.py\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess;r=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip());runpy.run_path(str(r/'.codex/hooks/plan-anvil-compaction.py'),run_name='__main__')\"",
+            "statusMessage": "Checking PlanAnvil recovery state",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "manual|auto"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/plan-anvil-guard.py\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess;r=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip());runpy.run_path(str(r/'.codex/hooks/plan-anvil-guard.py'),run_name='__main__')\"",
+            "statusMessage": "Checking PlanAnvil write and Git boundaries",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "^(Bash|apply_patch|Edit|Write|mcp__.*)$"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/plan-anvil-recovery.py\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess;r=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip());runpy.run_path(str(r/'.codex/hooks/plan-anvil-recovery.py'),run_name='__main__')\"",
+            "statusMessage": "Loading PlanAnvil recovery pointer",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume|clear|compact"
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/plan-anvil-agent-context.py\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess;r=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip());runpy.run_path(str(r/'.codex/hooks/plan-anvil-agent-context.py'),run_name='__main__')\"",
+            "statusMessage": "Loading PlanAnvil role boundary",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "^plan_anvil_(profiler|reviewer)$"
+      }
+    ]
+  }
+}

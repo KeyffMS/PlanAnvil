@@ -1,0 +1,38 @@
+{
+  "events": [
+    {
+      "evidence": [
+        "examples/blocked-plan/run/evidence/git-capability.json"
+      ],
+      "result": "PASS",
+      "sequence": 1,
+      "state": "SOURCE_PREFLIGHT_PASSED"
+    },
+    {
+      "evidence": [
+        "examples/blocked-plan/run/evidence/git-capability.json"
+      ],
+      "result": "PASS",
+      "sequence": 2,
+      "state": "GIT_READY"
+    },
+    {
+      "evidence": [
+        "examples/blocked-plan/run/manifest.json"
+      ],
+      "result": "PASS",
+      "sequence": 3,
+      "state": "PLANNING_WORKTREE_READY"
+    },
+    {
+      "evidence": [
+        "examples/blocked-plan/run/SYSTEM_PROFILE.md"
+      ],
+      "result": "PASS",
+      "sequence": 4,
+      "state": "PROFILE_READY"
+    }
+  ],
+  "recorded_at": "2026-07-12T18:00:00Z",
+  "schema_version": "1.1.0"
+}

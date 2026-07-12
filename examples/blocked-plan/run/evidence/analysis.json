@@ -1,0 +1,22 @@
+{
+  "affected_paths": [
+    "src/deletion.py"
+  ],
+  "assumptions": [],
+  "classification": "STATEFUL",
+  "created_at": "2026-07-12T18:00:00Z",
+  "evidence": [
+    "fixture.md"
+  ],
+  "goal_hash": "sha256:63e00df6f93674d64c46ac14032b1adf0467ee261bbccfe082a48c49af1df5f4",
+  "markdown_hash": "sha256:1d58a12c3ba490d9eed213308a6a12f64880ab0ab3d9928451449519a64a16f0",
+  "risk": "HIGH",
+  "schema_version": "1.1.0",
+  "unknowns": [
+    {
+      "critical": true,
+      "text": "Authoritative deletion and legal-retention scope is unknown.",
+      "verification": "Obtain the approved policy and irreversible-action owner."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "critical_unknowns": [
+    "authoritative deletion scope",
+    "legal retention",
+    "irreversibility approval",
+    "recovery policy"
+  ],
+  "implementation_executed": false,
+  "status": "BLOCKED_BY_CRITICAL_UNKNOWN"
+}

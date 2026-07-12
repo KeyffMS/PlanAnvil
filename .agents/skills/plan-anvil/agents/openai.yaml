@@ -1,0 +1,6 @@
+interface:
+  display_name: "PlanAnvil"
+  short_description: "Generate a validated implementation plan without executing it"
+  default_prompt: "Use $plan-anvil to generate and validate an implementation plan for this goal. Do not implement the plan."
+policy:
+  allow_implicit_invocation: false

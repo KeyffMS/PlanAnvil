@@ -1,0 +1,27 @@
+{
+  "contract_versions": {
+    "artifact_schema": "1.1.0",
+    "implementation_spec": "2.1",
+    "plan_contract": "1.0.0"
+  },
+  "created_at": "2026-07-12T18:00:00Z",
+  "generator_version": "0.1.0",
+  "paths": {
+    "compliance": "compliance.json",
+    "local_state": "local-state.json",
+    "plan": "PLAN.md",
+    "repository_profile": "SYSTEM_PROFILE.md",
+    "run_root": "examples/blocked-plan/run",
+    "state": "state.json",
+    "traceability": "traceability.json"
+  },
+  "plan_id": "PG-20260712-180200-C3D4",
+  "repository": {
+    "base_branch": "main",
+    "base_sha": "dedb6ab6843bf06d3ac7899aaf37923896915ee7",
+    "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "planning_branch": "pursue/plan/PG-20260712-180200-C3D4/permanent-deletion"
+  },
+  "run_id": "20260712T180200Z_PG-20260712-180200-C3D4_permanent-deletion",
+  "schema_version": "1.1.0"
+}

@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/analysis.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "affected_paths": {
+      "items": {
+        "$ref": "#/$defs/relative_path"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "assumptions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "enum": [
+              "VERIFIED",
+              "USER_CONFIRMED",
+              "INFERRED"
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/relative_path"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "text": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "confidence",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "classification": {
+      "enum": [
+        "ISOLATED",
+        "CROSS_COMPONENT",
+        "STATEFUL",
+        "PUBLIC_API",
+        "SECURITY",
+        "LIVE_OPERATION",
+        "DOCUMENTATION"
+      ]
+    },
+    "created_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/relative_path"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "goal_hash": {
+      "$ref": "#/$defs/hash"
+    },
+    "markdown_hash": {
+      "$ref": "#/$defs/hash"
+    },
+    "risk": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "unknowns": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "critical": {
+            "type": "boolean"
+          },
+          "text": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "verification": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "critical",
+          "verification"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "created_at",
+    "goal_hash",
+    "markdown_hash",
+    "classification",
+    "risk",
+    "affected_paths",
+    "evidence",
+    "assumptions",
+    "unknowns"
+  ],
+  "title": "PlanAnvil goal analysis",
+  "type": "object"
+}

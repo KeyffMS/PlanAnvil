@@ -1,0 +1,166 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/risk.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "affected_components": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "controls": {
+      "items": {
+        "pattern": "^CTRL-[0-9]{2}[A-Z]?-[0-9]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "criteria": {
+      "items": {
+        "pattern": "^AC-[0-9]{2}[A-Z]?-[0-9]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "description": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "detection": {
+      "items": {
+        "pattern": "^CTRL-[0-9]{2}[A-Z]?-[0-9]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^RISK-[0-9]{2}[A-Z]?-[0-9]{2}$",
+      "type": "string"
+    },
+    "impact": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "level": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "mitigation": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "probability": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "rollback": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "source": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "stage": {
+      "$ref": "#/$defs/stage_id"
+    },
+    "status": {
+      "enum": [
+        "OPEN",
+        "MITIGATED",
+        "ACCEPTED_BY_USER",
+        "CLOSED",
+        "REALIZED"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "stage",
+    "level",
+    "description",
+    "source",
+    "affected_components",
+    "probability",
+    "impact",
+    "detection",
+    "criteria",
+    "controls",
+    "mitigation",
+    "rollback",
+    "status"
+  ],
+  "title": "PlanAnvil risk",
+  "type": "object"
+}

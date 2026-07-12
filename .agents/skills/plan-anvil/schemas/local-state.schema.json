@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "next_action": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "target"
+      ],
+      "type": "object"
+    },
+    "plan_id": {
+      "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+      "type": "string"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)|^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\)"
+      },
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[0-9]{8}T[0-9]{6}Z_PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "stage_id": {
+      "pattern": "^STAGE-[0-9]{2}[A-Z]?$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/local-state.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "hashes": {
+      "additionalProperties": false,
+      "properties": {
+        "local_profile": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "required": [
+        "local_profile"
+      ],
+      "type": "object"
+    },
+    "paths": {
+      "additionalProperties": false,
+      "properties": {
+        "local_profile": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "planning_worktree": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_worktree": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_worktree",
+        "planning_worktree",
+        "local_profile"
+      ],
+      "type": "object"
+    },
+    "run_id": {
+      "$ref": "#/$defs/run_id"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "source_snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "head": {
+          "$ref": "#/$defs/sha"
+        },
+        "index_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "status_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "required": [
+        "head",
+        "branch",
+        "status_hash",
+        "index_hash"
+      ],
+      "type": "object"
+    },
+    "updated_at": {
+      "$ref": "#/$defs/timestamp"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "updated_at",
+    "paths",
+    "hashes",
+    "source_snapshot"
+  ],
+  "title": "PlanAnvil local state",
+  "type": "object"
+}
