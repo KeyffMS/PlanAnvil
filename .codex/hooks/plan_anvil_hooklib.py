@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -55,12 +56,12 @@ def linked_worktrees(repo: Path) -> list[Path]:
         check=False,
     )
     if result.returncode != 0:
-        return [repo]
+        return [repo.resolve()]
     paths: list[Path] = []
     for line in result.stdout.splitlines():
         if line.startswith("worktree "):
             paths.append(Path(line.removeprefix("worktree ")).resolve())
-    return paths or [repo]
+    return paths or [repo.resolve()]
 
 
 def _load_state(path: Path) -> dict[str, Any] | None:
@@ -83,16 +84,37 @@ def active_runs(repo: Path) -> list[ActiveRun]:
                 continue
             if state.get("mode") not in {"PLAN_GENERATION", "PLAN_EXECUTION"}:
                 continue
-            found.append(ActiveRun(worktree, state_path.parent, state))
+            found.append(ActiveRun(worktree.resolve(), state_path.parent.resolve(), state))
     return sorted(found, key=lambda item: item.run_root.name)
 
 
+def _explicit_run_id(event: dict[str, Any]) -> str | None:
+    direct = event.get("plananvil_run_id")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+    environment = os.environ.get("PLANANVIL_RUN_ID")
+    return environment.strip() if environment and environment.strip() else None
+
+
 def active_run_for_event(event: dict[str, Any]) -> ActiveRun | None:
-    repo = git_root(event.get("cwd") if isinstance(event.get("cwd"), str) else None)
+    raw_cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else None
+    repo = git_root(raw_cwd)
     if repo is None:
         return None
-    runs = active_runs(repo)
-    return runs[-1] if runs else None
+
+    candidates = [item for item in active_runs(repo) if item.worktree == repo]
+    explicit = _explicit_run_id(event)
+    if explicit is not None:
+        matches = [item for item in candidates if item.run_root.name == explicit]
+        return matches[0] if len(matches) == 1 else None
+
+    cwd = Path(raw_cwd or repo).resolve()
+    containing = [item for item in candidates if is_within(item.run_root, cwd)]
+    if len(containing) == 1:
+        return containing[0]
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
 
 
 def event_cwd(event: dict[str, Any]) -> Path:
