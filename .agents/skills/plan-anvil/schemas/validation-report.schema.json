@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/validation-report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "findings": {
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "BLOCKED"
+      ]
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "validator": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "validators": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "validator",
+    "result",
+    "findings"
+  ],
+  "title": "PlanAnvil deterministic validation report",
+  "type": "object"
+}
