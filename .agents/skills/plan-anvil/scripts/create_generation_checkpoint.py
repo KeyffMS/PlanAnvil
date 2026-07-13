@@ -8,7 +8,6 @@ from common import (
     PlanAnvilError,
     SCHEMA_VERSION,
     atomic_write_json,
-    canonical_json_text,
     cli_main,
     discover_repo,
     emit,
@@ -18,6 +17,7 @@ from common import (
     sha256_file,
     utc_now,
 )
+from path_safety import assert_safe_run_root
 from schema_validator import assert_valid_file, validate
 from transition_state import run_lock
 
@@ -38,11 +38,7 @@ def _checkpoint_id(revision: int) -> str:
 
 def create_generation_checkpoint(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-    try:
-        run.relative_to(repo)
-    except ValueError as exc:
-        raise PlanAnvilError("Run root escapes planning worktree", code="PATH_ESCAPE") from exc
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
 
     with run_lock(state_path, command="create-generation-checkpoint"):
@@ -71,6 +67,8 @@ def create_generation_checkpoint(planning: Path, run_root: Path) -> dict[str, An
 
         branch = git(repo, "symbolic-ref", "--quiet", "--short", "HEAD").stdout.strip()
         head = git(repo, "rev-parse", "HEAD").stdout.strip()
+        status_result = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+        git_status = "DIRTY" if status_result.stdout else "CLEAN"
         checkpoint_id = _checkpoint_id(state["revision"])
         relative = f"checkpoints/{checkpoint_id}.json"
         checkpoint_path = run / relative
@@ -91,7 +89,7 @@ def create_generation_checkpoint(planning: Path, run_root: Path) -> dict[str, An
                 "branch": branch,
                 "head": head,
                 "worktree_role": "PLANNING",
-                "status": "DIRTY",
+                "status": git_status,
             },
             "tests": {
                 "summary": "Generation recovery checkpoint; testing status is preserved in referenced validation evidence when available.",
