@@ -25,6 +25,34 @@ from schema_validator import assert_valid_file, validate
 from transition_state import transition_state
 
 
+RESULT_RE = re.compile(r"(?im)^##\s+Result\s*$\s*`?(PASS|FAIL|BLOCKED)`?\s*$")
+
+
+def _validate_review_consistency(markdown: str, result: str, findings: list[dict[str, Any]]) -> None:
+    matches = RESULT_RE.findall(markdown)
+    if len(matches) != 1:
+        raise PlanAnvilError(
+            "Blind review must contain exactly one structured Result section",
+            code="REVIEW_RESULT_MISSING",
+            details=matches,
+        )
+    markdown_result = matches[0].upper()
+    if markdown_result != result:
+        raise PlanAnvilError(
+            f"Blind review Markdown result {markdown_result} differs from structured result {result}",
+            code="REVIEW_RESULT_MISMATCH",
+        )
+    severe = [item for item in findings if item.get("severity") in {"HIGH", "CRITICAL"}]
+    if result == "PASS" and severe:
+        raise PlanAnvilError(
+            "PASS is invalid when high or critical findings exist",
+            code="REVIEW_PASS_WITH_BLOCKING_FINDINGS",
+            details=severe,
+        )
+    if result == "PASS" and re.search(r"(?im)^\s*(?:conclusion\s*:\s*)?(?:FAIL|BLOCKED)\s*[.!]?\s*$", markdown):
+        raise PlanAnvilError("PASS review contains a contradictory conclusion", code="REVIEW_RESULT_MISMATCH")
+
+
 def record_blind_review(
     planning: Path,
     run_root: Path,
@@ -76,6 +104,7 @@ def record_blind_review(
         if not isinstance(raw, list):
             raise PlanAnvilError("Findings file must contain a JSON array", code="INVALID_FINDINGS")
         findings = raw
+    _validate_review_consistency(markdown, result, findings)
 
     target_md = run / "reports/plan-review/blind-review.md"
     target_json = run / "reports/plan-review/blind-review.json"
@@ -104,10 +133,7 @@ def record_blind_review(
     for capability in compliance.get("capabilities", []):
         if capability.get("id") == "CAP-BLIND-REVIEW":
             capability["status"] = "VERIFIED" if result == "PASS" else "FAILED"
-            capability["evidence"] = [
-                repo_relative(repo, target_md),
-                repo_relative(repo, target_json),
-            ]
+            capability["evidence"] = [repo_relative(repo, target_md), repo_relative(repo, target_json)]
     compliance["verified_at"] = utc_now()
     atomic_write_json(compliance_path, compliance)
 
