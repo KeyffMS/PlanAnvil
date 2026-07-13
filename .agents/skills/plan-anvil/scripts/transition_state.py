@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import socket
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -41,12 +42,13 @@ ALLOWED = {
 }
 
 
-def _owner_alive(owner: dict[str, Any]) -> bool:
+def _owner_alive(owner: dict[str, Any]) -> bool | None:
+    """Return True/False for a local owner and None when liveness is unverifiable."""
     pid = owner.get("pid")
     hostname_hash = owner.get("hostname_hash")
-    if not isinstance(pid, int) or pid <= 0:
-        return False
     if hostname_hash != sha256_text(socket.gethostname()):
+        return None
+    if not isinstance(pid, int) or pid <= 0:
         return False
     try:
         os.kill(pid, 0)
@@ -57,18 +59,39 @@ def _owner_alive(owner: dict[str, Any]) -> bool:
     return True
 
 
+def _write_lock(path: Path, payload: dict[str, Any], *, exclusive: bool = False) -> None:
+    flags = os.O_WRONLY | os.O_CREAT
+    flags |= os.O_EXCL if exclusive else os.O_TRUNC
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _release_owned_lock(lock_path: Path, lock_id: str) -> None:
+    try:
+        current = json.loads(lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if isinstance(current, dict) and current.get("lock_id") == lock_id:
+        lock_path.unlink(missing_ok=True)
+
+
 @contextmanager
 def run_lock(
     state_path: Path,
     *,
     command: str = "plan-anvil",
     stale_after_seconds: int = 300,
+    heartbeat_interval_seconds: float = 30.0,
 ) -> Iterator[Path]:
-    """Lock a complete PlanAnvil run operation.
+    """Lock a complete PlanAnvil run operation with a durable heartbeat.
 
-    Callers that hold this lock must pass ``lock_held=True`` to
-    ``transition_state`` so the state update stays inside the same critical
-    section instead of attempting to acquire a nested lock.
+    A stale lock is removed only after its timeout has elapsed and local owner
+    liveness positively confirms that the owner process is gone. A lock from a
+    different host remains unverifiable and is never deleted automatically.
     """
     lock_path = state_path.parent / ".generation-lock"
     lock_id = sha256_text(
@@ -90,7 +113,7 @@ def run_lock(
 
     while True:
         try:
-            fd = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            _write_lock(lock_path, payload, exclusive=True)
         except FileExistsError:
             try:
                 existing = json.loads(lock_path.read_text(encoding="utf-8"))
@@ -100,9 +123,22 @@ def run_lock(
                     f"Generation lock exists but cannot be verified: {lock_path}",
                     code="GENERATION_LOCK_UNVERIFIABLE",
                 ) from exc
-            if age <= stale_after_seconds or _owner_alive(existing.get("owner", {})):
+            if age <= stale_after_seconds:
                 raise PlanAnvilError(
                     f"Generation lock is active: {lock_path}",
+                    code="GENERATION_LOCK_ACTIVE",
+                    details=existing,
+                )
+            owner_alive = _owner_alive(existing.get("owner", {}))
+            if owner_alive is None:
+                raise PlanAnvilError(
+                    f"Stale generation lock belongs to another host: {lock_path}",
+                    code="GENERATION_LOCK_UNVERIFIABLE",
+                    details=existing,
+                )
+            if owner_alive:
+                raise PlanAnvilError(
+                    f"Generation lock owner is still active: {lock_path}",
                     code="GENERATION_LOCK_ACTIVE",
                     details=existing,
                 )
@@ -115,22 +151,49 @@ def run_lock(
                 ) from exc
             continue
         else:
-            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
-                json.dump(payload, handle, indent=2, sort_keys=True)
-                handle.write("\n")
-                handle.flush()
-                os.fsync(handle.fileno())
             break
+
+    heartbeat_stop = threading.Event()
+    heartbeat_errors: list[str] = []
+    interval = max(1.0, min(heartbeat_interval_seconds, stale_after_seconds / 3))
+
+    def heartbeat() -> None:
+        while not heartbeat_stop.wait(interval):
+            try:
+                current = json.loads(lock_path.read_text(encoding="utf-8"))
+                if current.get("lock_id") != lock_id:
+                    heartbeat_errors.append("Run lock ownership changed during the operation.")
+                    return
+                current["heartbeat_at"] = utc_now()
+                _write_lock(lock_path, current)
+            except (OSError, json.JSONDecodeError) as exc:
+                heartbeat_errors.append(str(exc))
+                return
+
+    heartbeat_thread = threading.Thread(
+        target=heartbeat,
+        name=f"plananvil-lock-{os.getpid()}",
+        daemon=True,
+    )
+    heartbeat_thread.start()
 
     try:
         yield lock_path
-    finally:
-        try:
-            current = json.loads(lock_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            current = None
-        if isinstance(current, dict) and current.get("lock_id") == lock_id:
-            lock_path.unlink(missing_ok=True)
+    except BaseException:
+        heartbeat_stop.set()
+        heartbeat_thread.join(timeout=max(2.0, interval + 1.0))
+        _release_owned_lock(lock_path, lock_id)
+        raise
+    else:
+        heartbeat_stop.set()
+        heartbeat_thread.join(timeout=max(2.0, interval + 1.0))
+        _release_owned_lock(lock_path, lock_id)
+        if heartbeat_errors:
+            raise PlanAnvilError(
+                "Run lock heartbeat failed",
+                code="GENERATION_LOCK_HEARTBEAT_FAILED",
+                details=heartbeat_errors,
+            )
 
 
 @contextmanager
