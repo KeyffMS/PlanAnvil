@@ -79,6 +79,8 @@ def active_runs(repo: Path) -> list[ActiveRun]:
         if not runs.is_dir():
             continue
         for state_path in runs.glob("*/state.json"):
+            if state_path.parent.name.startswith("."):
+                continue
             state = _load_state(state_path)
             if not state or state.get("status") in TERMINAL_STATES:
                 continue
@@ -113,11 +115,15 @@ def active_run_candidates_for_event(event: dict[str, Any]) -> list[ActiveRun]:
     if repo is None:
         return []
     all_runs = active_runs(repo)
-    candidates = [
-        item
-        for item in all_runs
-        if item.worktree == repo or _source_worktree(item) == repo
-    ]
+    exact = [item for item in all_runs if item.worktree == repo]
+    source = [item for item in all_runs if _source_worktree(item) == repo]
+    if exact:
+        candidates = exact
+    elif source:
+        candidates = source
+    else:
+        candidates = [item for item in all_runs if _source_worktree(item) is None]
+
     explicit = _explicit_run_id(event)
     if explicit is not None:
         candidates = [item for item in candidates if item.run_root.name == explicit]
