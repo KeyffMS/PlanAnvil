@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from common import atomic_write_json, canonical_file_is_valid, cli_main, discover_repo, emit, ensure_inside, repo_relative, utc_now
+from common import atomic_write_json, canonical_file_is_valid, cli_main, discover_repo, emit, utc_now
+from path_safety import assert_safe_run_root
 from schema_validator import validate_file
 
 _EXACT_SCHEMAS = {
@@ -42,7 +43,7 @@ def _schema_for(relative: str) -> str | None:
 
 def validate_schema_coverage(planning: Path, run_root: Path, *, write_report: bool = True) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     schemas = Path(__file__).resolve().parent.parent / "schemas"
     findings: list[dict[str, Any]] = []
     validated: list[str] = []
