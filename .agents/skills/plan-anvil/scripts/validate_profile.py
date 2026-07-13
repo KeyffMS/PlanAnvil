@@ -49,6 +49,13 @@ def validate_profile(planning: Path) -> dict[str, Any]:
             findings.append({"kind": "invalid-profile-status", "path": ".pursue/SYSTEM_PROFILE.md"})
         elif status_match.group(1) in {"STALE", "UNVERIFIABLE"}:
             findings.append({"kind": "blocking-profile-status", "path": ".pursue/SYSTEM_PROFILE.md", "status": status_match.group(1)})
+        instruction_section = re.search(r"(?ms)^## Project instruction map\n(.*?)(?=^## |\Z)", text)
+        if instruction_section is None:
+            findings.append({"kind": "missing-instruction-map-section", "path": ".pursue/SYSTEM_PROFILE.md"})
+        else:
+            body = instruction_section.group(1)
+            if "Pending explicit instruction mapping" in body or not re.search(r"(?m)^- `[^`]+` \(`sha256:[0-9a-f]{64}`\)", body):
+                findings.append({"kind": "unresolved-instruction-map", "path": ".pursue/SYSTEM_PROFILE.md"})
         hash_entries = re.findall(r"(?m)^- `([^`]+)`: `(sha256:[0-9a-f]{64})`$", text)
         for relative, expected in hash_entries:
             candidate = repo / relative
