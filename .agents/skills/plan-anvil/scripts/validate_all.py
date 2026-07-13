@@ -9,7 +9,7 @@ from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_diff import validate_diff
 from validate_path_safety import validate_path_safety
-from validate_plan import validate_plan
+from validate_plan_contract import validate_plan_contract
 from validate_profile import validate_profile
 from validate_schema_coverage import validate_schema_coverage
 from validate_traceability import validate_traceability
@@ -26,7 +26,7 @@ def _validate_all_locked(
     results = {
         "profile": validate_profile(repo),
         "artifacts": validate_artifacts(repo, run, phase=phase, write_report=True),
-        "plan": validate_plan(repo, run, write_report=True),
+        "plan": validate_plan_contract(repo, run, write_report=True),
         "path_safety": validate_path_safety(repo, run, write_report=True),
         "traceability": validate_traceability(repo, run, write_report=True),
         "diff": validate_diff(repo, run, source=source, write_report=True),
