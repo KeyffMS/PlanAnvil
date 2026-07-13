@@ -15,11 +15,12 @@ from common import (
     cli_main,
     discover_repo,
     emit,
-    ensure_inside,
     load_json,
     repo_relative,
     utc_now,
 )
+from path_safety import assert_safe_run_root
+from schema_validator import assert_valid_file
 
 REQUIRED_PLAN_HEADINGS = [
     "## Identity",
@@ -69,6 +70,14 @@ REQUIRED_STAGE_METADATA = [
     "applicable_instructions",
     "allowed_write_paths",
 ]
+
+NON_BEHAVIOR_CLASSIFICATIONS = {
+    "DOCUMENTATION",
+    "NON_BEHAVIOR",
+    "CONFIGURATION",
+    "INFRASTRUCTURE",
+    "REFACTOR_NO_BEHAVIOR_CHANGE",
+}
 
 PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}|\b(?:TODO|TBD)\b|\[REPLACE(?: ME)?\]", re.IGNORECASE)
 BOUNDARY_VIOLATIONS = [
@@ -130,7 +139,7 @@ def _safe_relative_glob(value: Any) -> bool:
     if normalized.startswith("/") or WINDOWS_ABSOLUTE_RE.match(value) or normalized.startswith("//"):
         return False
     parts = PurePosixPath(normalized).parts
-    return ".." not in parts and ".git" not in parts
+    return ".." not in parts and not any(part.casefold() == ".git" for part in parts)
 
 
 def _dependency_cycles(stages: dict[str, dict[str, Any]]) -> list[list[str]]:
@@ -181,7 +190,7 @@ def _load_risks(run: Path, findings: list[dict[str, Any]]) -> dict[str, dict[str
 
 def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     plan_path = run / "PLAN.md"
     findings: list[dict[str, Any]] = []
     plan_status: str | None = None
@@ -226,7 +235,6 @@ def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) 
         statuses = re.findall(r"(?m)^- Status:\s*`([^`]+)`\s*$", plan_text)
         if len(statuses) != 1:
             findings.append({"kind": "plan-status-count", "count": len(statuses)})
-            plan_status = None
         else:
             plan_status = statuses[0]
             if plan_status not in TERMINAL_PLAN_STATUSES:
@@ -264,7 +272,8 @@ def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) 
                 findings.append({"kind": "stage-metadata-missing", "path": path.name, "field": key})
         if not isinstance(metadata.get("outcome"), str) or not metadata.get("outcome", "").strip():
             findings.append({"kind": "stage-outcome-invalid", "stage": stage_id})
-        if not isinstance(metadata.get("classification"), str) or not metadata.get("classification", "").strip():
+        classification = str(metadata.get("classification", "")).strip().upper()
+        if not classification:
             findings.append({"kind": "stage-classification-invalid", "stage": stage_id})
         for field in ["requirements", "criteria", "risks", "dependencies", "applicable_instructions", "allowed_write_paths"]:
             if field in metadata and not isinstance(metadata[field], list):
@@ -291,7 +300,10 @@ def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) 
         for match in PLACEHOLDER_RE.finditer(text):
             findings.append({"kind": "placeholder", "path": path.name, "value": match.group(0)})
         evidence = _section(text, "## Evidence cycle").upper()
-        for marker in ["GREEN", "RED", "IMPLEMENT", "INDEPENDENT"]:
+        markers = ["GREEN", "IMPLEMENT", "INDEPENDENT"]
+        if classification not in NON_BEHAVIOR_CLASSIFICATIONS:
+            markers.append("RED")
+        for marker in markers:
             if marker not in evidence:
                 findings.append({"kind": "stage-evidence-cycle-incomplete", "stage": stage_id, "missing": marker})
         if not _section(text, "## Rollback"):
@@ -319,18 +331,32 @@ def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) 
     requirement_ids = set(requirement_ids_list)
     criterion_ids = set(criterion_ids_list)
     control_ids = set(control_ids_list)
+    criteria_by_id = {item.get("id"): item for item in criteria if isinstance(item, dict)}
     criteria_by_stage: dict[str, set[str]] = {}
     requirements_by_stage: dict[str, set[str]] = {}
 
     for requirement in requirements:
         req_id = requirement.get("id")
-        for stage_id in requirement.get("stages", []):
+        requirement_stages = set(requirement.get("stages", []))
+        for stage_id in requirement_stages:
             requirements_by_stage.setdefault(stage_id, set()).add(req_id)
             if stage_id not in stages:
                 findings.append({"kind": "traceability-missing-stage", "requirement": req_id, "stage": stage_id})
-        for criterion in requirement.get("criteria", []):
-            if criterion not in criterion_ids:
-                findings.append({"kind": "traceability-missing-criterion", "requirement": req_id, "criterion": criterion})
+        for criterion_id in requirement.get("criteria", []):
+            if criterion_id not in criterion_ids:
+                findings.append({"kind": "traceability-missing-criterion", "requirement": req_id, "criterion": criterion_id})
+                continue
+            criterion_stage = criteria_by_id.get(criterion_id, {}).get("stage")
+            if criterion_stage not in requirement_stages:
+                findings.append(
+                    {
+                        "kind": "requirement-criterion-stage-mismatch",
+                        "requirement": req_id,
+                        "criterion": criterion_id,
+                        "criterion_stage": criterion_stage,
+                        "requirement_stages": sorted(requirement_stages),
+                    }
+                )
 
     referenced_risks: set[str] = set()
     referenced_controls: set[str] = set()
@@ -427,7 +453,10 @@ def validate_plan(planning: Path, run_root: Path, *, write_report: bool = True) 
         "risk_count": len(risks),
     }
     if write_report:
-        atomic_write_json(run / "reports/validation/plan.json", payload)
+        target = run / "reports/validation/plan.json"
+        atomic_write_json(target, payload)
+        schema = Path(__file__).resolve().parent.parent / "schemas/validation-report.schema.json"
+        assert_valid_file(target, schema)
     return {"ok": not findings, **payload}
 
 
