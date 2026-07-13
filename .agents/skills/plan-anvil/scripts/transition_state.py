@@ -17,12 +17,14 @@ from common import (
     atomic_write_text,
     canonical_json_text,
     cli_main,
+    discover_repo,
     emit,
     load_json,
     sha256_file,
     sha256_text,
     utc_now,
 )
+from path_safety import assert_safe_run_root
 from schema_validator import assert_valid_file, validate
 
 
@@ -87,12 +89,7 @@ def run_lock(
     stale_after_seconds: int = 300,
     heartbeat_interval_seconds: float = 30.0,
 ) -> Iterator[Path]:
-    """Lock a complete PlanAnvil run operation with a durable heartbeat.
-
-    A stale lock is removed only after its timeout has elapsed and local owner
-    liveness positively confirms that the owner process is gone. A lock from a
-    different host remains unverifiable and is never deleted automatically.
-    """
+    """Lock a complete PlanAnvil run operation with a durable heartbeat."""
     lock_path = state_path.parent / ".generation-lock"
     lock_id = sha256_text(
         f"{socket.gethostname()}:{os.getpid()}:{time.time_ns()}:{command}"
@@ -267,7 +264,11 @@ def _transition_state_unlocked(
         try:
             key = path.resolve().relative_to(state_path.parent.resolve()).as_posix()
         except ValueError:
-            key = path.name
+            try:
+                repo = discover_repo(state_path.parent)
+                key = path.resolve().relative_to(repo).as_posix()
+            except (PlanAnvilError, ValueError):
+                key = path.name
         artifact_hashes[key] = sha256_file(path)
 
     replacement = {
@@ -333,8 +334,17 @@ def main() -> int:
     parser.add_argument("--blocker")
     parser.add_argument("--hash-path", type=Path, action="append", default=[])
     args = parser.parse_args()
+
+    repo = discover_repo(args.state.parent)
+    run = assert_safe_run_root(repo, args.state.parent)
+    state_path = args.state.resolve()
+    if state_path != (run / "state.json").resolve():
+        raise PlanAnvilError(
+            "Transition CLI requires the canonical <run-root>/state.json path",
+            code="INVALID_STATE_PATH",
+        )
     state = transition_state(
-        args.state,
+        state_path,
         expected_revision=args.expected_revision,
         new_status=args.status,
         phase=args.phase,
