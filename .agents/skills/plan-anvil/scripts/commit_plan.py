@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from artifact_policy import allowed_planning_path
 from common import (
     PlanAnvilError,
     atomic_write_json,
@@ -31,59 +31,9 @@ def _staged_paths(repo: Path) -> list[str]:
     return sorted(item for item in result.stdout.split("\0") if item)
 
 
-def _run_allowlist(run_rel: str) -> list[str]:
-    return [
-        f"{run_rel}/PLAN.md",
-        f"{run_rel}/manifest.json",
-        f"{run_rel}/state.json",
-        f"{run_rel}/compliance.json",
-        f"{run_rel}/traceability.json",
-        f"{run_rel}/stages/STAGE-*.md",
-        f"{run_rel}/checkpoints/CHECKPOINT-*.json",
-        f"{run_rel}/risks/RISK-*.json",
-        f"{run_rel}/evidence/*.md",
-        f"{run_rel}/evidence/*.json",
-        f"{run_rel}/reports/**/*.md",
-        f"{run_rel}/reports/**/*.json",
-        f"{run_rel}/diffs/*.json",
-        f"{run_rel}/logs/*.json",
-        f"{run_rel}/incidents/*.md",
-        f"{run_rel}/incidents/*.json",
-        f"{run_rel}/final/REPORT.md",
-        f"{run_rel}/final/*.json",
-    ]
-
-
-def _forbidden_patterns(run_rel: str) -> list[str]:
-    return [
-        ".pursue/SYSTEM_PROFILE.local.md",
-        f"{run_rel}/local-state.json",
-        f"{run_rel}/.generation-lock",
-        f"{run_rel}/.execution-lock",
-        f"{run_rel}/**/*.py",
-        f"{run_rel}/**/*.php",
-        f"{run_rel}/**/*.js",
-        f"{run_rel}/**/*.ts",
-        f"{run_rel}/**/*.sh",
-        f"{run_rel}/**/*.ps1",
-        f"{run_rel}/**/*.exe",
-        f"{run_rel}/**/*.dll",
-        f"{run_rel}/**/*.so",
-    ]
-
-
-def _allowed(path: str, run_rel: str) -> bool:
-    allowed = [".gitignore", ".pursue/SYSTEM_PROFILE.md", *_run_allowlist(run_rel)]
-    forbidden = _forbidden_patterns(run_rel)
-    return (
-        any(fnmatch.fnmatchcase(path, pattern) for pattern in allowed)
-        and not any(fnmatch.fnmatchcase(path, pattern) for pattern in forbidden)
-    )
-
-
 def _assert_staged_allowlist(repo: Path, run_rel: str) -> list[str]:
     staged = _staged_paths(repo)
-    bad = [path for path in staged if not _allowed(path, run_rel)]
+    bad = [path for path in staged if not allowed_planning_path(path, run_rel)]
     if bad:
         raise PlanAnvilError(
             "Staged paths violate the planning allowlist",
