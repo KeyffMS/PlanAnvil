@@ -22,7 +22,7 @@ from common import (
 )
 from prepare_review_bundle import review_file_entries
 from schema_validator import assert_valid_file, validate
-from transition_state import transition_state
+from transition_state import run_lock, transition_state
 
 
 RESULT_RE = re.compile(r"(?im)^##\s+Result\s*$\s*`?(PASS|FAIL|BLOCKED)`?\s*$")
@@ -63,37 +63,19 @@ def record_blind_review(
 ) -> dict[str, Any]:
     if result not in {"PASS", "FAIL", "BLOCKED"}:
         raise PlanAnvilError(f"Invalid review result: {result}", code="INVALID_REVIEW_RESULT")
+
     repo = discover_repo(planning)
     run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-    state = load_json(run / "state.json")
-    if state.get("status") != "DETERMINISTICALLY_VALID":
-        raise PlanAnvilError(
-            f"Blind review recording requires DETERMINISTICALLY_VALID, found {state.get('status')}",
-            code="INVALID_STATE_FOR_REVIEW",
-        )
-
-    bundle_path = run / "reports/plan-review/review-bundle.json"
-    bundle = load_json(bundle_path)
-    expected_files = review_file_entries(repo, run)
-    if bundle.get("purpose") != "BLIND_PLAN_REVIEW" or bundle.get("files") != expected_files:
-        raise PlanAnvilError(
-            "Blind-review bundle membership or hashes changed after deterministic validation",
-            code="REVIEW_BUNDLE_CHANGED",
-        )
-    for item in expected_files:
-        path = repo / item["path"]
-        if not path.is_file() or sha256_file(path) != item["sha256"]:
-            raise PlanAnvilError(
-                f"Review input changed or is missing: {item['path']}",
-                code="REVIEW_INPUT_CHANGED",
-            )
+    state_path = run / "state.json"
+    target_md = run / "reports/plan-review/blind-review.md"
+    target_json = run / "reports/plan-review/blind-review.json"
+    compliance_path = run / "compliance.json"
 
     markdown = review_markdown.read_text(encoding="utf-8").rstrip() + "\n"
     if not markdown.strip():
         raise PlanAnvilError("Blind review Markdown is empty", code="EMPTY_REVIEW")
     if re.search(r"\{\{[^}]+\}\}|\b(?:TODO|TBD)\b", markdown, re.IGNORECASE):
         raise PlanAnvilError("Blind review contains placeholders", code="REVIEW_PLACEHOLDER")
-
     review_privacy = privacy_findings(Path("reports/plan-review/blind-review.md"), markdown)
     if review_privacy:
         raise PlanAnvilError("Blind review contains private or secret data", code="REVIEW_PRIVACY", details=review_privacy)
@@ -106,46 +88,85 @@ def record_blind_review(
         findings = raw
     _validate_review_consistency(markdown, result, findings)
 
-    target_md = run / "reports/plan-review/blind-review.md"
-    target_json = run / "reports/plan-review/blind-review.json"
-    sidecar = {
-        "schema_version": "1.1.0",
-        "report_type": "BLIND_PLAN_REVIEW",
-        "created_at": utc_now(),
-        "inputs": {item["path"]: item["sha256"] for item in expected_files},
-        "result": result,
-        "findings": findings,
-        "markdown_hash": sha256_text(markdown),
-    }
-    schema = Path(__file__).resolve().parent.parent / "schemas/review.schema.json"
-    schema_errors = validate(sidecar, load_json(schema))
-    if schema_errors:
-        raise PlanAnvilError("Blind review schema validation failed", code="SCHEMA_VALIDATION_FAILED", details=schema_errors)
-    sidecar_privacy = privacy_findings(Path("reports/plan-review/blind-review.json"), canonical_json_text(sidecar))
-    if sidecar_privacy:
-        raise PlanAnvilError("Blind review sidecar contains private or secret data", code="REVIEW_PRIVACY", details=sidecar_privacy)
-    atomic_write_text(target_md, markdown, exclusive=True)
-    atomic_write_json(target_json, sidecar, exclusive=True)
-    assert_valid_file(target_json, schema)
+    with run_lock(state_path, command="record-blind-review"):
+        state = load_json(state_path)
+        if state.get("status") != "DETERMINISTICALLY_VALID":
+            raise PlanAnvilError(
+                f"Blind review recording requires DETERMINISTICALLY_VALID, found {state.get('status')}",
+                code="INVALID_STATE_FOR_REVIEW",
+            )
 
-    compliance_path = run / "compliance.json"
-    compliance = load_json(compliance_path)
-    for capability in compliance.get("capabilities", []):
-        if capability.get("id") == "CAP-BLIND-REVIEW":
-            capability["status"] = "VERIFIED" if result == "PASS" else "FAILED"
-            capability["evidence"] = [repo_relative(repo, target_md), repo_relative(repo, target_json)]
-    compliance["verified_at"] = utc_now()
-    atomic_write_json(compliance_path, compliance)
+        bundle_path = run / "reports/plan-review/review-bundle.json"
+        bundle = load_json(bundle_path)
+        expected_files = review_file_entries(repo, run)
+        if bundle.get("purpose") != "BLIND_PLAN_REVIEW" or bundle.get("files") != expected_files:
+            raise PlanAnvilError(
+                "Blind-review bundle membership or hashes changed after deterministic validation",
+                code="REVIEW_BUNDLE_CHANGED",
+            )
+        for item in expected_files:
+            path = repo / item["path"]
+            if not path.is_file() or sha256_file(path) != item["sha256"]:
+                raise PlanAnvilError(
+                    f"Review input changed or is missing: {item['path']}",
+                    code="REVIEW_INPUT_CHANGED",
+                )
 
-    transition_state(
-        run / "state.json",
-        expected_revision=state["revision"],
-        new_status="BLIND_REVIEW_WRITTEN",
-        phase="COMPARISON_AND_FINAL_VALIDATION",
-        next_action_type="COMPARE_REVIEW",
-        next_action_target="reports/plan-review/comparison.json",
-        hash_paths=[target_md, target_json],
-    )
+        sidecar = {
+            "schema_version": "1.1.0",
+            "report_type": "BLIND_PLAN_REVIEW",
+            "created_at": utc_now(),
+            "inputs": {item["path"]: item["sha256"] for item in expected_files},
+            "result": result,
+            "findings": findings,
+            "markdown_hash": sha256_text(markdown),
+        }
+        review_schema = Path(__file__).resolve().parent.parent / "schemas/review.schema.json"
+        schema_errors = validate(sidecar, load_json(review_schema))
+        if schema_errors:
+            raise PlanAnvilError("Blind review schema validation failed", code="SCHEMA_VALIDATION_FAILED", details=schema_errors)
+        sidecar_privacy = privacy_findings(Path("reports/plan-review/blind-review.json"), canonical_json_text(sidecar))
+        if sidecar_privacy:
+            raise PlanAnvilError("Blind review sidecar contains private or secret data", code="REVIEW_PRIVACY", details=sidecar_privacy)
+
+        original_compliance = compliance_path.read_text(encoding="utf-8")
+        created_md = False
+        created_json = False
+        try:
+            atomic_write_text(target_md, markdown, exclusive=True)
+            created_md = True
+            atomic_write_json(target_json, sidecar, exclusive=True)
+            created_json = True
+            assert_valid_file(target_json, review_schema)
+
+            compliance = load_json(compliance_path)
+            for capability in compliance.get("capabilities", []):
+                if capability.get("id") == "CAP-BLIND-REVIEW":
+                    capability["status"] = "VERIFIED" if result == "PASS" else "FAILED"
+                    capability["evidence"] = [repo_relative(repo, target_md), repo_relative(repo, target_json)]
+            compliance["verified_at"] = utc_now()
+            atomic_write_json(compliance_path, compliance)
+            compliance_schema = Path(__file__).resolve().parent.parent / "schemas/compliance.schema.json"
+            assert_valid_file(compliance_path, compliance_schema)
+
+            transition_state(
+                state_path,
+                expected_revision=state["revision"],
+                new_status="BLIND_REVIEW_WRITTEN",
+                phase="COMPARISON_AND_FINAL_VALIDATION",
+                next_action_type="COMPARE_REVIEW",
+                next_action_target="reports/plan-review/comparison.json",
+                hash_paths=[target_md, target_json],
+                lock_held=True,
+            )
+        except Exception:
+            atomic_write_text(compliance_path, original_compliance)
+            if created_json:
+                target_json.unlink(missing_ok=True)
+            if created_md:
+                target_md.unlink(missing_ok=True)
+            raise
+
     return {
         "ok": True,
         "result": "BLIND_REVIEW_WRITTEN",
