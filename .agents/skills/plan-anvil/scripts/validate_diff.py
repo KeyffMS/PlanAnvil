@@ -40,6 +40,29 @@ def _common_git_dir(repo: Path) -> Path:
     return raw.resolve() if raw.is_absolute() else (repo / raw).resolve()
 
 
+def _run_allowlist(run_rel: str) -> list[str]:
+    return [
+        f"{run_rel}/PLAN.md",
+        f"{run_rel}/manifest.json",
+        f"{run_rel}/state.json",
+        f"{run_rel}/compliance.json",
+        f"{run_rel}/traceability.json",
+        f"{run_rel}/stages/STAGE-*.md",
+        f"{run_rel}/checkpoints/CHECKPOINT-*.json",
+        f"{run_rel}/risks/RISK-*.json",
+        f"{run_rel}/evidence/*.md",
+        f"{run_rel}/evidence/*.json",
+        f"{run_rel}/reports/**/*.md",
+        f"{run_rel}/reports/**/*.json",
+        f"{run_rel}/diffs/*.json",
+        f"{run_rel}/logs/*.json",
+        f"{run_rel}/incidents/*.md",
+        f"{run_rel}/incidents/*.json",
+        f"{run_rel}/final/REPORT.md",
+        f"{run_rel}/final/*.json",
+    ]
+
+
 def _source_identity_findings(
     planning_repo: Path,
     source_repo: Path,
@@ -51,14 +74,11 @@ def _source_identity_findings(
     actual_fingerprint = repository_fingerprint(source_repo)
     if actual_fingerprint != expected_fingerprint:
         findings.append({"kind": "source-repository-fingerprint-mismatch"})
-
     if _common_git_dir(source_repo) != _common_git_dir(planning_repo):
         findings.append({"kind": "source-git-common-dir-mismatch"})
-
     worktrees = set(git_worktree_paths(planning_repo))
     if source_repo.resolve() not in worktrees or planning_repo.resolve() not in worktrees:
         findings.append({"kind": "source-worktree-registration-mismatch"})
-
     snapshot = local_state.get("source_snapshot", {})
     base_sha = manifest.get("repository", {}).get("base_sha")
     base_branch = manifest.get("repository", {}).get("base_branch")
@@ -84,17 +104,22 @@ def validate_diff(
     base_sha = manifest["repository"]["base_sha"]
     run_rel = repo_relative(repo, run)
 
-    allowed = [
-        ".gitignore",
-        ".pursue/SYSTEM_PROFILE.md",
-        f"{run_rel}/**",
-    ]
+    allowed = [".gitignore", ".pursue/SYSTEM_PROFILE.md", *_run_allowlist(run_rel)]
     allowed.extend(extra_allowed or [])
     forbidden = [
         ".pursue/SYSTEM_PROFILE.local.md",
         f"{run_rel}/local-state.json",
         f"{run_rel}/.generation-lock",
         f"{run_rel}/.execution-lock",
+        f"{run_rel}/**/*.py",
+        f"{run_rel}/**/*.php",
+        f"{run_rel}/**/*.js",
+        f"{run_rel}/**/*.ts",
+        f"{run_rel}/**/*.sh",
+        f"{run_rel}/**/*.ps1",
+        f"{run_rel}/**/*.exe",
+        f"{run_rel}/**/*.dll",
+        f"{run_rel}/**/*.so",
     ]
 
     findings: list[dict[str, Any]] = []
@@ -103,7 +128,7 @@ def validate_diff(
 
     for rel in changed:
         if rel in forbidden or _matches(rel, forbidden):
-            findings.append({"kind": "forbidden-local-artifact", "path": rel})
+            findings.append({"kind": "forbidden-local-or-executable-artifact", "path": rel})
             continue
         if not _matches(rel, allowed):
             findings.append({"kind": "path-outside-planning-allowlist", "path": rel})
