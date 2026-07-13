@@ -11,6 +11,7 @@ from validate_diff import validate_diff
 from validate_path_safety import validate_path_safety
 from validate_plan import validate_plan
 from validate_profile import validate_profile
+from validate_traceability import validate_traceability
 
 
 def _validate_all_locked(
@@ -26,6 +27,7 @@ def _validate_all_locked(
         "artifacts": validate_artifacts(repo, run, phase=phase, write_report=True),
         "plan": validate_plan(repo, run, write_report=True),
         "path_safety": validate_path_safety(repo, run, write_report=True),
+        "traceability": validate_traceability(repo, run, write_report=True),
         "diff": validate_diff(repo, run, source=source, write_report=True),
     }
     findings = [
