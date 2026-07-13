@@ -55,21 +55,38 @@ TERMINAL_PLAN_STATUSES = {
 
 SECRET_PATTERNS = [
     ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
-    ("generic-token", re.compile(r"(?i)\b(?:api[_-]?key|access[_-]?token|secret|password)\b\s*[:=]\s*[\"']?[A-Za-z0-9_./+=-]{12,}")),
+    (
+        "generic-token",
+        re.compile(
+            r"(?i)\b(?:api[_-]?key|access[_-]?token|secret|password)\b"
+            r"\s*[:=]\s*[\"']?[A-Za-z0-9_./+=-]{12,}"
+        ),
+    ),
     ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b")),
     ("aws-access-key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
 ]
 
 ABSOLUTE_PATH_PATTERNS = [
-    re.compile(r"(?<![A-Za-z0-9_.-])/(?:home|Users|private|var|tmp|opt|srv|mnt|Volumes)/[^\s`\"'<>]+"),
+    re.compile(
+        r"(?<![A-Za-z0-9_.-])/(?:home|Users|private|var|tmp|opt|srv|mnt|Volumes)/"
+        r"[^\s`\"'<>]+"
+    ),
     re.compile(r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/])[^\s`\"'<>]+"),
     re.compile(r"\\\\[^\\\s]+\\[^\\\s]+"),
     re.compile(r"(?<![A-Za-z0-9_.-])~[/\\][^\s`\"'<>]+"),
 ]
 
+_RETRY_METADATA_KEYS = {"created_at", "generated_at", "verified_at"}
+
 
 class PlanAnvilError(RuntimeError):
-    def __init__(self, message: str, *, code: str = "PLANANVIL_ERROR", details: Any = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "PLANANVIL_ERROR",
+        details: Any = None,
+    ):
         super().__init__(message)
         self.code = code
         self.details = details
@@ -84,7 +101,12 @@ class CommandResult:
 
 
 def utc_now() -> str:
-    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def timestamp_id() -> str:
@@ -100,7 +122,7 @@ def slugify(value: str, *, default: str = "plan", max_length: int = 48) -> str:
     value = value.lower()
     value = re.sub(r"[^a-z0-9]+", "-", value).strip("-")
     value = re.sub(r"-{2,}", "-", value)
-    return (value[:max_length].rstrip("-") or default)
+    return value[:max_length].rstrip("-") or default
 
 
 def make_run_id(plan_id: str, slug: str) -> str:
@@ -129,19 +151,48 @@ def canonical_json_text(value: Any) -> str:
     return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def _retry_equivalent(value: Any) -> Any:
+    """Remove volatile evidence timestamps before immutable retry comparison."""
+    if isinstance(value, dict):
+        return {
+            key: _retry_equivalent(item)
+            for key, item in value.items()
+            if key not in _RETRY_METADATA_KEYS
+        }
+    if isinstance(value, list):
+        return [_retry_equivalent(item) for item in value]
+    return value
+
+
 def atomic_write_text(path: Path, text: str, *, exclusive: bool = False) -> None:
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if exclusive and path.exists():
-        raise PlanAnvilError(f"Refusing to overwrite immutable file: {path}", code="IMMUTABLE_EXISTS")
-    mode = "x" if exclusive else "w"
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise PlanAnvilError(
+                f"Immutable file exists but cannot be verified: {path}",
+                code="IMMUTABLE_EXISTS",
+            ) from exc
+        if existing == text:
+            return
+        raise PlanAnvilError(
+            f"Refusing to overwrite immutable file: {path}",
+            code="IMMUTABLE_EXISTS",
+        )
     if exclusive:
-        with path.open(mode, encoding="utf-8", newline="\n") as handle:
+        with path.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
         return
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=str(path.parent),
+    )
     tmp = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
@@ -164,6 +215,20 @@ def atomic_write_text(path: Path, text: str, *, exclusive: bool = False) -> None
 
 
 def atomic_write_json(path: Path, value: Any, *, exclusive: bool = False) -> None:
+    if exclusive and path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise PlanAnvilError(
+                f"Immutable JSON exists but cannot be verified: {path}",
+                code="IMMUTABLE_EXISTS",
+            ) from exc
+        if _retry_equivalent(existing) == _retry_equivalent(value):
+            return
+        raise PlanAnvilError(
+            f"Refusing to overwrite immutable file: {path}",
+            code="IMMUTABLE_EXISTS",
+        )
     atomic_write_text(path, canonical_json_text(value), exclusive=exclusive)
 
 
@@ -199,7 +264,12 @@ def command(
         timeout=timeout,
         shell=False,
     )
-    result = CommandResult(tuple(str(x) for x in args), process.returncode, process.stdout, process.stderr)
+    result = CommandResult(
+        tuple(str(item) for item in args),
+        process.returncode,
+        process.stdout,
+        process.stderr,
+    )
     if check and process.returncode != 0:
         raise PlanAnvilError(
             f"Command failed ({process.returncode}): {' '.join(result.args)}",
@@ -216,13 +286,21 @@ def git(
     timeout: int = 120,
     env: dict[str, str] | None = None,
 ) -> CommandResult:
-    return command(["git", "-C", str(repo), *args], check=check, timeout=timeout, env=env)
+    return command(
+        ["git", "-C", str(repo), *args],
+        check=check,
+        timeout=timeout,
+        env=env,
+    )
 
 
 def discover_repo(path: Path) -> Path:
     result = git(path, "rev-parse", "--show-toplevel", check=False)
     if result.returncode != 0:
-        raise PlanAnvilError("Not inside a Git repository", code="NOT_A_GIT_REPOSITORY")
+        raise PlanAnvilError(
+            "Not inside a Git repository",
+            code="NOT_A_GIT_REPOSITORY",
+        )
     return Path(result.stdout.strip()).resolve()
 
 
@@ -250,10 +328,26 @@ def detect_git_operation(repo: Path) -> str | None:
 def source_snapshot(repo: Path) -> dict[str, Any]:
     repo = discover_repo(repo)
     head = git(repo, "rev-parse", "HEAD").stdout.strip()
-    branch_result = git(repo, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)
+    branch_result = git(
+        repo,
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "HEAD",
+        check=False,
+    )
     branch = branch_result.stdout.strip() if branch_result.returncode == 0 else None
-    status = git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all").stdout.encode("utf-8", "surrogateescape")
-    index = git(repo, "ls-files", "--stage", "-z").stdout.encode("utf-8", "surrogateescape")
+    status = git(
+        repo,
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+    ).stdout.encode("utf-8", "surrogateescape")
+    index = git(repo, "ls-files", "--stage", "-z").stdout.encode(
+        "utf-8",
+        "surrogateescape",
+    )
     return {
         "head": head,
         "branch": branch,
@@ -264,9 +358,11 @@ def source_snapshot(repo: Path) -> dict[str, Any]:
 
 def compare_snapshot(repo: Path, expected: dict[str, Any]) -> list[str]:
     current = source_snapshot(repo)
-    return [key for key in ("head", "branch", "status_hash", "index_hash") if current.get(key) != expected.get(key)]
-
-
+    return [
+        key
+        for key in ("head", "branch", "status_hash", "index_hash")
+        if current.get(key) != expected.get(key)
+    ]
 
 
 def path_is_within(root: Path, candidate: Path) -> bool:
@@ -281,7 +377,11 @@ def git_worktree_paths(repo: Path) -> list[Path]:
     repo = discover_repo(repo)
     result = git(repo, "worktree", "list", "--porcelain", check=False)
     if result.returncode != 0:
-        raise PlanAnvilError("Could not list Git worktrees", code="GIT_WORKTREE_UNSUPPORTED", details=result.stderr)
+        raise PlanAnvilError(
+            "Could not list Git worktrees",
+            code="GIT_WORKTREE_UNSUPPORTED",
+            details=result.stderr,
+        )
     paths = [
         Path(line.removeprefix("worktree ")).resolve()
         for line in result.stdout.splitlines()
@@ -301,13 +401,26 @@ def require_external_path(repo: Path, candidate: Path, *, code: str) -> Path:
             )
     return resolved
 
+
 def repository_fingerprint(repo: Path) -> str:
     repo = discover_repo(repo)
-    remote = git(repo, "config", "--get", "remote.origin.url", check=False).stdout.strip()
+    remote = git(
+        repo,
+        "config",
+        "--get",
+        "remote.origin.url",
+        check=False,
+    ).stdout.strip()
     if remote:
         identity = sanitize_remote_identity(remote)
     else:
-        roots = git(repo, "rev-list", "--max-parents=0", "--all", check=False).stdout.splitlines()
+        roots = git(
+            repo,
+            "rev-list",
+            "--max-parents=0",
+            "--all",
+            check=False,
+        ).stdout.splitlines()
         identity = "roots:" + ",".join(sorted(roots))
     return sha256_text(identity)
 
@@ -323,7 +436,9 @@ def sanitize_remote_identity(remote: str) -> str:
         host = parts.hostname or parts.netloc
         port = f":{parts.port}" if parts.port else ""
         path = parts.path.removesuffix(".git")
-        return urlunsplit((parts.scheme.lower(), host.lower() + port, path, "", ""))
+        return urlunsplit(
+            (parts.scheme.lower(), host.lower() + port, path, "", "")
+        )
     return remote.removesuffix(".git")
 
 
@@ -333,11 +448,20 @@ def ensure_inside(root: Path, candidate: Path, *, allow_root: bool = True) -> Pa
     try:
         relative = candidate.relative_to(root)
     except ValueError as exc:
-        raise PlanAnvilError(f"Path escapes allowed root: {candidate}", code="PATH_ESCAPE") from exc
+        raise PlanAnvilError(
+            f"Path escapes allowed root: {candidate}",
+            code="PATH_ESCAPE",
+        ) from exc
     if not allow_root and relative == Path("."):
-        raise PlanAnvilError("Root path is not an allowed target", code="PATH_ESCAPE")
+        raise PlanAnvilError(
+            "Root path is not an allowed target",
+            code="PATH_ESCAPE",
+        )
     if ".git" in relative.parts:
-        raise PlanAnvilError(f"Direct .git write is forbidden: {candidate}", code="GIT_PATH_FORBIDDEN")
+        raise PlanAnvilError(
+            f"Direct .git write is forbidden: {candidate}",
+            code="GIT_PATH_FORBIDDEN",
+        )
     return candidate
 
 
@@ -360,12 +484,26 @@ def append_ignore_rules(repo: Path, rules: Iterable[str]) -> bool:
 
 def is_ignored(repo: Path, path: Path) -> bool:
     relative = repo_relative(repo, path)
-    return git(repo, "check-ignore", "-q", "--", relative, check=False).returncode == 0
+    return git(
+        repo,
+        "check-ignore",
+        "-q",
+        "--",
+        relative,
+        check=False,
+    ).returncode == 0
 
 
 def is_tracked(repo: Path, path: Path) -> bool:
     relative = repo_relative(repo, path)
-    return git(repo, "ls-files", "--error-unmatch", "--", relative, check=False).returncode == 0
+    return git(
+        repo,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        relative,
+        check=False,
+    ).returncode == 0
 
 
 def list_untracked(repo: Path) -> list[str]:
@@ -381,7 +519,13 @@ def privacy_findings(path: Path, text: str) -> list[dict[str, str]]:
     for pattern in ABSOLUTE_PATH_PATTERNS:
         match = pattern.search(text)
         if match:
-            findings.append({"path": path.as_posix(), "kind": "absolute-path", "sample": match.group(0)[:120]})
+            findings.append(
+                {
+                    "path": path.as_posix(),
+                    "kind": "absolute-path",
+                    "sample": match.group(0)[:120],
+                }
+            )
     return findings
 
 
@@ -406,21 +550,35 @@ def emit(payload: dict[str, Any], *, exit_code: int = 0) -> int:
 
 def fail_payload(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, PlanAnvilError):
-        return {"ok": False, "error": exc.code, "message": str(exc), "details": exc.details}
-    return {"ok": False, "error": exc.__class__.__name__, "message": str(exc)}
+        return {
+            "ok": False,
+            "error": exc.code,
+            "message": str(exc),
+            "details": exc.details,
+        }
+    return {
+        "ok": False,
+        "error": exc.__class__.__name__,
+        "message": str(exc),
+    }
 
 
 def cli_main(function) -> None:
     try:
         code = function()
-    except Exception as exc:  # top-level machine-readable failure boundary
+    except Exception as exc:
         emit(fail_payload(exc), exit_code=1)
         raise SystemExit(1)
     raise SystemExit(code if isinstance(code, int) else 0)
 
 
 def add_source_argument(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--source", type=Path, default=Path.cwd(), help="Source repository or path inside it")
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=Path.cwd(),
+        help="Source repository or path inside it",
+    )
 
 
 def canonical_file_is_valid(path: Path) -> bool:
