@@ -5,24 +5,21 @@ from pathlib import Path
 from typing import Any
 
 from common import PlanAnvilError, atomic_write_json, cli_main, discover_repo, emit, load_json, utc_now
-from transition_state import transition_state
+from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_diff import validate_diff
 from validate_plan import validate_plan
 from validate_profile import validate_profile
 
 
-def validate_all(
-    planning: Path,
-    run_root: Path,
+def _validate_all_locked(
+    repo: Path,
+    run: Path,
     *,
-    source: Path | None = None,
-    phase: str = "pre-review",
-    advance_state: bool = True,
+    source: Path | None,
+    phase: str,
+    advance_state: bool,
 ) -> dict[str, Any]:
-    repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-
     results = {
         "profile": validate_profile(repo),
         "artifacts": validate_artifacts(repo, run, phase=phase, write_report=True),
@@ -43,7 +40,8 @@ def validate_all(
         "validators": {name: result.get("result") for name, result in results.items()},
         "findings": findings,
     }
-    atomic_write_json(run / "reports/validation/summary.json", payload)
+    summary_path = run / "reports/validation/summary.json"
+    atomic_write_json(summary_path, payload)
 
     if not findings and advance_state and phase == "pre-review":
         state_path = run / "state.json"
@@ -60,10 +58,40 @@ def validate_all(
             phase="BLIND_PLAN_REVIEW",
             next_action_type="PREPARE_REVIEW_BUNDLE",
             next_action_target="reports/plan-review/review-bundle.json",
-            hash_paths=[run / "PLAN.md", run / "traceability.json", run / "reports/validation/summary.json"],
+            hash_paths=[run / "PLAN.md", run / "traceability.json", summary_path],
+            lock_held=True,
         )
 
     return {"ok": not findings, **payload}
+
+
+def validate_all(
+    planning: Path,
+    run_root: Path,
+    *,
+    source: Path | None = None,
+    phase: str = "pre-review",
+    advance_state: bool = True,
+    lock_held: bool = False,
+) -> dict[str, Any]:
+    repo = discover_repo(planning)
+    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    if lock_held:
+        return _validate_all_locked(
+            repo,
+            run,
+            source=source,
+            phase=phase,
+            advance_state=advance_state,
+        )
+    with run_lock(run / "state.json", command=f"validate-all:{phase}"):
+        return _validate_all_locked(
+            repo,
+            run,
+            source=source,
+            phase=phase,
+            advance_state=advance_state,
+        )
 
 
 def main() -> int:
