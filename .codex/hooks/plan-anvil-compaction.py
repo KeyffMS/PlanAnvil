@@ -4,7 +4,11 @@ import json
 import sys
 
 from plan_anvil_checkpoint import validate_checkpoint_for_run
-from plan_anvil_hooklib import active_run_for_event, read_event
+from plan_anvil_hooklib import (
+    active_run_for_event,
+    event_has_ambiguous_active_runs,
+    read_event,
+)
 
 
 def _stop(reason: str) -> None:
@@ -20,6 +24,9 @@ def _stop(reason: str) -> None:
 
 def main() -> int:
     event = read_event()
+    if event_has_ambiguous_active_runs(event):
+        _stop("Multiple active PlanAnvil runs match this worktree. Set PLANANVIL_RUN_ID before compaction.")
+        return 0
     active = active_run_for_event(event)
     if active is None:
         return 0
