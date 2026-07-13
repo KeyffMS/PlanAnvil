@@ -1,11 +1,23 @@
 from __future__ import annotations
 
 from plan_anvil_checkpoint import validate_checkpoint_for_run
-from plan_anvil_hooklib import active_run_for_event, context, read_event
+from plan_anvil_hooklib import (
+    active_run_for_event,
+    context,
+    event_has_ambiguous_active_runs,
+    read_event,
+)
 
 
 def main() -> int:
     event = read_event()
+    event_name = str(event.get("hook_event_name") or "SessionStart")
+    if event_has_ambiguous_active_runs(event):
+        context(
+            event_name,
+            "Multiple active PlanAnvil runs match this worktree. Set PLANANVIL_RUN_ID to the intended run before recovery or write-capable work.",
+        )
+        return 0
     active = active_run_for_event(event)
     if active is None:
         return 0
@@ -24,7 +36,7 @@ def main() -> int:
         f"next action is {next_action.get('type')} targeting {next_action.get('target')}. "
         f"{checkpoint_text}"
     )
-    context(str(event.get("hook_event_name") or "SessionStart"), message)
+    context(event_name, message)
     return 0
 
 
