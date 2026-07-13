@@ -20,7 +20,7 @@ from common import (
     sha256_bytes,
     utc_now,
 )
-from path_safety import assert_safe_repo_path
+from path_safety import assert_safe_repo_path, assert_safe_run_root
 from schema_validator import assert_valid_file
 from transition_state import run_lock, transition_state
 
@@ -117,6 +117,7 @@ def map_instructions(
     fallback_filenames: list[str] | None = None,
     automatic_byte_limit: int | None = None,
     conflicts_file: Path | None = None,
+    require_scaffolded_output: bool = False,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
     affected_paths = affected_paths or ["."]
@@ -210,11 +211,19 @@ def map_instructions(
     }
 
     output = assert_safe_repo_path(repo, output)
-    run_root = output.parent.parent if output.parent.name == "evidence" else None
+    run_root = output.parent.parent if output.name == "instruction-map.json" and output.parent.name == "evidence" else None
     scaffolded = bool(run_root and (run_root / "state.json").is_file() and (run_root / "compliance.json").is_file())
+    if require_scaffolded_output:
+        if not scaffolded or run_root is None:
+            raise PlanAnvilError(
+                "Instruction mapping CLI requires <run-root>/evidence/instruction-map.json",
+                code="INVALID_INSTRUCTION_OUTPUT",
+            )
+        assert_safe_run_root(repo, run_root)
     instruction_schema = Path(__file__).resolve().parent.parent / "schemas/instruction-map.schema.json"
 
     if scaffolded:
+        assert run_root is not None
         state_path = run_root / "state.json"
         compliance_path = run_root / "compliance.json"
         with run_lock(state_path, command="map-instructions"):
@@ -296,6 +305,7 @@ def main() -> int:
         fallback_filenames=args.fallback_names,
         automatic_byte_limit=args.automatic_byte_limit,
         conflicts_file=args.conflicts_file,
+        require_scaffolded_output=True,
     )
     return emit(payload, exit_code=2 if payload.get("blocked") else 0)
 
