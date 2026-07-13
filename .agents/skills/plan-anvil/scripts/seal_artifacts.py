@@ -7,7 +7,7 @@ from typing import Any
 from common import PlanAnvilError, cli_main, discover_repo, emit, ensure_inside, load_json
 from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
-from validate_plan import validate_plan
+from validate_plan_contract import validate_plan_contract
 
 
 def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
@@ -23,7 +23,7 @@ def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
                 code="INVALID_STATE_FOR_ARTIFACT_SEAL",
             )
 
-        plan_result = validate_plan(repo, run, write_report=False)
+        plan_result = validate_plan_contract(repo, run, write_report=False)
         artifact_result = validate_artifacts(repo, run, phase="pre-review", write_report=False)
         findings = []
         if not plan_result.get("ok"):
