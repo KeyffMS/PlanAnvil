@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from common import atomic_write_json, cli_main, discover_repo, emit, ensure_inside
+from common import atomic_write_json, cli_main, discover_repo, emit
+from path_safety import assert_safe_run_root
 from validate_plan import _frontmatter, validate_plan
 
 _NON_BEHAVIOR_CLASSIFICATIONS = {
@@ -18,7 +19,7 @@ _NON_BEHAVIOR_CLASSIFICATIONS = {
 
 def validate_plan_contract(planning: Path, run_root: Path, *, write_report: bool = True) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     result = validate_plan(repo, run, write_report=False)
     classifications: dict[str, str] = {}
     for path in sorted((run / "stages").glob("STAGE-*.md")):
