@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from common import (
     sha256_file,
     utc_now,
 )
+from path_safety import assert_safe_run_root
 from schema_validator import assert_valid_file, validate
 from transition_state import run_lock, transition_state
 from validate_all import validate_all
@@ -122,6 +124,61 @@ def _stage_json_blob(repo: Path, relative_path: str, payload: dict[str, Any]) ->
             temporary.unlink(missing_ok=True)
 
 
+def _show_head(repo: Path, relative: str) -> str | None:
+    result = git(repo, "show", f"HEAD:{relative}", check=False)
+    return result.stdout if result.returncode == 0 else None
+
+
+def _recover_committed_finalization(
+    repo: Path,
+    run: Path,
+    manifest: dict[str, Any],
+    state: dict[str, Any],
+) -> dict[str, Any] | None:
+    if state.get("status") not in {"PLAN_COMMITTED", "STOPPED"}:
+        return None
+    run_rel = repo_relative(repo, run)
+    state_rel = f"{run_rel}/state.json"
+    report_rel = f"{run_rel}/final/REPORT.md"
+    committed_state_text = _show_head(repo, state_rel)
+    committed_report = _show_head(repo, report_rel)
+    if committed_state_text is None or committed_report is None:
+        return None
+    try:
+        committed_state = json.loads(committed_state_text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(committed_state, dict) or committed_state.get("status") != "STOPPED":
+        return None
+    schema_path = Path(__file__).resolve().parent.parent / "schemas/state.schema.json"
+    errors = validate(committed_state, load_json(schema_path))
+    if errors:
+        raise PlanAnvilError(
+            "Committed STOPPED state is invalid",
+            code="COMMITTED_STATE_INVALID",
+            details=errors,
+        )
+
+    atomic_write_text(run / "final/REPORT.md", committed_report)
+    atomic_write_json(run / "state.json", committed_state)
+    assert_valid_file(run / "state.json", schema_path)
+    final_commit = git(repo, "rev-parse", "HEAD").stdout.strip()
+    plan_commit = git(repo, "rev-parse", "HEAD^", check=False).stdout.strip() or final_commit
+    return {
+        "ok": True,
+        "result": "STOPPED",
+        "status": "PLAN_READY",
+        "planning_branch": manifest["repository"]["planning_branch"],
+        "plan_commit": plan_commit,
+        "final_commit": final_commit,
+        "plan": f"{run_rel}/PLAN.md",
+        "final_report": report_rel,
+        "pushed": False,
+        "implementation_executed": False,
+        "reconciled_existing_commit": True,
+    }
+
+
 def _commit_plan_locked(
     repo: Path,
     run: Path,
@@ -133,6 +190,9 @@ def _commit_plan_locked(
 ) -> dict[str, Any]:
     state_path = run / "state.json"
     state = load_json(state_path)
+    recovered = _recover_committed_finalization(repo, run, manifest, state)
+    if recovered is not None:
+        return recovered
     if state.get("status") not in {"COMPARISON_VALID", "PLAN_COMMITTED"}:
         raise PlanAnvilError(
             f"Commit requires COMPARISON_VALID or PLAN_COMMITTED, found {state.get('status')}",
@@ -275,7 +335,7 @@ def commit_plan(
     message: str | None = None,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     manifest = load_json(run / "manifest.json")
     local_state = load_json(run / "local-state.json")
     state_path = run / "state.json"
