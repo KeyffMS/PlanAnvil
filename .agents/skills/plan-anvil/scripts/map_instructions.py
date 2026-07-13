@@ -29,14 +29,14 @@ SAFETY_TERMS = re.compile(
 )
 
 
+def _codex_home() -> Path:
+    return Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser().resolve()
+
+
 def _load_codex_instruction_config(repo: Path) -> tuple[list[str], int]:
     fallback: list[str] = []
     max_bytes = 32768
-    candidates: list[Path] = []
-    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    candidates.append(codex_home / "config.toml")
-    candidates.append(repo / ".codex/config.toml")
-    for path in candidates:
+    for path in [_codex_home() / "config.toml", repo / ".codex/config.toml"]:
         if not path.is_file():
             continue
         try:
@@ -76,6 +76,39 @@ def _selected_instruction(directory: Path, fallback: list[str]) -> Path | None:
     return None
 
 
+def _global_instruction() -> Path | None:
+    home = _codex_home()
+    for name in ["AGENTS.override.md", "AGENTS.md"]:
+        path = home / name
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
+
+
+def _entry(path: Path, *, display_path: str, scope: str, precedence: int) -> dict[str, Any]:
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise PlanAnvilError(f"Instruction file is not UTF-8: {display_path}", code="INSTRUCTION_NOT_UTF8") from exc
+    safety_rules = [
+        f"L{number} {sha256_bytes(line.encode('utf-8'))}"
+        for number, line in enumerate(text.splitlines(), start=1)
+        if SAFETY_TERMS.search(line)
+    ]
+    return {
+        "path": display_path,
+        "sha256": sha256_bytes(data),
+        "bytes": len(data),
+        "full_read": True,
+        "scope": scope,
+        "precedence": precedence,
+        "affected_paths": [],
+        "truncation_risk": False,
+        "safety_critical_rules": safety_rules,
+    }
+
+
 def map_instructions(
     planning: Path,
     *,
@@ -86,8 +119,7 @@ def map_instructions(
     conflicts_file: Path | None = None,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    if not affected_paths:
-        affected_paths = ["."]
+    affected_paths = affected_paths or ["."]
     configured_fallback, configured_limit = _load_codex_instruction_config(repo)
     fallback = list(dict.fromkeys(fallback_filenames if fallback_filenames is not None else configured_fallback))
     byte_limit = automatic_byte_limit or configured_limit
@@ -96,41 +128,36 @@ def map_instructions(
     selections: dict[str, dict[str, Any]] = {}
     order: list[str] = []
 
+    global_path = _global_instruction()
+    if global_path is not None:
+        key = global_path.resolve().as_posix()
+        selections[key] = _entry(
+            global_path,
+            display_path=f"$CODEX_HOME/{global_path.name}",
+            scope="GLOBAL",
+            precedence=-1,
+        )
+        order.append(key)
+
     for affected in affected_paths:
         candidate = Path(affected)
         absolute = candidate if candidate.is_absolute() else repo / candidate
-        absolute = ensure_inside(repo, absolute)
-        relative = repo_relative(repo, absolute)
+        relative = repo_relative(repo, ensure_inside(repo, absolute))
         normalized_affected.append(relative)
+        if global_path is not None:
+            selections[global_path.resolve().as_posix()]["affected_paths"].append(relative)
         for precedence, directory in enumerate(_scope_directories(repo, relative)):
             selected = _selected_instruction(directory, fallback)
             if selected is None:
                 continue
             key = selected.resolve().as_posix()
             if key not in selections:
-                data = selected.read_bytes()
-                try:
-                    text = data.decode("utf-8")
-                except UnicodeDecodeError as exc:
-                    raise PlanAnvilError(
-                        f"Instruction file is not UTF-8: {repo_relative(repo, selected)}",
-                        code="INSTRUCTION_NOT_UTF8",
-                    ) from exc
-                safety_rules = []
-                for number, line in enumerate(text.splitlines(), start=1):
-                    if SAFETY_TERMS.search(line):
-                        safety_rules.append(f"L{number} {sha256_bytes(line.encode('utf-8'))}")
-                selections[key] = {
-                    "path": repo_relative(repo, selected),
-                    "sha256": sha256_bytes(data),
-                    "bytes": len(data),
-                    "full_read": True,
-                    "scope": repo_relative(repo, directory),
-                    "precedence": precedence,
-                    "affected_paths": [],
-                    "truncation_risk": False,
-                    "safety_critical_rules": safety_rules,
-                }
+                selections[key] = _entry(
+                    selected,
+                    display_path=repo_relative(repo, selected),
+                    scope=repo_relative(repo, directory),
+                    precedence=precedence,
+                )
                 order.append(key)
             entry = selections[key]
             entry["precedence"] = max(entry["precedence"], precedence)
@@ -143,7 +170,7 @@ def map_instructions(
         entry = selections[key]
         cumulative += entry["bytes"]
         entry["truncation_risk"] = cumulative > byte_limit
-        entry["affected_paths"].sort()
+        entry["affected_paths"] = sorted(set(entry["affected_paths"]))
         files.append(entry)
 
     conflicts: list[dict[str, Any]] = []
@@ -167,7 +194,11 @@ def map_instructions(
                 or isinstance(resolution, str) and not resolution.strip()
             ):
                 raise PlanAnvilError("Invalid instruction conflict entry", code="INVALID_INSTRUCTION_CONFLICTS", details=item)
-            conflicts.append({"paths": sorted(set(paths)), "critical": critical, "resolution": resolution.strip() if isinstance(resolution, str) else None})
+            conflicts.append({
+                "paths": sorted(set(paths)),
+                "critical": critical,
+                "resolution": resolution.strip() if isinstance(resolution, str) else None,
+            })
 
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -179,8 +210,7 @@ def map_instructions(
         "conflicts": conflicts,
     }
 
-    output = output if output.is_absolute() else repo / output
-    output = ensure_inside(repo, output)
+    output = ensure_inside(repo, output if output.is_absolute() else repo / output)
     run_root = output.parent.parent if output.parent.name == "evidence" else None
     scaffolded = bool(run_root and (run_root / "state.json").is_file() and (run_root / "compliance.json").is_file())
     if scaffolded:
@@ -194,8 +224,6 @@ def map_instructions(
     schema = Path(__file__).resolve().parent.parent / "schemas/instruction-map.schema.json"
     assert_valid_file(output, schema)
 
-    # When the map belongs to a scaffolded run, advance canonical state and
-    # record the capability without relying on conversation state.
     if scaffolded:
         compliance_path = run_root / "compliance.json"
         compliance = load_json(compliance_path)
@@ -205,29 +233,17 @@ def map_instructions(
                 capability["evidence"] = [repo_relative(repo, output)]
         compliance["verified_at"] = utc_now()
         atomic_write_json(compliance_path, compliance)
-        state_path = run_root / "state.json"
-        unresolved_critical = [item for item in conflicts if item["critical"] and item["resolution"] is None]
-        if unresolved_critical:
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="BLOCKED",
-                phase="REPORT_AND_STOP",
-                next_action_type="NONE",
-                next_action_target=None,
-                blocker="BLOCKED_BY_INSTRUCTION_CONFLICT",
-                hash_paths=[output],
-            )
-        else:
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="INSTRUCTION_MAP_READY",
-                phase="ANALYZE_GOAL",
-                next_action_type="ANALYZE_GOAL",
-                next_action_target="evidence/analysis.json",
-                hash_paths=[output],
-            )
+        unresolved = [item for item in conflicts if item["critical"] and item["resolution"] is None]
+        transition_state(
+            run_root / "state.json",
+            expected_revision=state["revision"],
+            new_status="BLOCKED" if unresolved else "INSTRUCTION_MAP_READY",
+            phase="REPORT_AND_STOP" if unresolved else "ANALYZE_GOAL",
+            next_action_type="NONE" if unresolved else "ANALYZE_GOAL",
+            next_action_target=None if unresolved else "evidence/analysis.json",
+            blocker="BLOCKED_BY_INSTRUCTION_CONFLICT" if unresolved else None,
+            hash_paths=[output],
+        )
 
     blocked = any(item["critical"] and item["resolution"] is None for item in conflicts)
     return {
