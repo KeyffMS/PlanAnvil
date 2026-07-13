@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from common import (
-    GENERATOR_STATES,
     SCHEMA_VERSION,
     PlanAnvilError,
     atomic_write_json,
@@ -59,11 +58,26 @@ def _owner_alive(owner: dict[str, Any]) -> bool:
 
 
 @contextmanager
-def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iterator[Path]:
+def run_lock(
+    state_path: Path,
+    *,
+    command: str = "plan-anvil",
+    stale_after_seconds: int = 300,
+) -> Iterator[Path]:
+    """Lock a complete PlanAnvil run operation.
+
+    Callers that hold this lock must pass ``lock_held=True`` to
+    ``transition_state`` so the state update stays inside the same critical
+    section instead of attempting to acquire a nested lock.
+    """
     lock_path = state_path.parent / ".generation-lock"
+    lock_id = sha256_text(
+        f"{socket.gethostname()}:{os.getpid()}:{time.time_ns()}:{command}"
+    )
     payload = {
         "schema_version": SCHEMA_VERSION,
         "run_id": state_path.parent.name,
+        "lock_id": lock_id,
         "owner": {
             "hostname_hash": sha256_text(socket.gethostname()),
             "pid": os.getpid(),
@@ -71,7 +85,7 @@ def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iter
         },
         "created_at": utc_now(),
         "heartbeat_at": utc_now(),
-        "command": "transition-state",
+        "command": command,
     }
 
     while True:
@@ -115,8 +129,19 @@ def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iter
             current = json.loads(lock_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             current = None
-        if current == payload:
+        if isinstance(current, dict) and current.get("lock_id") == lock_id:
             lock_path.unlink(missing_ok=True)
+
+
+@contextmanager
+def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iterator[Path]:
+    """Backward-compatible state-transition lock wrapper."""
+    with run_lock(
+        state_path,
+        command="transition-state",
+        stale_after_seconds=stale_after_seconds,
+    ) as lock_path:
+        yield lock_path
 
 
 def _validated_replace(state_path: Path, replacement: dict[str, Any], schema_path: Path) -> None:
@@ -136,13 +161,66 @@ def _validated_replace(state_path: Path, replacement: dict[str, Any], schema_pat
         if state_path.read_text(encoding="utf-8") != canonical_json_text(replacement):
             raise PlanAnvilError("State reread differs from published replacement", code="STATE_REREAD_MISMATCH")
     except Exception as exc:
-        # Restore the last known-valid state so a failed postcondition does not
-        # leave corrupt canonical state behind.
         atomic_write_text(state_path, original_text)
         assert_valid_file(state_path, schema_path)
         if isinstance(exc, PlanAnvilError):
             raise
         raise PlanAnvilError("State publication failed and was rolled back", code="STATE_PUBLICATION_FAILED") from exc
+
+
+def _transition_state_unlocked(
+    state_path: Path,
+    *,
+    expected_revision: int,
+    new_status: str,
+    phase: str | None,
+    next_action_type: str,
+    next_action_target: str | None,
+    blocker: str | None = None,
+    hash_paths: list[Path] | None = None,
+) -> dict[str, Any]:
+    schema = Path(__file__).resolve().parent.parent / "schemas/state.schema.json"
+    assert_valid_file(state_path, schema)
+    state = load_json(state_path)
+    if state.get("revision") != expected_revision:
+        raise PlanAnvilError(
+            f"Stale state revision: expected {expected_revision}, found {state.get('revision')}",
+            code="STALE_STATE_REVISION",
+        )
+    current = state.get("status")
+    allowed = ALLOWED.get(current, set())
+    if new_status not in allowed and new_status not in {"BLOCKED", "FAILED"}:
+        raise PlanAnvilError(f"Invalid transition {current} → {new_status}", code="INVALID_STATE_TRANSITION")
+    if current in {"STOPPED", "BLOCKED", "FAILED"}:
+        raise PlanAnvilError(f"Terminal state cannot transition: {current}", code="TERMINAL_STATE")
+
+    blockers = list(state.get("open_blockers", []))
+    if blocker and blocker not in blockers:
+        blockers.append(blocker)
+    artifact_hashes = dict(state.get("artifact_hashes", {}))
+    for path in hash_paths or []:
+        if not path.is_file():
+            raise PlanAnvilError(f"Cannot hash missing artifact: {path}", code="MISSING_ARTIFACT")
+        try:
+            key = path.resolve().relative_to(state_path.parent.resolve()).as_posix()
+        except ValueError:
+            key = path.name
+        artifact_hashes[key] = sha256_file(path)
+
+    replacement = {
+        **state,
+        "revision": expected_revision + 1,
+        "updated_at": utc_now(),
+        "status": new_status,
+        "current_phase": phase,
+        "next_action": {"type": next_action_type, "target": next_action_target},
+        "open_blockers": blockers,
+        "artifact_hashes": artifact_hashes,
+    }
+    if new_status in {"STOPPED", "BLOCKED", "FAILED"} and next_action_type != "NONE":
+        raise PlanAnvilError("Terminal state must use next_action.type = NONE", code="INVALID_TERMINAL_ACTION")
+    _validated_replace(state_path, replacement, schema)
+    return replacement
 
 
 def transition_state(
@@ -155,50 +233,30 @@ def transition_state(
     next_action_target: str | None,
     blocker: str | None = None,
     hash_paths: list[Path] | None = None,
+    lock_held: bool = False,
 ) -> dict[str, Any]:
-    with generation_lock(state_path):
-        schema = Path(__file__).resolve().parent.parent / "schemas/state.schema.json"
-        assert_valid_file(state_path, schema)
-        state = load_json(state_path)
-        if state.get("revision") != expected_revision:
-            raise PlanAnvilError(
-                f"Stale state revision: expected {expected_revision}, found {state.get('revision')}",
-                code="STALE_STATE_REVISION",
-            )
-        current = state.get("status")
-        allowed = ALLOWED.get(current, set())
-        if new_status not in allowed and new_status not in {"BLOCKED", "FAILED"}:
-            raise PlanAnvilError(f"Invalid transition {current} → {new_status}", code="INVALID_STATE_TRANSITION")
-        if current in {"STOPPED", "BLOCKED", "FAILED"}:
-            raise PlanAnvilError(f"Terminal state cannot transition: {current}", code="TERMINAL_STATE")
-
-        blockers = list(state.get("open_blockers", []))
-        if blocker and blocker not in blockers:
-            blockers.append(blocker)
-        artifact_hashes = dict(state.get("artifact_hashes", {}))
-        for path in hash_paths or []:
-            if not path.is_file():
-                raise PlanAnvilError(f"Cannot hash missing artifact: {path}", code="MISSING_ARTIFACT")
-            try:
-                key = path.resolve().relative_to(state_path.parent.resolve()).as_posix()
-            except ValueError:
-                key = path.name
-            artifact_hashes[key] = sha256_file(path)
-
-        replacement = {
-            **state,
-            "revision": expected_revision + 1,
-            "updated_at": utc_now(),
-            "status": new_status,
-            "current_phase": phase,
-            "next_action": {"type": next_action_type, "target": next_action_target},
-            "open_blockers": blockers,
-            "artifact_hashes": artifact_hashes,
-        }
-        if new_status in {"STOPPED", "BLOCKED", "FAILED"} and next_action_type != "NONE":
-            raise PlanAnvilError("Terminal state must use next_action.type = NONE", code="INVALID_TERMINAL_ACTION")
-        _validated_replace(state_path, replacement, schema)
-        return replacement
+    if lock_held:
+        return _transition_state_unlocked(
+            state_path,
+            expected_revision=expected_revision,
+            new_status=new_status,
+            phase=phase,
+            next_action_type=next_action_type,
+            next_action_target=next_action_target,
+            blocker=blocker,
+            hash_paths=hash_paths,
+        )
+    with run_lock(state_path, command="transition-state"):
+        return _transition_state_unlocked(
+            state_path,
+            expected_revision=expected_revision,
+            new_status=new_status,
+            phase=phase,
+            next_action_type=next_action_type,
+            next_action_target=next_action_target,
+            blocker=blocker,
+            hash_paths=hash_paths,
+        )
 
 
 def main() -> int:
