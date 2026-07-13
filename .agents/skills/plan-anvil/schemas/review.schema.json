@@ -56,6 +56,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "author_role": {
+      "const": "plan-anvil-reviewer"
+    },
     "created_at": {
       "$ref": "#/$defs/timestamp"
     },
@@ -116,6 +119,7 @@
   "required": [
     "schema_version",
     "report_type",
+    "author_role",
     "created_at",
     "inputs",
     "result",
