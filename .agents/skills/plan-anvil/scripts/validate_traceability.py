@@ -4,12 +4,13 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from common import atomic_write_json, cli_main, discover_repo, emit, ensure_inside, load_json, utc_now
+from common import atomic_write_json, cli_main, discover_repo, emit, load_json, utc_now
+from path_safety import assert_safe_run_root
 
 
 def validate_traceability(planning: Path, run_root: Path, *, write_report: bool = True) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     trace = load_json(run / "traceability.json")
     findings: list[dict[str, Any]] = []
 
