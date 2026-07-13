@@ -6,7 +6,7 @@ from typing import Any
 
 from common import atomic_write_json, canonical_file_is_valid, cli_main, discover_repo, emit, utc_now
 from path_safety import assert_safe_run_root
-from schema_validator import validate_file
+from schema_validator import assert_valid_file, validate_file
 
 _EXACT_SCHEMAS = {
     "manifest.json": "manifest.schema.json",
@@ -78,7 +78,9 @@ def validate_schema_coverage(planning: Path, run_root: Path, *, write_report: bo
         "validated": validated,
     }
     if write_report:
-        atomic_write_json(run / "reports/validation/schema-coverage.json", payload)
+        target = run / "reports/validation/schema-coverage.json"
+        atomic_write_json(target, payload)
+        assert_valid_file(target, schemas / "validation-report.schema.json")
     return {"ok": not findings, **payload}
 
 
