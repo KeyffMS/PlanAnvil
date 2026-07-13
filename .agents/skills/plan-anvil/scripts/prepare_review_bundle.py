@@ -16,6 +16,8 @@ from common import (
     sha256_file,
     utc_now,
 )
+from path_safety import assert_safe_run_root
+from schema_validator import assert_valid_file
 from transition_state import run_lock
 
 
@@ -65,7 +67,7 @@ def review_file_entries(repo: Path, run: Path) -> list[dict[str, str]]:
 
 def prepare_review_bundle(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
     bundle_path = run / "reports/plan-review/review-bundle.json"
     prompt_path = run / "reports/plan-review/review-prompt.md"
@@ -110,13 +112,13 @@ Assess:
 Return a Markdown report using the blind-review template and a structured findings JSON array. Use `PASS` only when no high or critical defect blocks readiness. Do not modify any plan artifact.
 """
 
-        created_bundle = False
-        created_prompt = False
+        created_bundle = not bundle_path.exists()
+        created_prompt = not prompt_path.exists()
         try:
             atomic_write_json(bundle_path, bundle, exclusive=True)
-            created_bundle = True
+            schema = Path(__file__).resolve().parent.parent / "schemas/review-bundle.schema.json"
+            assert_valid_file(bundle_path, schema)
             atomic_write_text(prompt_path, prompt, exclusive=True)
-            created_prompt = True
         except Exception:
             if created_prompt:
                 prompt_path.unlink(missing_ok=True)
