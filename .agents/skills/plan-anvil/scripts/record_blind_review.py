@@ -20,6 +20,7 @@ from common import (
     sha256_text,
     utc_now,
 )
+from path_safety import assert_safe_run_root
 from prepare_review_bundle import review_file_entries
 from schema_validator import assert_valid_file, validate
 from transition_state import run_lock, transition_state
@@ -65,7 +66,7 @@ def record_blind_review(
         raise PlanAnvilError(f"Invalid review result: {result}", code="INVALID_REVIEW_RESULT")
 
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
     target_md = run / "reports/plan-review/blind-review.md"
     target_json = run / "reports/plan-review/blind-review.json"
@@ -90,9 +91,9 @@ def record_blind_review(
 
     with run_lock(state_path, command="record-blind-review"):
         state = load_json(state_path)
-        if state.get("status") != "DETERMINISTICALLY_VALID":
+        if state.get("status") not in {"DETERMINISTICALLY_VALID", "BLIND_REVIEW_WRITTEN"}:
             raise PlanAnvilError(
-                f"Blind review recording requires DETERMINISTICALLY_VALID, found {state.get('status')}",
+                f"Blind review recording requires DETERMINISTICALLY_VALID or BLIND_REVIEW_WRITTEN, found {state.get('status')}",
                 code="INVALID_STATE_FOR_REVIEW",
             )
 
@@ -130,41 +131,46 @@ def record_blind_review(
         if sidecar_privacy:
             raise PlanAnvilError("Blind review sidecar contains private or secret data", code="REVIEW_PRIVACY", details=sidecar_privacy)
 
-        original_compliance = compliance_path.read_text(encoding="utf-8")
         created_md = not target_md.exists()
         created_json = not target_json.exists()
-        try:
+        if state.get("status") == "BLIND_REVIEW_WRITTEN":
             atomic_write_text(target_md, markdown, exclusive=True)
             atomic_write_json(target_json, sidecar, exclusive=True)
             assert_valid_file(target_json, review_schema)
+        else:
+            original_compliance = compliance_path.read_text(encoding="utf-8")
+            try:
+                atomic_write_text(target_md, markdown, exclusive=True)
+                atomic_write_json(target_json, sidecar, exclusive=True)
+                assert_valid_file(target_json, review_schema)
 
-            compliance = load_json(compliance_path)
-            for capability in compliance.get("capabilities", []):
-                if capability.get("id") == "CAP-BLIND-REVIEW":
-                    capability["status"] = "VERIFIED" if result == "PASS" else "FAILED"
-                    capability["evidence"] = [repo_relative(repo, target_md), repo_relative(repo, target_json)]
-            compliance["verified_at"] = utc_now()
-            atomic_write_json(compliance_path, compliance)
-            compliance_schema = Path(__file__).resolve().parent.parent / "schemas/compliance.schema.json"
-            assert_valid_file(compliance_path, compliance_schema)
+                compliance = load_json(compliance_path)
+                for capability in compliance.get("capabilities", []):
+                    if capability.get("id") == "CAP-BLIND-REVIEW":
+                        capability["status"] = "VERIFIED" if result == "PASS" else "FAILED"
+                        capability["evidence"] = [repo_relative(repo, target_md), repo_relative(repo, target_json)]
+                compliance["verified_at"] = utc_now()
+                atomic_write_json(compliance_path, compliance)
+                compliance_schema = Path(__file__).resolve().parent.parent / "schemas/compliance.schema.json"
+                assert_valid_file(compliance_path, compliance_schema)
 
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="BLIND_REVIEW_WRITTEN",
-                phase="COMPARISON_AND_FINAL_VALIDATION",
-                next_action_type="COMPARE_REVIEW",
-                next_action_target="reports/plan-review/comparison.json",
-                hash_paths=[target_md, target_json],
-                lock_held=True,
-            )
-        except Exception:
-            atomic_write_text(compliance_path, original_compliance)
-            if created_json:
-                target_json.unlink(missing_ok=True)
-            if created_md:
-                target_md.unlink(missing_ok=True)
-            raise
+                transition_state(
+                    state_path,
+                    expected_revision=state["revision"],
+                    new_status="BLIND_REVIEW_WRITTEN",
+                    phase="COMPARISON_AND_FINAL_VALIDATION",
+                    next_action_type="COMPARE_REVIEW",
+                    next_action_target="reports/plan-review/comparison.json",
+                    hash_paths=[target_md, target_json],
+                    lock_held=True,
+                )
+            except Exception:
+                atomic_write_text(compliance_path, original_compliance)
+                if created_json:
+                    target_json.unlink(missing_ok=True)
+                if created_md:
+                    target_md.unlink(missing_ok=True)
+                raise
 
     return {
         "ok": True,
