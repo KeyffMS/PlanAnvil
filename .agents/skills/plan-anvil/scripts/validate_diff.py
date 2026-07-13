@@ -6,13 +6,11 @@ from typing import Any
 
 from artifact_policy import allowed_planning_path, allowed_run_artifacts
 from common import (
-    PlanAnvilError,
     atomic_write_json,
     cli_main,
     compare_snapshot,
     discover_repo,
     emit,
-    ensure_inside,
     git,
     git_worktree_paths,
     list_untracked,
@@ -22,6 +20,8 @@ from common import (
     scan_privacy,
     utc_now,
 )
+from path_safety import assert_safe_repo_path, assert_safe_run_root
+from schema_validator import assert_valid_file
 
 
 def _changed_paths(repo: Path, base_sha: str) -> list[str]:
@@ -74,7 +74,7 @@ def validate_diff(
     write_report: bool = True,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     manifest = load_json(run / "manifest.json")
     local_state = load_json(run / "local-state.json")
     base_sha = manifest["repository"]["base_sha"]
@@ -87,13 +87,14 @@ def validate_diff(
 
     for rel in changed:
         if rel not in extra and not allowed_planning_path(rel, run_rel):
-            findings.append(
-                {"kind": "path-outside-planning-artifact-policy", "path": rel}
-            )
+            findings.append({"kind": "path-outside-planning-artifact-policy", "path": rel})
             continue
 
-        path = repo / rel
-        ensure_inside(repo, path)
+        try:
+            path = assert_safe_repo_path(repo, Path(rel))
+        except Exception as exc:
+            findings.append({"kind": getattr(exc, "code", "unsafe-path"), "path": rel})
+            continue
         if path.is_symlink():
             try:
                 path.resolve().relative_to(repo)
@@ -108,14 +109,10 @@ def validate_diff(
         if source
         else discover_repo(Path(local_state["paths"]["source_worktree"]))
     )
-    findings.extend(
-        _source_identity_findings(repo, source_repo, manifest, local_state)
-    )
+    findings.extend(_source_identity_findings(repo, source_repo, manifest, local_state))
     changed_snapshot = compare_snapshot(source_repo, local_state["source_snapshot"])
     if changed_snapshot:
-        findings.append(
-            {"kind": "source-worktree-changed", "fields": changed_snapshot}
-        )
+        findings.append({"kind": "source-worktree-changed", "fields": changed_snapshot})
 
     findings.extend(scan_privacy(repo, committed_candidates))
 
@@ -130,7 +127,10 @@ def validate_diff(
         "findings": findings,
     }
     if write_report:
-        atomic_write_json(run / "reports/validation/diff.json", payload)
+        target = run / "reports/validation/diff.json"
+        atomic_write_json(target, payload)
+        schema = Path(__file__).resolve().parent.parent / "schemas/validation-report.schema.json"
+        assert_valid_file(target, schema)
     return {"ok": not findings, **payload}
 
 
