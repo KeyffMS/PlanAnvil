@@ -116,6 +116,14 @@
             "minItems": 1,
             "type": "array"
           },
+          "affected_stages": {
+            "items": {
+              "$ref": "#/$defs/stage_id"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
           "bytes": {
             "minimum": 1,
             "type": "integer"
