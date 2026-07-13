@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from common import PlanAnvilError, atomic_write_json, cli_main, discover_repo, emit, load_json, repo_relative, utc_now
-from path_safety import assert_safe_relative_glob, assert_safe_repo_path
+from path_safety import assert_safe_relative_glob, assert_safe_repo_path, assert_safe_run_root
+from schema_validator import assert_valid_file
 from validate_plan import _frontmatter
 
 
@@ -16,7 +17,7 @@ def validate_path_safety(
     write_report: bool = True,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = assert_safe_repo_path(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     findings: list[dict[str, Any]] = []
 
     instruction_map_path = run / "evidence/instruction-map.json"
@@ -72,7 +73,10 @@ def validate_path_safety(
         "findings": findings,
     }
     if write_report:
-        atomic_write_json(run / "reports/validation/path-safety.json", payload)
+        target = run / "reports/validation/path-safety.json"
+        atomic_write_json(target, payload)
+        schema = Path(__file__).resolve().parent.parent / "schemas/validation-report.schema.json"
+        assert_valid_file(target, schema)
     return {"ok": not findings, **payload}
 
 
