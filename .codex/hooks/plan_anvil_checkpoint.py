@@ -43,6 +43,10 @@ def _safe_relative(value: str) -> bool:
     return ".." not in parts and not any(part.casefold() == ".git" for part in parts)
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def _resolve_checkpoint(active: ActiveRun) -> tuple[Path | None, str | None, str | None]:
     raw = active.state.get("last_checkpoint")
     if not isinstance(raw, str) or not raw.strip():
@@ -109,7 +113,7 @@ def _git_status(path: Path) -> str | None:
 def _find_worktree(active: ActiveRun, branch: str) -> tuple[Path | None, str | None]:
     for record in _worktree_records(active.worktree):
         recorded_branch = record.get("branch", "").removeprefix("refs/heads/")
-        if recorded_branch == branch:
+        if recorded_branch == branch and record.get("worktree"):
             path = Path(record["worktree"]).resolve()
             return path, record.get("HEAD")
     return None, None
@@ -137,11 +141,18 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
         reasons.append("checkpoint schema validation failed")
 
     try:
-        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        checkpoint_value = json.loads(checkpoint_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return CheckpointValidation(False, checkpoint_path, tuple([*reasons, "checkpoint JSON is unreadable"]))
+    if not isinstance(checkpoint_value, dict):
+        return CheckpointValidation(False, checkpoint_path, tuple([*reasons, "checkpoint JSON root is not an object"]))
+    checkpoint: dict[str, Any] = checkpoint_value
 
-    expected_checkpoint_hash = active.state.get("artifact_hashes", {}).get(checkpoint_relative)
+    state_hashes = active.state.get("artifact_hashes")
+    if not isinstance(state_hashes, dict):
+        reasons.append("canonical state artifact_hashes is invalid")
+        state_hashes = {}
+    expected_checkpoint_hash = state_hashes.get(checkpoint_relative)
     actual_checkpoint_hash = _sha256_file(checkpoint_path)
     if expected_checkpoint_hash != actual_checkpoint_hash:
         reasons.append("state does not contain the current checkpoint hash")
@@ -152,7 +163,7 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
     if checkpoint.get("next_action") != active.state.get("next_action"):
         reasons.append("checkpoint next action differs from canonical state")
 
-    git_data = checkpoint.get("git") if isinstance(checkpoint.get("git"), dict) else {}
+    git_data = _as_dict(checkpoint.get("git"))
     branch = git_data.get("branch")
     if not isinstance(branch, str) or not branch:
         reasons.append("checkpoint Git branch is missing")
@@ -167,7 +178,14 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
             if current_status is None or current_status != git_data.get("status"):
                 reasons.append("checkpoint Git status differs from the linked worktree")
 
-    for relative, expected_hash in (checkpoint.get("artifact_hashes") or {}).items():
+    checkpoint_hashes = checkpoint.get("artifact_hashes")
+    if not isinstance(checkpoint_hashes, dict):
+        reasons.append("checkpoint artifact_hashes is invalid")
+        checkpoint_hashes = {}
+    for relative, expected_hash in checkpoint_hashes.items():
+        if not isinstance(relative, str) or not isinstance(expected_hash, str):
+            reasons.append("checkpoint artifact hash entry is invalid")
+            continue
         evidence_path = _resolve_evidence(active, relative)
         if evidence_path is None:
             reasons.append(f"checkpoint artifact is missing: {relative}")
@@ -175,9 +193,9 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
             reasons.append(f"checkpoint artifact hash is stale: {relative}")
 
     evidence_groups: list[Any] = [
-        (checkpoint.get("tests") or {}).get("evidence", []),
-        (checkpoint.get("agent_tree") or {}).get("evidence", []),
-        (checkpoint.get("write_scope") or {}).get("evidence", []),
+        _as_dict(checkpoint.get("tests")).get("evidence", []),
+        _as_dict(checkpoint.get("agent_tree")).get("evidence", []),
+        _as_dict(checkpoint.get("write_scope")).get("evidence", []),
     ]
     for group in evidence_groups:
         for relative in group if isinstance(group, list) else []:
