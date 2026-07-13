@@ -1,15 +1,31 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
+import socket
 from pathlib import Path
 from typing import Any
 
-from common import PlanAnvilError, atomic_write_json, cli_main, discover_repo, emit, load_json, utc_now
+from common import PlanAnvilError, atomic_write_json, cli_main, discover_repo, emit, load_json, sha256_text, utc_now
 from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_diff import validate_diff
 from validate_plan import validate_plan
 from validate_profile import validate_profile
+
+
+def _current_process_holds_lock(state_path: Path) -> bool:
+    lock_path = state_path.parent / ".generation-lock"
+    try:
+        payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    owner = payload.get("owner", {})
+    return (
+        owner.get("pid") == os.getpid()
+        and owner.get("hostname_hash") == sha256_text(socket.gethostname())
+    )
 
 
 def _validate_all_locked(
@@ -76,7 +92,8 @@ def validate_all(
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
     run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-    if lock_held:
+    state_path = run / "state.json"
+    if lock_held or _current_process_holds_lock(state_path):
         return _validate_all_locked(
             repo,
             run,
@@ -84,7 +101,7 @@ def validate_all(
             phase=phase,
             advance_state=advance_state,
         )
-    with run_lock(run / "state.json", command=f"validate-all:{phase}"):
+    with run_lock(state_path, command=f"validate-all:{phase}"):
         return _validate_all_locked(
             repo,
             run,
