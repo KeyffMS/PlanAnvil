@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import os
 import re
-import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -16,7 +14,21 @@ class _ProbeAbort(Exception):
     pass
 
 
+_HOOK_FAILURE_MARKERS = [
+    "hook declined",
+    "hook failed",
+    "pre-commit hook",
+    "prepare-commit-msg hook",
+    "commit-msg hook",
+    "post-commit hook",
+    "husky",
+    "lint-staged",
+    "pre-commit run",
+]
+
+
 def _classify_failure(stderr: str, *, operation: str, repo: Path) -> str:
+    del repo
     text = stderr.lower()
     if any(token in text for token in ["author identity unknown", "unable to auto-detect email", "please tell me who you are"]):
         return "GIT_IDENTITY_MISSING"
@@ -26,14 +38,8 @@ def _classify_failure(stderr: str, *, operation: str, repo: Path) -> str:
         return "GIT_WRITE_RESTRICTED"
     if operation == "worktree":
         return "GIT_WORKTREE_UNSUPPORTED"
-    if operation == "commit":
-        hooks_dir = Path(git(repo, "rev-parse", "--git-path", "hooks").stdout.strip())
-        if not hooks_dir.is_absolute():
-            hooks_dir = repo / hooks_dir
-        relevant = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit"]
-        if any((hooks_dir / name).exists() for name in relevant):
-            return "GIT_HOOK_BLOCKED"
-        return "GIT_WRITE_RESTRICTED"
+    if operation == "commit" and any(marker in text for marker in _HOOK_FAILURE_MARKERS):
+        return "GIT_HOOK_BLOCKED"
     return "GIT_WRITE_RESTRICTED"
 
 
@@ -42,7 +48,8 @@ def _run(repo: Path, operation: str, *args: str, cwd: Path | None = None) -> tup
     result = git(target, *args, check=False)
     if result.returncode == 0:
         return True, result.stdout, None
-    return False, result.stderr or result.stdout, _classify_failure(result.stderr + result.stdout, operation=operation, repo=repo)
+    diagnostics = result.stderr + result.stdout
+    return False, result.stderr or result.stdout, _classify_failure(diagnostics, operation=operation, repo=repo)
 
 
 def probe_git_capabilities(source: Path, run_id: str, temp_parent: Path | None = None) -> dict[str, Any]:
