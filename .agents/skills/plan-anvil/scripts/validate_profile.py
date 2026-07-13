@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from common import cli_main, discover_repo, emit, is_ignored, is_tracked, privacy_findings, sha256_file
+from common import cli_main, discover_repo, emit, is_ignored, is_tracked, load_json, privacy_findings, sha256_file
 
 
 REQUIRED_REPOSITORY_HEADINGS = [
@@ -26,6 +26,36 @@ REQUIRED_LOCAL_HEADINGS = [
     "## Health checks, switching, and rollback",
     "## Permission and push-trigger implications",
 ]
+
+_RESOLVED_INSTRUCTION_STATUSES = {
+    "ARTIFACTS_GENERATED",
+    "DETERMINISTICALLY_VALID",
+    "BLIND_REVIEW_WRITTEN",
+    "COMPARISON_VALID",
+    "PLAN_COMMITTED",
+    "STOPPED",
+    "EXECUTION_READY",
+    "EXECUTION_IN_PROGRESS",
+    "READY_FOR_LOCAL_INTEGRATION_TEST",
+    "AWAITING_USER_VALIDATION",
+    "USER_ACCEPTED",
+    "USER_REJECTED",
+    "BLOCKED_BY_UNRESOLVED_FAILURE",
+}
+
+
+def _resolved_instruction_map_required(repo: Path) -> bool:
+    runs = repo / ".pursue/runs"
+    if not runs.is_dir():
+        return False
+    for state_path in runs.glob("*/state.json"):
+        try:
+            state = load_json(state_path)
+        except Exception:
+            continue
+        if isinstance(state, dict) and state.get("status") in _RESOLVED_INSTRUCTION_STATUSES:
+            return True
+    return False
 
 
 def validate_profile(planning: Path) -> dict[str, Any]:
@@ -52,7 +82,7 @@ def validate_profile(planning: Path) -> dict[str, Any]:
         instruction_section = re.search(r"(?ms)^## Project instruction map\n(.*?)(?=^## |\Z)", text)
         if instruction_section is None:
             findings.append({"kind": "missing-instruction-map-section", "path": ".pursue/SYSTEM_PROFILE.md"})
-        else:
+        elif _resolved_instruction_map_required(repo):
             body = instruction_section.group(1)
             if "Pending explicit instruction mapping" in body or not re.search(r"(?m)^- `[^`]+` \(`sha256:[0-9a-f]{64}`\)", body):
                 findings.append({"kind": "unresolved-instruction-map", "path": ".pursue/SYSTEM_PROFILE.md"})
@@ -68,8 +98,7 @@ def validate_profile(planning: Path) -> dict[str, Any]:
                 findings.append({"kind": "profile-evidence-missing", "path": relative})
             elif sha256_file(candidate) != expected:
                 findings.append({"kind": "profile-evidence-stale", "path": relative})
-        for item in privacy_findings(Path(".pursue/SYSTEM_PROFILE.md"), text):
-            findings.append(item)
+        findings.extend(privacy_findings(Path(".pursue/SYSTEM_PROFILE.md"), text))
 
     if local.is_file():
         text = local.read_text(encoding="utf-8")
