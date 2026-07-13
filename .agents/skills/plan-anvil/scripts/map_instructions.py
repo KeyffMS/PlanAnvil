@@ -11,6 +11,7 @@ from common import (
     PlanAnvilError,
     SCHEMA_VERSION,
     atomic_write_json,
+    atomic_write_text,
     cli_main,
     discover_repo,
     emit,
@@ -213,10 +214,11 @@ def map_instructions(
     output = ensure_inside(repo, output if output.is_absolute() else repo / output)
     run_root = output.parent.parent if output.parent.name == "evidence" else None
     scaffolded = bool(run_root and (run_root / "state.json").is_file() and (run_root / "compliance.json").is_file())
-    schema = Path(__file__).resolve().parent.parent / "schemas/instruction-map.schema.json"
+    instruction_schema = Path(__file__).resolve().parent.parent / "schemas/instruction-map.schema.json"
 
     if scaffolded:
         state_path = run_root / "state.json"
+        compliance_path = run_root / "compliance.json"
         with run_lock(state_path, command="map-instructions"):
             state = load_json(state_path)
             if state.get("status") != "PROFILE_READY":
@@ -224,33 +226,43 @@ def map_instructions(
                     f"Instruction mapping requires PROFILE_READY, found {state.get('status')}",
                     code="INVALID_STATE_FOR_INSTRUCTION_MAP",
                 )
-            atomic_write_json(output, payload, exclusive=True)
-            assert_valid_file(output, schema)
+            original_compliance = compliance_path.read_text(encoding="utf-8")
+            created_output = False
+            try:
+                atomic_write_json(output, payload, exclusive=True)
+                created_output = True
+                assert_valid_file(output, instruction_schema)
 
-            compliance_path = run_root / "compliance.json"
-            compliance = load_json(compliance_path)
-            for capability in compliance.get("capabilities", []):
-                if capability.get("id") == "CAP-INSTRUCTION-MAP":
-                    capability["status"] = "VERIFIED"
-                    capability["evidence"] = [repo_relative(repo, output)]
-            compliance["verified_at"] = utc_now()
-            atomic_write_json(compliance_path, compliance)
+                compliance = load_json(compliance_path)
+                for capability in compliance.get("capabilities", []):
+                    if capability.get("id") == "CAP-INSTRUCTION-MAP":
+                        capability["status"] = "VERIFIED"
+                        capability["evidence"] = [repo_relative(repo, output)]
+                compliance["verified_at"] = utc_now()
+                atomic_write_json(compliance_path, compliance)
+                compliance_schema = Path(__file__).resolve().parent.parent / "schemas/compliance.schema.json"
+                assert_valid_file(compliance_path, compliance_schema)
 
-            unresolved = [item for item in conflicts if item["critical"] and item["resolution"] is None]
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="BLOCKED" if unresolved else "INSTRUCTION_MAP_READY",
-                phase="REPORT_AND_STOP" if unresolved else "ANALYZE_GOAL",
-                next_action_type="NONE" if unresolved else "ANALYZE_GOAL",
-                next_action_target=None if unresolved else "evidence/analysis.json",
-                blocker="BLOCKED_BY_INSTRUCTION_CONFLICT" if unresolved else None,
-                hash_paths=[output],
-                lock_held=True,
-            )
+                unresolved = [item for item in conflicts if item["critical"] and item["resolution"] is None]
+                transition_state(
+                    state_path,
+                    expected_revision=state["revision"],
+                    new_status="BLOCKED" if unresolved else "INSTRUCTION_MAP_READY",
+                    phase="REPORT_AND_STOP" if unresolved else "ANALYZE_GOAL",
+                    next_action_type="NONE" if unresolved else "ANALYZE_GOAL",
+                    next_action_target=None if unresolved else "evidence/analysis.json",
+                    blocker="BLOCKED_BY_INSTRUCTION_CONFLICT" if unresolved else None,
+                    hash_paths=[output],
+                    lock_held=True,
+                )
+            except Exception:
+                atomic_write_text(compliance_path, original_compliance)
+                if created_output:
+                    output.unlink(missing_ok=True)
+                raise
     else:
         atomic_write_json(output, payload)
-        assert_valid_file(output, schema)
+        assert_valid_file(output, instruction_schema)
 
     blocked = any(item["critical"] and item["resolution"] is None for item in conflicts)
     return {
