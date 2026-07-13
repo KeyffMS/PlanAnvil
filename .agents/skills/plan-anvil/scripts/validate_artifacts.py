@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import re
 from pathlib import Path
 from typing import Any
@@ -34,12 +35,17 @@ SCHEMA_FILES = {
     "evidence/lifecycle.json": "lifecycle.schema.json",
 }
 
-POSIX_ABSOLUTE = re.compile(r"(?<![A-Za-z0-9_.-])/(?!/)(?:[^\s`\"'<>/]+/)+[^\s`\"'<>/]+")
+POSIX_ABSOLUTE = re.compile(
+    r"(?<![:/A-Za-z0-9_.-])/(?:home|Users|private|var|tmp|opt|srv|mnt|Volumes|root|workspace|data|etc|usr)/[^\s`\"'<>]+"
+)
 WINDOWS_ABSOLUTE = re.compile(r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/])[^\s`\"'<>]+")
 UNC_PATH = re.compile(r"\\\\[^\\\s]+\\[^\s`\"'<>]+")
 FILE_URL = re.compile(r"(?i)\bfile://[^\s`\"'<>]+")
-REMOTE_URL = re.compile(r"(?i)\b(?:https?|ssh|git)://[^\s`\"'<>]+|\b[^\s@]+@[^\s:]+:[^\s`\"'<>]+")
+REMOTE_URL = re.compile(
+    r"(?i)\b(?:https?|ssh|git)://[^\s`\"'<>]+|\b(?P<user>[^\s@/:]+)@(?P<host>[^\s:]+):(?P<path>[^\s`\"'<>]+)"
+)
 PRIVATE_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+_STANDARD_VCS_USERS = {"git", "hg", "svn"}
 
 
 def _resolve_run_root(repo: Path, run_root: Path) -> Path:
@@ -52,6 +58,28 @@ def _resolve_run_root(repo: Path, run_root: Path) -> Path:
     return candidate
 
 
+def _host_is_private(host: str) -> bool:
+    normalized = host.strip("[]").lower()
+    if normalized in PRIVATE_HOSTS or normalized.endswith(".local") or normalized.endswith(".internal"):
+        return True
+    try:
+        address = ipaddress.ip_address(normalized)
+    except ValueError:
+        return False
+    return address.is_private or address.is_loopback or address.is_link_local
+
+
+def _masked_urls(text: str) -> str:
+    characters = list(text)
+    for match in REMOTE_URL.finditer(text):
+        for index in range(match.start(), match.end()):
+            characters[index] = " "
+    for match in FILE_URL.finditer(text):
+        for index in range(match.start(), match.end()):
+            characters[index] = " "
+    return "".join(characters)
+
+
 def _extended_privacy_findings(repo: Path, paths: list[Path]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     for path in paths:
@@ -62,13 +90,14 @@ def _extended_privacy_findings(repo: Path, paths: list[Path]) -> list[dict[str, 
         except UnicodeDecodeError:
             continue
         rel = repo_relative(repo, path)
-        for kind, pattern in [
-            ("absolute-posix-path", POSIX_ABSOLUTE),
-            ("absolute-windows-path", WINDOWS_ABSOLUTE),
-            ("unc-path", UNC_PATH),
-            ("file-url", FILE_URL),
+        path_text = _masked_urls(text)
+        for kind, pattern, source in [
+            ("absolute-posix-path", POSIX_ABSOLUTE, path_text),
+            ("absolute-windows-path", WINDOWS_ABSOLUTE, path_text),
+            ("unc-path", UNC_PATH, path_text),
+            ("file-url", FILE_URL, text),
         ]:
-            match = pattern.search(text)
+            match = pattern.search(source)
             if match:
                 findings.append({"kind": kind, "path": rel, "sample": match.group(0)[:120]})
 
@@ -76,13 +105,16 @@ def _extended_privacy_findings(repo: Path, paths: list[Path]) -> list[dict[str, 
             raw = match.group(0)
             if "://" in raw:
                 parsed = urlsplit(raw)
-                host = (parsed.hostname or "").lower()
-                has_userinfo = parsed.username is not None or parsed.password is not None
-                private_host = host in PRIVATE_HOSTS or host.endswith(".local") or host.endswith(".internal")
-                if has_userinfo or private_host:
+                host = parsed.hostname or ""
+                password = parsed.password is not None
+                nonstandard_user = parsed.username is not None and parsed.username.lower() not in _STANDARD_VCS_USERS
+                if password or nonstandard_user or _host_is_private(host):
                     findings.append({"kind": "private-repository-url", "path": rel, "sample": raw[:120]})
-            elif "@" in raw and ":" in raw:
-                findings.append({"kind": "private-repository-url", "path": rel, "sample": raw[:120]})
+            else:
+                user = (match.group("user") or "").lower()
+                host = match.group("host") or ""
+                if user not in _STANDARD_VCS_USERS or _host_is_private(host):
+                    findings.append({"kind": "private-repository-url", "path": rel, "sample": raw[:120]})
     return findings
 
 
@@ -142,13 +174,13 @@ def validate_artifacts(planning: Path, run_root: Path, *, phase: str = "pre-revi
             findings.append({"kind": "bootstrap-lifecycle-order", "states": states, "sequences": sequences})
         for event in lifecycle.get("events", []):
             for relative in event.get("evidence", []):
-                path = repo / relative
+                evidence_path = repo / relative
                 try:
-                    path.resolve().relative_to(repo.resolve())
+                    evidence_path.resolve().relative_to(repo.resolve())
                 except ValueError:
                     findings.append({"kind": "lifecycle-evidence-path-escape", "path": relative})
                     continue
-                if not path.is_file():
+                if not evidence_path.is_file():
                     findings.append({"kind": "lifecycle-evidence-missing", "path": relative})
 
     local_state = run / "local-state.json"
