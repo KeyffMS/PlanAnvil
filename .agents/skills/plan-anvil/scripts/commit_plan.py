@@ -190,6 +190,7 @@ def _commit_plan_locked(
 ) -> dict[str, Any]:
     state_path = run / "state.json"
     state = load_json(state_path)
+    _verify_planning_identity(repo, manifest)
     recovered = _recover_committed_finalization(repo, run, manifest, state)
     if recovered is not None:
         return recovered
@@ -199,7 +200,6 @@ def _commit_plan_locked(
             code="INVALID_STATE_FOR_COMMIT",
         )
 
-    _verify_planning_identity(repo, manifest)
     final_validation = validate_all(
         repo,
         run,
