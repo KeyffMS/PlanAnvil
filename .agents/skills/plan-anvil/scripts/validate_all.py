@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from common import PlanAnvilError, atomic_write_json, cli_main, discover_repo, emit, load_json, utc_now
+from path_safety import assert_safe_run_root
+from schema_validator import assert_valid_file
 from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_diff import validate_diff
@@ -48,6 +50,8 @@ def _validate_all_locked(
     }
     summary_path = run / "reports/validation/summary.json"
     atomic_write_json(summary_path, payload)
+    schema = Path(__file__).resolve().parent.parent / "schemas/validation-report.schema.json"
+    assert_valid_file(summary_path, schema)
 
     if not findings and advance_state and phase == "pre-review":
         state_path = run / "state.json"
@@ -81,7 +85,7 @@ def validate_all(
     lock_held: bool = False,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
     if lock_held:
         return _validate_all_locked(
