@@ -16,6 +16,7 @@ from common import (
     sha256_file,
     utc_now,
 )
+from transition_state import run_lock
 
 
 def review_candidates(repo: Path, run: Path) -> list[Path]:
@@ -61,32 +62,35 @@ def review_file_entries(repo: Path, run: Path) -> list[dict[str, str]]:
         for path in candidates
     ]
 
+
 def prepare_review_bundle(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
     run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-    state = load_json(run / "state.json")
-    if state.get("status") != "DETERMINISTICALLY_VALID":
-        raise PlanAnvilError(
-            f"Blind review requires DETERMINISTICALLY_VALID, found {state.get('status')}",
-            code="INVALID_STATE_FOR_REVIEW",
-        )
-
-    summary = load_json(run / "reports/validation/summary.json")
-    if summary.get("result") != "PASS":
-        raise PlanAnvilError("Deterministic validation did not pass", code="VALIDATION_NOT_PASSED")
-
-    files = review_file_entries(repo, run)
-    bundle = {
-        "schema_version": "1.1.0",
-        "created_at": utc_now(),
-        "purpose": "BLIND_PLAN_REVIEW",
-        "excludes": ["planner reasoning", "self-review", "conversation transcript", "local-state.json", "SYSTEM_PROFILE.local.md"],
-        "files": files,
-    }
+    state_path = run / "state.json"
     bundle_path = run / "reports/plan-review/review-bundle.json"
-    atomic_write_json(bundle_path, bundle, exclusive=True)
+    prompt_path = run / "reports/plan-review/review-prompt.md"
 
-    prompt = """# Blind Plan Review Brief
+    with run_lock(state_path, command="prepare-review-bundle"):
+        state = load_json(state_path)
+        if state.get("status") != "DETERMINISTICALLY_VALID":
+            raise PlanAnvilError(
+                f"Blind review requires DETERMINISTICALLY_VALID, found {state.get('status')}",
+                code="INVALID_STATE_FOR_REVIEW",
+            )
+
+        summary = load_json(run / "reports/validation/summary.json")
+        if summary.get("result") != "PASS":
+            raise PlanAnvilError("Deterministic validation did not pass", code="VALIDATION_NOT_PASSED")
+
+        files = review_file_entries(repo, run)
+        bundle = {
+            "schema_version": "1.1.0",
+            "created_at": utc_now(),
+            "purpose": "BLIND_PLAN_REVIEW",
+            "excludes": ["planner reasoning", "self-review", "conversation transcript", "local-state.json", "SYSTEM_PROFILE.local.md"],
+            "files": files,
+        }
+        prompt = """# Blind Plan Review Brief
 
 Review only the files listed in `review-bundle.json`. Do not request or use planner reasoning, self-review, conversation history, local-state.json, or the local profile.
 
@@ -105,12 +109,26 @@ Assess:
 
 Return a Markdown report using the blind-review template and a structured findings JSON array. Use `PASS` only when no high or critical defect blocks readiness. Do not modify any plan artifact.
 """
-    atomic_write_text(run / "reports/plan-review/review-prompt.md", prompt, exclusive=True)
+
+        created_bundle = False
+        created_prompt = False
+        try:
+            atomic_write_json(bundle_path, bundle, exclusive=True)
+            created_bundle = True
+            atomic_write_text(prompt_path, prompt, exclusive=True)
+            created_prompt = True
+        except Exception:
+            if created_prompt:
+                prompt_path.unlink(missing_ok=True)
+            if created_bundle:
+                bundle_path.unlink(missing_ok=True)
+            raise
+
     return {
         "ok": True,
         "result": "REVIEW_BUNDLE_READY",
         "bundle": repo_relative(repo, bundle_path),
-        "prompt": repo_relative(repo, run / "reports/plan-review/review-prompt.md"),
+        "prompt": repo_relative(repo, prompt_path),
         "files": len(files),
     }
 
