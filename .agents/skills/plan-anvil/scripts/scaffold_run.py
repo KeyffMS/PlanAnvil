@@ -28,6 +28,7 @@ from common import (
     source_snapshot,
     utc_now,
 )
+from scaffold_transaction import begin_scaffold_transaction
 from schema_validator import assert_valid_file
 
 
@@ -44,12 +45,6 @@ DIRECTORIES = [
     "final",
 ]
 
-
-def _template(name: str) -> str:
-    path = Path(__file__).resolve().parent.parent / "templates" / name
-    return path.read_text(encoding="utf-8")
-
-
 REQUIRED_GIT_STEPS = [
     "create_temporary_ref",
     "verify_temporary_ref",
@@ -62,6 +57,10 @@ REQUIRED_GIT_STEPS = [
     "create_probe_commit",
     "verify_probe_clean",
 ]
+
+
+def _template(name: str) -> str:
+    return (Path(__file__).resolve().parent.parent / "templates" / name).read_text(encoding="utf-8")
 
 
 def _git_evidence(
@@ -106,6 +105,26 @@ def _git_evidence(
         "source_snapshot": source_state,
         "steps": [{"id": step, "result": "PASS"} for step in REQUIRED_GIT_STEPS],
         "cleanup": {"result": "PASS", "errors": []},
+    }
+
+
+def _validate_scaffold(root: Path) -> None:
+    schema_root = Path(__file__).resolve().parent.parent / "schemas"
+    for filename in ["manifest", "state", "compliance", "traceability", "local-state"]:
+        assert_valid_file(root / f"{filename}.json", schema_root / f"{filename}.schema.json")
+    assert_valid_file(root / "evidence/git-capability.json", schema_root / "git-capability.schema.json")
+    assert_valid_file(root / "evidence/lifecycle.json", schema_root / "lifecycle.schema.json")
+
+
+def _recovered_payload(run_rel: Path, final_root: Path) -> dict[str, Any]:
+    state = load_json(final_root / "state.json")
+    return {
+        "ok": True,
+        "result": "RUN_SCAFFOLDED_RECOVERED",
+        "run_root": run_rel.as_posix(),
+        "plan": (run_rel / "PLAN.md").as_posix(),
+        "state": state["status"],
+        "next_action": state["next_action"],
     }
 
 
@@ -169,9 +188,34 @@ def scaffold_run(
     )
 
     run_rel = Path(".pursue/runs") / run_id
-    run_root = repo / run_rel
-    if run_root.exists():
-        raise PlanAnvilError(f"Run already exists: {run_rel.as_posix()}", code="RUN_EXISTS")
+    final_root = repo / run_rel
+    identity = {
+        "plan_id": plan_id,
+        "run_id": run_id,
+        "base_sha": base_sha,
+        "planning_branch": branch,
+        "goal_hash": sha256_text(goal.strip()),
+    }
+    append_ignore_rules(
+        repo,
+        [
+            ".pursue/SYSTEM_PROFILE.local.md",
+            ".pursue/runs/*/local-state.json",
+            ".pursue/runs/*/.generation-lock",
+            ".pursue/runs/*/.execution-lock",
+            ".pursue/runs/.plananvil-scaffold-*",
+        ],
+    )
+    transaction = begin_scaffold_transaction(final_root, identity)
+    if transaction is None:
+        expected_goal = "# Original goal\n\n" + goal.strip() + "\n"
+        if (final_root / "evidence/original-goal.md").read_text(encoding="utf-8") != expected_goal:
+            raise PlanAnvilError("Existing run goal differs from requested goal", code="RUN_GOAL_MISMATCH")
+        _validate_scaffold(final_root)
+        return _recovered_payload(run_rel, final_root)
+
+    run_root = transaction.build_root
+    transaction.mark("BUILDING")
     for directory in DIRECTORIES:
         (run_root / directory).mkdir(parents=True, exist_ok=True)
 
@@ -256,7 +300,6 @@ def scaffold_run(
         "controls": [],
         "gaps": [],
     }
-
     lifecycle = {
         "schema_version": SCHEMA_VERSION,
         "recorded_at": created_at,
@@ -310,23 +353,11 @@ def scaffold_run(
         plan = plan.replace(key, value)
     atomic_write_text(run_root / "PLAN.md", plan)
 
-    append_ignore_rules(
-        repo,
-        [
-            ".pursue/SYSTEM_PROFILE.local.md",
-            ".pursue/runs/*/local-state.json",
-            ".pursue/runs/*/.generation-lock",
-            ".pursue/runs/*/.execution-lock",
-        ],
-    )
     if not is_ignored(repo, run_root / "local-state.json") or is_tracked(repo, run_root / "local-state.json"):
         raise PlanAnvilError("local-state.json is not safely ignored and untracked", code="LOCAL_STATE_NOT_IGNORED")
-
-    schema_root = Path(__file__).resolve().parent.parent / "schemas"
-    for filename in ["manifest", "state", "compliance", "traceability", "local-state"]:
-        assert_valid_file(run_root / f"{filename}.json", schema_root / f"{filename}.schema.json")
-    assert_valid_file(run_root / "evidence/git-capability.json", schema_root / "git-capability.schema.json")
-    assert_valid_file(run_root / "evidence/lifecycle.json", schema_root / "lifecycle.schema.json")
+    _validate_scaffold(run_root)
+    transaction.publish()
+    _validate_scaffold(final_root)
 
     return {
         "ok": True,
