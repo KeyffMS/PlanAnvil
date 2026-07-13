@@ -21,7 +21,7 @@ from common import (
     utc_now,
 )
 from schema_validator import assert_valid_file
-from transition_state import transition_state
+from transition_state import run_lock, transition_state
 
 
 SAFETY_TERMS = re.compile(
@@ -213,37 +213,44 @@ def map_instructions(
     output = ensure_inside(repo, output if output.is_absolute() else repo / output)
     run_root = output.parent.parent if output.parent.name == "evidence" else None
     scaffolded = bool(run_root and (run_root / "state.json").is_file() and (run_root / "compliance.json").is_file())
-    if scaffolded:
-        state = load_json(run_root / "state.json")
-        if state.get("status") != "PROFILE_READY":
-            raise PlanAnvilError(
-                f"Instruction mapping requires PROFILE_READY, found {state.get('status')}",
-                code="INVALID_STATE_FOR_INSTRUCTION_MAP",
-            )
-    atomic_write_json(output, payload, exclusive=scaffolded)
     schema = Path(__file__).resolve().parent.parent / "schemas/instruction-map.schema.json"
-    assert_valid_file(output, schema)
 
     if scaffolded:
-        compliance_path = run_root / "compliance.json"
-        compliance = load_json(compliance_path)
-        for capability in compliance.get("capabilities", []):
-            if capability.get("id") == "CAP-INSTRUCTION-MAP":
-                capability["status"] = "VERIFIED"
-                capability["evidence"] = [repo_relative(repo, output)]
-        compliance["verified_at"] = utc_now()
-        atomic_write_json(compliance_path, compliance)
-        unresolved = [item for item in conflicts if item["critical"] and item["resolution"] is None]
-        transition_state(
-            run_root / "state.json",
-            expected_revision=state["revision"],
-            new_status="BLOCKED" if unresolved else "INSTRUCTION_MAP_READY",
-            phase="REPORT_AND_STOP" if unresolved else "ANALYZE_GOAL",
-            next_action_type="NONE" if unresolved else "ANALYZE_GOAL",
-            next_action_target=None if unresolved else "evidence/analysis.json",
-            blocker="BLOCKED_BY_INSTRUCTION_CONFLICT" if unresolved else None,
-            hash_paths=[output],
-        )
+        state_path = run_root / "state.json"
+        with run_lock(state_path, command="map-instructions"):
+            state = load_json(state_path)
+            if state.get("status") != "PROFILE_READY":
+                raise PlanAnvilError(
+                    f"Instruction mapping requires PROFILE_READY, found {state.get('status')}",
+                    code="INVALID_STATE_FOR_INSTRUCTION_MAP",
+                )
+            atomic_write_json(output, payload, exclusive=True)
+            assert_valid_file(output, schema)
+
+            compliance_path = run_root / "compliance.json"
+            compliance = load_json(compliance_path)
+            for capability in compliance.get("capabilities", []):
+                if capability.get("id") == "CAP-INSTRUCTION-MAP":
+                    capability["status"] = "VERIFIED"
+                    capability["evidence"] = [repo_relative(repo, output)]
+            compliance["verified_at"] = utc_now()
+            atomic_write_json(compliance_path, compliance)
+
+            unresolved = [item for item in conflicts if item["critical"] and item["resolution"] is None]
+            transition_state(
+                state_path,
+                expected_revision=state["revision"],
+                new_status="BLOCKED" if unresolved else "INSTRUCTION_MAP_READY",
+                phase="REPORT_AND_STOP" if unresolved else "ANALYZE_GOAL",
+                next_action_type="NONE" if unresolved else "ANALYZE_GOAL",
+                next_action_target=None if unresolved else "evidence/analysis.json",
+                blocker="BLOCKED_BY_INSTRUCTION_CONFLICT" if unresolved else None,
+                hash_paths=[output],
+                lock_held=True,
+            )
+    else:
+        atomic_write_json(output, payload)
+        assert_valid_file(output, schema)
 
     blocked = any(item["critical"] and item["resolution"] is None for item in conflicts)
     return {
