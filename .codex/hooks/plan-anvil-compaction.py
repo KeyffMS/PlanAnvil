@@ -31,9 +31,19 @@ def main() -> int:
     validation = validate_checkpoint_for_run(active)
     if not validation.ok:
         details = "; ".join(validation.reasons)
+        remediation = ""
+        if state.get("mode") == "PLAN_GENERATION":
+            try:
+                run_relative = active.run_root.relative_to(active.worktree).as_posix()
+            except ValueError:
+                run_relative = str(active.run_root)
+            remediation = (
+                " Run `python .agents/skills/plan-anvil/scripts/create_generation_checkpoint.py "
+                f"--planning . --run-root {run_relative}` from the planning worktree, then retry compaction."
+            )
         _stop(
             "Create or repair a durable, schema-valid PlanAnvil checkpoint before compaction. "
-            f"Checkpoint validation failed: {details}."
+            f"Checkpoint validation failed: {details}.{remediation}"
         )
     return 0
 
