@@ -16,6 +16,7 @@ from common import (
     sha256_text,
     utc_now,
 )
+from path_safety import assert_safe_run_root
 from prepare_review_bundle import review_file_entries
 from schema_validator import assert_valid_file
 from transition_state import run_lock, transition_state
@@ -27,15 +28,15 @@ def _hash_or_missing(path: Path) -> str:
 
 def compare_review(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
     target = run / "reports/plan-review/comparison.json"
 
     with run_lock(state_path, command="compare-review"):
         state = load_json(state_path)
-        if state.get("status") != "BLIND_REVIEW_WRITTEN":
+        if state.get("status") not in {"BLIND_REVIEW_WRITTEN", "COMPARISON_VALID", "FAILED"}:
             raise PlanAnvilError(
-                f"Comparison requires BLIND_REVIEW_WRITTEN, found {state.get('status')}",
+                f"Comparison requires BLIND_REVIEW_WRITTEN or its terminal result, found {state.get('status')}",
                 code="INVALID_STATE_FOR_COMPARISON",
             )
 
@@ -66,6 +67,8 @@ def compare_review(planning: Path, run_root: Path) -> dict[str, Any]:
             reasons.append("Review bundle membership or input hashes changed after review.")
         if sidecar.get("inputs") != expected_inputs:
             reasons.append("Blind-review sidecar inputs do not match current bundle inputs.")
+        if sidecar.get("author_role") != "plan-anvil-reviewer":
+            reasons.append("Blind-review sidecar author role is missing or invalid.")
 
         review_md_hash = _hash_or_missing(review_md)
         review_json_hash = _hash_or_missing(review_json)
@@ -92,6 +95,7 @@ def compare_review(planning: Path, run_root: Path) -> dict[str, Any]:
             reasons.append("Blind review contains high or critical findings.")
 
         result = "PASS" if not reasons else "FAIL"
+        expected_status = "COMPARISON_VALID" if result == "PASS" else "FAILED"
         comparison = {
             "schema_version": "1.1.0",
             "created_at": utc_now(),
@@ -102,24 +106,29 @@ def compare_review(planning: Path, run_root: Path) -> dict[str, Any]:
             "reasons": reasons,
         }
 
-        created = False
+        created = not target.exists()
         try:
             atomic_write_json(target, comparison, exclusive=True)
-            created = True
             schema = Path(__file__).resolve().parent.parent / "schemas/comparison.schema.json"
             assert_valid_file(target, schema)
 
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="COMPARISON_VALID" if result == "PASS" else "FAILED",
-                phase="COMMIT_PLANNING_ARTIFACTS" if result == "PASS" else "REPORT_AND_STOP",
-                next_action_type="COMMIT_PLAN" if result == "PASS" else "NONE",
-                next_action_target=repo_relative(repo, run) if result == "PASS" else None,
-                blocker=None if result == "PASS" else "PLAN_VALIDATION_FAILED",
-                hash_paths=[target],
-                lock_held=True,
-            )
+            if state.get("status") == "BLIND_REVIEW_WRITTEN":
+                transition_state(
+                    state_path,
+                    expected_revision=state["revision"],
+                    new_status=expected_status,
+                    phase="COMMIT_PLANNING_ARTIFACTS" if result == "PASS" else "REPORT_AND_STOP",
+                    next_action_type="COMMIT_PLAN" if result == "PASS" else "NONE",
+                    next_action_target=repo_relative(repo, run) if result == "PASS" else None,
+                    blocker=None if result == "PASS" else "PLAN_VALIDATION_FAILED",
+                    hash_paths=[target],
+                    lock_held=True,
+                )
+            elif state.get("status") != expected_status:
+                raise PlanAnvilError(
+                    f"Existing comparison state {state.get('status')} disagrees with recomputed result {result}",
+                    code="COMPARISON_STATE_MISMATCH",
+                )
         except Exception:
             if created:
                 target.unlink(missing_ok=True)
