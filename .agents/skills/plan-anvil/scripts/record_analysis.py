@@ -14,7 +14,6 @@ from common import (
     cli_main,
     discover_repo,
     emit,
-    ensure_inside,
     load_json,
     privacy_findings,
     repo_relative,
@@ -22,6 +21,7 @@ from common import (
     sha256_text,
     utc_now,
 )
+from path_safety import assert_safe_repo_path, assert_safe_run_root
 from schema_validator import assert_valid_file, validate
 from transition_state import run_lock, transition_state
 
@@ -35,7 +35,7 @@ CONFIDENCE = {"VERIFIED", "USER_CONFIRMED", "INFERRED"}
 
 
 def _relative_existing(repo: Path, value: str, *, code: str) -> str:
-    candidate = ensure_inside(repo, repo / value)
+    candidate = assert_safe_repo_path(repo, Path(value))
     if not candidate.exists():
         raise PlanAnvilError(f"Evidence path does not exist: {value}", code=code)
     return repo_relative(repo, candidate)
@@ -49,19 +49,13 @@ def record_analysis(
     analysis_data: Path,
 ) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
     target_md = run / "evidence/analysis.md"
     target_json = run / "evidence/analysis.json"
 
     with run_lock(state_path, command="record-analysis"):
         state = load_json(state_path)
-        if state.get("status") != "INSTRUCTION_MAP_READY":
-            raise PlanAnvilError(
-                f"Analysis requires INSTRUCTION_MAP_READY, found {state.get('status')}",
-                code="INVALID_STATE_FOR_ANALYSIS",
-            )
-
         markdown = analysis_markdown.read_text(encoding="utf-8").rstrip() + "\n"
         if not markdown.strip():
             raise PlanAnvilError("Analysis Markdown is empty", code="EMPTY_ANALYSIS")
@@ -87,7 +81,7 @@ def record_analysis(
         for value in raw.get("affected_paths", []):
             if not isinstance(value, str):
                 raise PlanAnvilError("Affected paths must be strings", code="INVALID_ANALYSIS_DATA")
-            rel = repo_relative(repo, ensure_inside(repo, repo / value))
+            rel = repo_relative(repo, assert_safe_repo_path(repo, Path(value)))
             if rel not in mapped_paths:
                 raise PlanAnvilError(
                     f"Affected path is not covered by the instruction map: {rel}",
@@ -141,35 +135,43 @@ def record_analysis(
         if json_findings:
             raise PlanAnvilError("Analysis data contains private or secret data", code="ANALYSIS_PRIVACY", details=json_findings)
 
-        created_md = False
-        created_json = False
-        try:
+        critical = [item for item in unknowns if item["critical"]]
+        expected_status = "BLOCKED" if critical else "ANALYSIS_READY"
+        if state.get("status") == expected_status:
             atomic_write_text(target_md, markdown, exclusive=True)
-            created_md = True
             atomic_write_json(target_json, payload, exclusive=True)
-            created_json = True
             assert_valid_file(target_json, schema_path)
+        else:
+            if state.get("status") != "INSTRUCTION_MAP_READY":
+                raise PlanAnvilError(
+                    f"Analysis requires INSTRUCTION_MAP_READY, found {state.get('status')}",
+                    code="INVALID_STATE_FOR_ANALYSIS",
+                )
+            created_md = not target_md.exists()
+            created_json = not target_json.exists()
+            try:
+                atomic_write_text(target_md, markdown, exclusive=True)
+                atomic_write_json(target_json, payload, exclusive=True)
+                assert_valid_file(target_json, schema_path)
 
-            critical = [item for item in unknowns if item["critical"]]
-            transition_state(
-                state_path,
-                expected_revision=state["revision"],
-                new_status="BLOCKED" if critical else "ANALYSIS_READY",
-                phase="REPORT_AND_STOP" if critical else "GENERATE_ARTIFACTS",
-                next_action_type="NONE" if critical else "AUTHOR_PLAN",
-                next_action_target=None if critical else "PLAN.md",
-                blocker="BLOCKED_BY_CRITICAL_UNKNOWN" if critical else None,
-                hash_paths=[target_md, target_json],
-                lock_held=True,
-            )
-        except Exception:
-            if created_json:
-                target_json.unlink(missing_ok=True)
-            if created_md:
-                target_md.unlink(missing_ok=True)
-            raise
+                transition_state(
+                    state_path,
+                    expected_revision=state["revision"],
+                    new_status=expected_status,
+                    phase="REPORT_AND_STOP" if critical else "GENERATE_ARTIFACTS",
+                    next_action_type="NONE" if critical else "AUTHOR_PLAN",
+                    next_action_target=None if critical else "PLAN.md",
+                    blocker="BLOCKED_BY_CRITICAL_UNKNOWN" if critical else None,
+                    hash_paths=[target_md, target_json],
+                    lock_held=True,
+                )
+            except Exception:
+                if created_json:
+                    target_json.unlink(missing_ok=True)
+                if created_md:
+                    target_md.unlink(missing_ok=True)
+                raise
 
-    critical = [item for item in unknowns if item["critical"]]
     if critical:
         return {
             "ok": False,
