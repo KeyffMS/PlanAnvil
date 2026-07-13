@@ -14,6 +14,8 @@ from common import (
     SCHEMA_VERSION,
     PlanAnvilError,
     atomic_write_json,
+    atomic_write_text,
+    canonical_json_text,
     cli_main,
     emit,
     load_json,
@@ -21,7 +23,7 @@ from common import (
     sha256_text,
     utc_now,
 )
-from schema_validator import assert_valid_file
+from schema_validator import assert_valid_file, validate
 
 
 ALLOWED = {
@@ -58,13 +60,7 @@ def _owner_alive(owner: dict[str, Any]) -> bool:
 
 @contextmanager
 def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iterator[Path]:
-    """Acquire the run generation lock using exclusive-create semantics.
-
-    A lock is recoverable only when its heartbeat is stale and the recorded local
-    process is no longer alive. Active or unverifiable locks are never removed.
-    """
     lock_path = state_path.parent / ".generation-lock"
-    now = time.time()
     payload = {
         "schema_version": SCHEMA_VERSION,
         "run_id": state_path.parent.name,
@@ -84,7 +80,7 @@ def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iter
         except FileExistsError:
             try:
                 existing = json.loads(lock_path.read_text(encoding="utf-8"))
-                age = now - lock_path.stat().st_mtime
+                age = time.time() - lock_path.stat().st_mtime
             except (OSError, json.JSONDecodeError) as exc:
                 raise PlanAnvilError(
                     f"Generation lock exists but cannot be verified: {lock_path}",
@@ -121,6 +117,32 @@ def generation_lock(state_path: Path, *, stale_after_seconds: int = 300) -> Iter
             current = None
         if current == payload:
             lock_path.unlink(missing_ok=True)
+
+
+def _validated_replace(state_path: Path, replacement: dict[str, Any], schema_path: Path) -> None:
+    schema = load_json(schema_path)
+    errors = validate(replacement, schema)
+    if errors:
+        raise PlanAnvilError(
+            "Replacement state failed schema validation before publication",
+            code="SCHEMA_VALIDATION_FAILED",
+            details=errors,
+        )
+
+    original_text = state_path.read_text(encoding="utf-8")
+    atomic_write_json(state_path, replacement)
+    try:
+        assert_valid_file(state_path, schema_path)
+        if state_path.read_text(encoding="utf-8") != canonical_json_text(replacement):
+            raise PlanAnvilError("State reread differs from published replacement", code="STATE_REREAD_MISMATCH")
+    except Exception as exc:
+        # Restore the last known-valid state so a failed postcondition does not
+        # leave corrupt canonical state behind.
+        atomic_write_text(state_path, original_text)
+        assert_valid_file(state_path, schema_path)
+        if isinstance(exc, PlanAnvilError):
+            raise
+        raise PlanAnvilError("State publication failed and was rolled back", code="STATE_PUBLICATION_FAILED") from exc
 
 
 def transition_state(
@@ -175,8 +197,7 @@ def transition_state(
         }
         if new_status in {"STOPPED", "BLOCKED", "FAILED"} and next_action_type != "NONE":
             raise PlanAnvilError("Terminal state must use next_action.type = NONE", code="INVALID_TERMINAL_ACTION")
-        atomic_write_json(state_path, replacement)
-        assert_valid_file(state_path, schema)
+        _validated_replace(state_path, replacement, schema)
         return replacement
 
 
