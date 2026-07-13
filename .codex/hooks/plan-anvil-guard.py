@@ -9,6 +9,7 @@ from plan_anvil_hooklib import (
     allowed_control_path,
     deny,
     event_cwd,
+    event_has_ambiguous_active_runs,
     flatten_strings,
     is_within,
     read_event,
@@ -61,6 +62,9 @@ def _mcp_paths(value: Any) -> list[str]:
 
 def main() -> int:
     event = read_event()
+    if event_has_ambiguous_active_runs(event):
+        deny("Multiple active PlanAnvil runs match this worktree. Set PLANANVIL_RUN_ID before using write-capable tools.")
+        return 0
     active = active_run_for_event(event)
     if active is None or active.state.get("mode") != "PLAN_GENERATION":
         return 0
