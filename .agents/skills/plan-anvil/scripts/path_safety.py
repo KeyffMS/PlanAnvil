@@ -76,6 +76,17 @@ def assert_safe_repo_path(
     return resolved
 
 
+def assert_safe_run_root(repo: Path, candidate: Path) -> Path:
+    resolved = assert_safe_repo_path(repo, candidate, allow_root=False, allow_submodule=False)
+    relative = resolved.relative_to(discover_repo(repo)).as_posix()
+    if not relative.startswith(".pursue/runs/"):
+        raise PlanAnvilError(
+            f"Run root is outside .pursue/runs: {resolved}",
+            code="INVALID_RUN_ROOT",
+        )
+    return resolved
+
+
 def _static_glob_prefix(value: str) -> PurePosixPath:
     parts: list[str] = []
     for part in PurePosixPath(value).parts:
