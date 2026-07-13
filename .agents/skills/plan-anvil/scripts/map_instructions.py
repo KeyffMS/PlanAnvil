@@ -21,6 +21,7 @@ from common import (
     sha256_bytes,
     utc_now,
 )
+from path_safety import assert_safe_repo_path
 from schema_validator import assert_valid_file
 from transition_state import run_lock, transition_state
 
@@ -55,8 +56,7 @@ def _load_codex_instruction_config(repo: Path) -> tuple[list[str], int]:
 
 def _scope_directories(repo: Path, affected: str) -> list[Path]:
     raw = Path(affected)
-    candidate = raw if raw.is_absolute() else repo / raw
-    candidate = ensure_inside(repo, candidate)
+    candidate = assert_safe_repo_path(repo, raw if raw.is_absolute() else repo / raw)
     target_dir = candidate if candidate.is_dir() else candidate.parent
     dirs: list[Path] = []
     current = target_dir
@@ -141,9 +141,8 @@ def map_instructions(
         order.append(key)
 
     for affected in affected_paths:
-        candidate = Path(affected)
-        absolute = candidate if candidate.is_absolute() else repo / candidate
-        relative = repo_relative(repo, ensure_inside(repo, absolute))
+        absolute = assert_safe_repo_path(repo, Path(affected))
+        relative = repo_relative(repo, absolute)
         normalized_affected.append(relative)
         if global_path is not None:
             selections[global_path.resolve().as_posix()]["affected_paths"].append(relative)
