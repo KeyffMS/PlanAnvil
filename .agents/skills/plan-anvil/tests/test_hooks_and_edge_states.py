@@ -77,7 +77,7 @@ class HookAndEdgeStateTests(unittest.TestCase):
             "write_scope": {"status": "COMPLIANT", "evidence": []},
             "next_action": state["next_action"],
             "recovery": ["Read canonical state and reconcile the recorded Git worktree."],
-            "artifact_hashes": {},
+            "artifact_hashes": {"README.md": sha256_file(repo / "README.md")},
         }
         atomic_write_json(checkpoint_path, checkpoint)
         state["last_checkpoint"] = "checkpoints/CHECKPOINT-01-VERIFIED.json"
