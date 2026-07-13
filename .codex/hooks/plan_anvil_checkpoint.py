@@ -160,11 +160,24 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
         reasons.append("checkpoint result is not PASS")
     if checkpoint.get("mode") != active.state.get("mode"):
         reasons.append("checkpoint mode differs from canonical state")
+    if checkpoint.get("stage") != active.state.get("current_stage"):
+        reasons.append("checkpoint stage differs from canonical state")
+    if checkpoint.get("phase") != (active.state.get("current_phase") or "UNKNOWN"):
+        reasons.append("checkpoint phase differs from canonical state")
     if checkpoint.get("next_action") != active.state.get("next_action"):
         reasons.append("checkpoint next action differs from canonical state")
 
+    agent_tree = _as_dict(checkpoint.get("agent_tree"))
+    write_scope = _as_dict(checkpoint.get("write_scope"))
+    if agent_tree.get("status") != "COMPLIANT":
+        reasons.append("checkpoint agent-tree audit is not COMPLIANT")
+    if write_scope.get("status") != "COMPLIANT":
+        reasons.append("checkpoint write-scope audit is not COMPLIANT")
+
     git_data = _as_dict(checkpoint.get("git"))
     branch = git_data.get("branch")
+    if checkpoint.get("mode") == "PLAN_GENERATION" and git_data.get("worktree_role") != "PLANNING":
+        reasons.append("generation checkpoint worktree role is not PLANNING")
     if not isinstance(branch, str) or not branch:
         reasons.append("checkpoint Git branch is missing")
     else:
@@ -182,6 +195,8 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
     if not isinstance(checkpoint_hashes, dict):
         reasons.append("checkpoint artifact_hashes is invalid")
         checkpoint_hashes = {}
+    if not checkpoint_hashes:
+        reasons.append("checkpoint artifact_hashes is empty")
     for relative, expected_hash in checkpoint_hashes.items():
         if not isinstance(relative, str) or not isinstance(expected_hash, str):
             reasons.append("checkpoint artifact hash entry is invalid")
@@ -194,8 +209,8 @@ def validate_checkpoint_for_run(active: ActiveRun) -> CheckpointValidation:
 
     evidence_groups: list[Any] = [
         _as_dict(checkpoint.get("tests")).get("evidence", []),
-        _as_dict(checkpoint.get("agent_tree")).get("evidence", []),
-        _as_dict(checkpoint.get("write_scope")).get("evidence", []),
+        agent_tree.get("evidence", []),
+        write_scope.get("evidence", []),
     ]
     for group in evidence_groups:
         for relative in group if isinstance(group, list) else []:
