@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from common import (
     PlanAnvilError,
@@ -32,6 +34,13 @@ SCHEMA_FILES = {
     "evidence/lifecycle.json": "lifecycle.schema.json",
 }
 
+POSIX_ABSOLUTE = re.compile(r"(?<![A-Za-z0-9_.-])/(?!/)(?:[^\s`\"'<>/]+/)+[^\s`\"'<>/]+")
+WINDOWS_ABSOLUTE = re.compile(r"(?i)(?<![A-Za-z0-9])(?:[A-Z]:[\\/])[^\s`\"'<>]+")
+UNC_PATH = re.compile(r"\\\\[^\\\s]+\\[^\s`\"'<>]+")
+FILE_URL = re.compile(r"(?i)\bfile://[^\s`\"'<>]+")
+REMOTE_URL = re.compile(r"(?i)\b(?:https?|ssh|git)://[^\s`\"'<>]+|\b[^\s@]+@[^\s:]+:[^\s`\"'<>]+")
+PRIVATE_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
+
 
 def _resolve_run_root(repo: Path, run_root: Path) -> Path:
     candidate = run_root if run_root.is_absolute() else repo / run_root
@@ -41,6 +50,40 @@ def _resolve_run_root(repo: Path, run_root: Path) -> Path:
     except ValueError as exc:
         raise PlanAnvilError("Run root escapes planning repository", code="PATH_ESCAPE") from exc
     return candidate
+
+
+def _extended_privacy_findings(repo: Path, paths: list[Path]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        rel = repo_relative(repo, path)
+        for kind, pattern in [
+            ("absolute-posix-path", POSIX_ABSOLUTE),
+            ("absolute-windows-path", WINDOWS_ABSOLUTE),
+            ("unc-path", UNC_PATH),
+            ("file-url", FILE_URL),
+        ]:
+            match = pattern.search(text)
+            if match:
+                findings.append({"kind": kind, "path": rel, "sample": match.group(0)[:120]})
+
+        for match in REMOTE_URL.finditer(text):
+            raw = match.group(0)
+            if "://" in raw:
+                parsed = urlsplit(raw)
+                host = (parsed.hostname or "").lower()
+                has_userinfo = parsed.username is not None or parsed.password is not None
+                private_host = host in PRIVATE_HOSTS or host.endswith(".local") or host.endswith(".internal")
+                if has_userinfo or private_host:
+                    findings.append({"kind": "private-repository-url", "path": rel, "sample": raw[:120]})
+            elif "@" in raw and ":" in raw:
+                findings.append({"kind": "private-repository-url", "path": rel, "sample": raw[:120]})
+    return findings
 
 
 def validate_artifacts(planning: Path, run_root: Path, *, phase: str = "pre-review", write_report: bool = True) -> dict[str, Any]:
@@ -153,6 +196,7 @@ def validate_artifacts(planning: Path, run_root: Path, *, phase: str = "pre-revi
         ],
     ]
     findings.extend(scan_privacy(repo, committed_candidates))
+    findings.extend(_extended_privacy_findings(repo, committed_candidates))
 
     referenced_risks = {
         risk_id
