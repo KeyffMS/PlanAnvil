@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from common import PlanAnvilError, cli_main, discover_repo, emit, ensure_inside, load_json
+from finalize_instruction_context import finalize_instruction_context
 from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_plan_contract import validate_plan_contract
@@ -23,6 +24,7 @@ def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
                 code="INVALID_STATE_FOR_ARTIFACT_SEAL",
             )
 
+        finalize_instruction_context(repo, run)
         plan_result = validate_plan_contract(repo, run, write_report=False)
         artifact_result = validate_artifacts(repo, run, phase="pre-review", write_report=False)
         findings = []
@@ -44,7 +46,13 @@ def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
                 code="PLAN_NOT_READY_TO_SEAL",
             )
 
-        hash_paths = [run / "PLAN.md", run / "traceability.json", run / "evidence/analysis.json"]
+        hash_paths = [
+            run / "PLAN.md",
+            run / "traceability.json",
+            run / "evidence/analysis.json",
+            run / "evidence/instruction-map.json",
+            repo / ".pursue/SYSTEM_PROFILE.md",
+        ]
         hash_paths.extend(sorted((run / "stages").glob("STAGE-*.md")))
         hash_paths.extend(sorted((run / "risks").glob("RISK-*.json")))
         transition_state(
