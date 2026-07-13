@@ -11,6 +11,7 @@ from validate_diff import validate_diff
 from validate_path_safety import validate_path_safety
 from validate_plan import validate_plan
 from validate_profile import validate_profile
+from validate_schema_coverage import validate_schema_coverage
 from validate_traceability import validate_traceability
 
 
@@ -30,6 +31,7 @@ def _validate_all_locked(
         "traceability": validate_traceability(repo, run, write_report=True),
         "diff": validate_diff(repo, run, source=source, write_report=True),
     }
+    results["schema_coverage"] = validate_schema_coverage(repo, run, write_report=True)
     findings = [
         {"validator": name, "findings": result.get("findings", [])}
         for name, result in results.items()
