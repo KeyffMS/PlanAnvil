@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import seal_artifacts as seal_module
 from _helpers import author_valid_plan, cleanup_worktree, init_repo, start_fixture
 from artifact_policy import allowed_planning_path
 from common import PlanAnvilError, atomic_write_json, atomic_write_text
@@ -58,6 +61,39 @@ class SafetyRegressionTests(unittest.TestCase):
                 with self.assertRaises(PlanAnvilError) as raised:
                     validate_all(repo, run)
                 self.assertEqual(raised.exception.code, "GENERATION_LOCK_ACTIVE")
+
+    def test_seal_artifacts_holds_lock_through_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            context = start_fixture(Path(directory))
+            try:
+                map_instructions(
+                    context["planning"],
+                    affected_paths=["src/app.py", "tests/test_app.py"],
+                    output=context["run_root"] / "evidence/instruction-map.json",
+                )
+                with patch("_helpers.seal_artifacts", return_value={"ok": True}):
+                    author_valid_plan(context)
+
+                observed: dict[str, str] = {}
+                real_validate_plan = seal_module.validate_plan
+
+                def validate_while_locked(*args, **kwargs):
+                    lock_path = context["run_root"] / ".generation-lock"
+                    payload = json.loads(lock_path.read_text(encoding="utf-8"))
+                    observed["command"] = payload["command"]
+                    return real_validate_plan(*args, **kwargs)
+
+                with patch.object(seal_module, "validate_plan", side_effect=validate_while_locked):
+                    result = seal_module.seal_artifacts(context["planning"], context["run_root"])
+
+                self.assertTrue(result["ok"])
+                self.assertEqual(observed["command"], "seal-artifacts")
+            finally:
+                cleanup_worktree(
+                    context["source"],
+                    context["planning"],
+                    context["branch"],
+                )
 
     def test_review_bundle_can_resume_after_partial_publication(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
