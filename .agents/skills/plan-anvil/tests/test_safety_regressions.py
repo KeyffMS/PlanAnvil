@@ -7,10 +7,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import seal_artifacts as seal_module
-from _helpers import author_valid_plan, cleanup_worktree, init_repo, start_fixture
+from _helpers import author_valid_plan, cleanup_worktree, init_repo, run, start_fixture
 from artifact_policy import allowed_planning_path
 from common import PlanAnvilError, atomic_write_json, atomic_write_text
 from map_instructions import map_instructions
+from path_safety import assert_safe_relative_glob, assert_safe_repo_path
 from prepare_review_bundle import prepare_review_bundle
 from transition_state import run_lock
 from validate_all import validate_all
@@ -49,9 +50,9 @@ class SafetyRegressionTests(unittest.TestCase):
     def test_same_process_does_not_bypass_an_active_run_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = init_repo(Path(directory) / "repo")
-            run = repo / ".pursue/runs/test-run"
-            run.mkdir(parents=True)
-            state_path = run / "state.json"
+            run_root = repo / ".pursue/runs/test-run"
+            run_root.mkdir(parents=True)
+            state_path = run_root / "state.json"
             with run_lock(
                 state_path,
                 command="outer-test",
@@ -59,7 +60,7 @@ class SafetyRegressionTests(unittest.TestCase):
                 heartbeat_interval_seconds=10,
             ):
                 with self.assertRaises(PlanAnvilError) as raised:
-                    validate_all(repo, run)
+                    validate_all(repo, run_root)
                 self.assertEqual(raised.exception.code, "GENERATION_LOCK_ACTIVE")
 
     def test_seal_artifacts_holds_lock_through_validation(self) -> None:
@@ -94,6 +95,49 @@ class SafetyRegressionTests(unittest.TestCase):
                     context["planning"],
                     context["branch"],
                 )
+
+    def test_casefolded_git_metadata_paths_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = init_repo(Path(directory) / "repo")
+            for spelling in [".GIT", ".Git", ".gIt"]:
+                with self.assertRaises(PlanAnvilError) as raised:
+                    assert_safe_repo_path(repo, repo / spelling / "config")
+                self.assertEqual(raised.exception.code, "GIT_PATH_FORBIDDEN")
+                with self.assertRaises(PlanAnvilError):
+                    assert_safe_relative_glob(repo, f"{spelling}/**")
+
+    def test_submodule_paths_and_write_globs_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = init_repo(root / "repo")
+            module = init_repo(root / "module", files={"README.md": "# Module\n"})
+            run(
+                "git",
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                str(module),
+                "vendor/module",
+                cwd=repo,
+            )
+            run("git", "commit", "-am", "add submodule", cwd=repo)
+
+            with self.assertRaises(PlanAnvilError) as path_error:
+                assert_safe_repo_path(repo, repo / "vendor/module/README.md")
+            self.assertEqual(path_error.exception.code, "SUBMODULE_PATH_FORBIDDEN")
+
+            with self.assertRaises(PlanAnvilError) as glob_error:
+                assert_safe_relative_glob(repo, "vendor/**")
+            self.assertEqual(glob_error.exception.code, "SUBMODULE_PATH_FORBIDDEN")
+
+            with self.assertRaises(PlanAnvilError) as map_error:
+                map_instructions(
+                    repo,
+                    affected_paths=["vendor/module/README.md"],
+                    output=repo / "instruction-map.json",
+                )
+            self.assertEqual(map_error.exception.code, "SUBMODULE_PATH_FORBIDDEN")
 
     def test_review_bundle_can_resume_after_partial_publication(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -143,6 +187,7 @@ class SafetyRegressionTests(unittest.TestCase):
             f"{run_rel}/PLAN.md",
             f"{run_rel}/evidence/analysis.json",
             f"{run_rel}/reports/validation/summary.json",
+            f"{run_rel}/reports/validation/path-safety.json",
             f"{run_rel}/reports/plan-review/blind-review.md",
             f"{run_rel}/stages/STAGE-01.md",
             f"{run_rel}/risks/RISK-01-01.json",
