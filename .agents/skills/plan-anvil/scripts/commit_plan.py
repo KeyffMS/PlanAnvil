@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from common import (
     PlanAnvilError,
+    atomic_write_json,
     atomic_write_text,
+    canonical_json_text,
     cli_main,
     compare_snapshot,
     discover_repo,
@@ -15,7 +18,10 @@ from common import (
     git,
     load_json,
     repo_relative,
+    sha256_file,
+    utc_now,
 )
+from schema_validator import assert_valid_file, validate
 from transition_state import transition_state
 from validate_all import validate_all
 
@@ -55,6 +61,57 @@ def _verify_planning_identity(repo: Path, manifest: dict[str, Any]) -> None:
         raise PlanAnvilError("Planning branch no longer descends from the recorded base SHA", code="BASE_SHA_MISMATCH")
 
 
+def _prepare_stopped_state(state_path: Path, report_path: Path) -> dict[str, Any]:
+    current = load_json(state_path)
+    if current.get("status") != "PLAN_COMMITTED":
+        raise PlanAnvilError(
+            f"Finalization requires PLAN_COMMITTED, found {current.get('status')}",
+            code="INVALID_STATE_FOR_FINALIZATION",
+        )
+    artifact_hashes = dict(current.get("artifact_hashes", {}))
+    artifact_hashes[report_path.relative_to(state_path.parent).as_posix()] = sha256_file(report_path)
+    replacement = {
+        **current,
+        "revision": current["revision"] + 1,
+        "updated_at": utc_now(),
+        "status": "STOPPED",
+        "current_phase": "REPORT_AND_STOP",
+        "next_action": {"type": "NONE", "target": None},
+        "artifact_hashes": artifact_hashes,
+    }
+    schema_path = Path(__file__).resolve().parent.parent / "schemas/state.schema.json"
+    errors = validate(replacement, load_json(schema_path))
+    if errors:
+        raise PlanAnvilError(
+            "Prepared STOPPED state failed schema validation",
+            code="SCHEMA_VALIDATION_FAILED",
+            details=errors,
+        )
+    return replacement
+
+
+def _stage_json_blob(repo: Path, relative_path: str, payload: dict[str, Any]) -> str:
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            prefix="plananvil-state-",
+            suffix=".json",
+            delete=False,
+        ) as handle:
+            handle.write(canonical_json_text(payload))
+            handle.flush()
+            temporary = Path(handle.name)
+        blob = git(repo, "hash-object", "-w", str(temporary)).stdout.strip()
+        git(repo, "update-index", "--add", "--cacheinfo", "100644", blob, relative_path)
+        return blob
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def commit_plan(
     planning: Path,
     run_root: Path,
@@ -68,9 +125,9 @@ def commit_plan(
     local_state = load_json(run / "local-state.json")
     state_path = run / "state.json"
     state = load_json(state_path)
-    if state.get("status") != "COMPARISON_VALID":
+    if state.get("status") not in {"COMPARISON_VALID", "PLAN_COMMITTED"}:
         raise PlanAnvilError(
-            f"Commit requires COMPARISON_VALID, found {state.get('status')}",
+            f"Commit requires COMPARISON_VALID or PLAN_COMMITTED, found {state.get('status')}",
             code="INVALID_STATE_FOR_COMMIT",
         )
 
@@ -85,45 +142,47 @@ def commit_plan(
         raise PlanAnvilError("Source worktree changed before commit", code="SOURCE_CHANGED", details=changed)
 
     run_rel = repo_relative(repo, run)
-    git(repo, "add", "--", ".gitignore", ".pursue/SYSTEM_PROFILE.md", run_rel)
-    staged = _staged_paths(repo)
-    forbidden = [
-        ".pursue/SYSTEM_PROFILE.local.md",
-        f"{run_rel}/local-state.json",
-        f"{run_rel}/.generation-lock",
-        f"{run_rel}/.execution-lock",
-    ]
-    bad = [
-        path for path in staged
-        if not _allowed(path, run_rel) or any(fnmatch.fnmatchcase(path, item) for item in forbidden)
-    ]
-    if bad:
-        raise PlanAnvilError("Staged paths violate the planning allowlist", code="STAGED_PATH_VIOLATION", details=bad)
-    if not staged:
-        raise PlanAnvilError("No planning artifacts are staged", code="NOTHING_TO_COMMIT")
-
     plan_id = manifest["plan_id"]
-    _verify_planning_identity(repo, manifest)
-    plan_commit = _commit(repo, message or f"Add PlanAnvil plan {plan_id}")
 
-    # Advance canonical state only after Git proves the plan commit exists.
-    current_state = load_json(state_path)
-    transition_state(
-        state_path,
-        expected_revision=current_state["revision"],
-        new_status="PLAN_COMMITTED",
-        phase="COMMIT_PLANNING_ARTIFACTS",
-        next_action_type="WRITE_FINAL_REPORT",
-        next_action_target="final/REPORT.md",
-        hash_paths=[
-            run / "PLAN.md",
-            run / "traceability.json",
-            run / "reports/validation/summary.json",
-            run / "reports/plan-review/blind-review.md",
-            run / "reports/plan-review/blind-review.json",
-            run / "reports/plan-review/comparison.json",
-        ],
-    )
+    if state.get("status") == "COMPARISON_VALID":
+        git(repo, "add", "--", ".gitignore", ".pursue/SYSTEM_PROFILE.md", run_rel)
+        staged = _staged_paths(repo)
+        forbidden = [
+            ".pursue/SYSTEM_PROFILE.local.md",
+            f"{run_rel}/local-state.json",
+            f"{run_rel}/.generation-lock",
+            f"{run_rel}/.execution-lock",
+        ]
+        bad = [
+            path for path in staged
+            if not _allowed(path, run_rel) or any(fnmatch.fnmatchcase(path, item) for item in forbidden)
+        ]
+        if bad:
+            raise PlanAnvilError("Staged paths violate the planning allowlist", code="STAGED_PATH_VIOLATION", details=bad)
+        if not staged:
+            raise PlanAnvilError("No planning artifacts are staged", code="NOTHING_TO_COMMIT")
+
+        _verify_planning_identity(repo, manifest)
+        plan_commit = _commit(repo, message or f"Add PlanAnvil plan {plan_id}")
+        current_state = load_json(state_path)
+        transition_state(
+            state_path,
+            expected_revision=current_state["revision"],
+            new_status="PLAN_COMMITTED",
+            phase="COMMIT_PLANNING_ARTIFACTS",
+            next_action_type="WRITE_FINAL_REPORT",
+            next_action_target="final/REPORT.md",
+            hash_paths=[
+                run / "PLAN.md",
+                run / "traceability.json",
+                run / "reports/validation/summary.json",
+                run / "reports/plan-review/blind-review.md",
+                run / "reports/plan-review/blind-review.json",
+                run / "reports/plan-review/comparison.json",
+            ],
+        )
+    else:
+        plan_commit = git(repo, "rev-parse", "HEAD").stdout.strip()
 
     comparison = load_json(run / "reports/plan-review/comparison.json")
     report = f"""# PlanAnvil Final Report
@@ -149,23 +208,28 @@ No implementation was executed. Start a separate Codex run using the execution p
     report_path = run / "final/REPORT.md"
     atomic_write_text(report_path, report)
 
-    current_state = load_json(state_path)
-    transition_state(
-        state_path,
-        expected_revision=current_state["revision"],
-        new_status="STOPPED",
-        phase="REPORT_AND_STOP",
-        next_action_type="NONE",
-        next_action_target=None,
-        hash_paths=[report_path],
-    )
-    git(repo, "add", "--", repo_relative(repo, state_path), repo_relative(repo, report_path))
+    stopped_state = _prepare_stopped_state(state_path, report_path)
+    state_rel = repo_relative(repo, state_path)
+    report_rel = repo_relative(repo, report_path)
+    git(repo, "add", "--", report_rel)
+    _stage_json_blob(repo, state_rel, stopped_state)
+
     staged_final = _staged_paths(repo)
     bad_final = [path for path in staged_final if not _allowed(path, run_rel)]
     if bad_final:
+        git(repo, "add", "--", state_rel)
         raise PlanAnvilError("Final staged paths violate allowlist", code="STAGED_PATH_VIOLATION", details=bad_final)
+
     _verify_planning_identity(repo, manifest)
-    final_commit = _commit(repo, f"Finalize PlanAnvil plan {plan_id}")
+    try:
+        final_commit = _commit(repo, f"Finalize PlanAnvil plan {plan_id}")
+    except Exception:
+        git(repo, "add", "--", state_rel)
+        raise
+
+    atomic_write_json(state_path, stopped_state)
+    state_schema = Path(__file__).resolve().parent.parent / "schemas/state.schema.json"
+    assert_valid_file(state_path, state_schema)
 
     status = git(repo, "status", "--porcelain=v1", "--untracked-files=all").stdout
     if status:
