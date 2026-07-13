@@ -8,7 +8,6 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from common import (
-    PlanAnvilError,
     atomic_write_json,
     canonical_file_is_valid,
     cli_main,
@@ -22,8 +21,8 @@ from common import (
     sha256_file,
     utc_now,
 )
-from schema_validator import validate_file
-
+from path_safety import assert_safe_run_root
+from schema_validator import assert_valid_file, validate_file
 
 SCHEMA_FILES = {
     "manifest.json": "manifest.schema.json",
@@ -48,16 +47,6 @@ PRIVATE_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 _STANDARD_VCS_USERS = {"git", "hg", "svn"}
 
 
-def _resolve_run_root(repo: Path, run_root: Path) -> Path:
-    candidate = run_root if run_root.is_absolute() else repo / run_root
-    candidate = candidate.resolve()
-    try:
-        candidate.relative_to(repo)
-    except ValueError as exc:
-        raise PlanAnvilError("Run root escapes planning repository", code="PATH_ESCAPE") from exc
-    return candidate
-
-
 def _host_is_private(host: str) -> bool:
     normalized = host.strip("[]").lower()
     if normalized in PRIVATE_HOSTS or normalized.endswith(".local") or normalized.endswith(".internal"):
@@ -71,12 +60,10 @@ def _host_is_private(host: str) -> bool:
 
 def _masked_urls(text: str) -> str:
     characters = list(text)
-    for match in REMOTE_URL.finditer(text):
-        for index in range(match.start(), match.end()):
-            characters[index] = " "
-    for match in FILE_URL.finditer(text):
-        for index in range(match.start(), match.end()):
-            characters[index] = " "
+    for pattern in [REMOTE_URL, FILE_URL]:
+        for match in pattern.finditer(text):
+            for index in range(match.start(), match.end()):
+                characters[index] = " "
     return "".join(characters)
 
 
@@ -120,7 +107,7 @@ def _extended_privacy_findings(repo: Path, paths: list[Path]) -> list[dict[str, 
 
 def validate_artifacts(planning: Path, run_root: Path, *, phase: str = "pre-review", write_report: bool = True) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = _resolve_run_root(repo, run_root)
+    run = assert_safe_run_root(repo, run_root)
     schemas = Path(__file__).resolve().parent.parent / "schemas"
     findings: list[dict[str, Any]] = []
     validated: list[str] = []
@@ -278,7 +265,9 @@ def validate_artifacts(planning: Path, run_root: Path, *, phase: str = "pre-revi
         "validated": sorted(set(validated)),
     }
     if write_report:
-        atomic_write_json(run / "reports/validation/artifacts.json", payload)
+        target = run / "reports/validation/artifacts.json"
+        atomic_write_json(target, payload)
+        assert_valid_file(target, schemas / "validation-report.schema.json")
     return {"ok": not findings, **payload}
 
 
