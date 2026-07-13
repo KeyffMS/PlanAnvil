@@ -4,8 +4,9 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from common import PlanAnvilError, cli_main, discover_repo, emit, ensure_inside, load_json
+from common import PlanAnvilError, cli_main, discover_repo, emit, load_json
 from finalize_instruction_context import finalize_instruction_context
+from path_safety import assert_safe_run_root
 from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_plan_contract import validate_plan_contract
@@ -13,7 +14,7 @@ from validate_plan_contract import validate_plan_contract
 
 def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
-    run = ensure_inside(repo, run_root if run_root.is_absolute() else repo / run_root)
+    run = assert_safe_run_root(repo, run_root)
     state_path = run / "state.json"
 
     with run_lock(state_path, command="seal-artifacts"):
