@@ -22,7 +22,7 @@ from common import (
     utc_now,
 )
 from schema_validator import assert_valid_file, validate
-from transition_state import transition_state
+from transition_state import run_lock, transition_state
 from validate_all import validate_all
 
 
@@ -31,9 +31,66 @@ def _staged_paths(repo: Path) -> list[str]:
     return sorted(item for item in result.stdout.split("\0") if item)
 
 
+def _run_allowlist(run_rel: str) -> list[str]:
+    return [
+        f"{run_rel}/PLAN.md",
+        f"{run_rel}/manifest.json",
+        f"{run_rel}/state.json",
+        f"{run_rel}/compliance.json",
+        f"{run_rel}/traceability.json",
+        f"{run_rel}/stages/STAGE-*.md",
+        f"{run_rel}/checkpoints/CHECKPOINT-*.json",
+        f"{run_rel}/risks/RISK-*.json",
+        f"{run_rel}/evidence/*.md",
+        f"{run_rel}/evidence/*.json",
+        f"{run_rel}/reports/**/*.md",
+        f"{run_rel}/reports/**/*.json",
+        f"{run_rel}/diffs/*.json",
+        f"{run_rel}/logs/*.json",
+        f"{run_rel}/incidents/*.md",
+        f"{run_rel}/incidents/*.json",
+        f"{run_rel}/final/REPORT.md",
+        f"{run_rel}/final/*.json",
+    ]
+
+
+def _forbidden_patterns(run_rel: str) -> list[str]:
+    return [
+        ".pursue/SYSTEM_PROFILE.local.md",
+        f"{run_rel}/local-state.json",
+        f"{run_rel}/.generation-lock",
+        f"{run_rel}/.execution-lock",
+        f"{run_rel}/**/*.py",
+        f"{run_rel}/**/*.php",
+        f"{run_rel}/**/*.js",
+        f"{run_rel}/**/*.ts",
+        f"{run_rel}/**/*.sh",
+        f"{run_rel}/**/*.ps1",
+        f"{run_rel}/**/*.exe",
+        f"{run_rel}/**/*.dll",
+        f"{run_rel}/**/*.so",
+    ]
+
+
 def _allowed(path: str, run_rel: str) -> bool:
-    patterns = [".gitignore", ".pursue/SYSTEM_PROFILE.md", f"{run_rel}/**"]
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+    allowed = [".gitignore", ".pursue/SYSTEM_PROFILE.md", *_run_allowlist(run_rel)]
+    forbidden = _forbidden_patterns(run_rel)
+    return (
+        any(fnmatch.fnmatchcase(path, pattern) for pattern in allowed)
+        and not any(fnmatch.fnmatchcase(path, pattern) for pattern in forbidden)
+    )
+
+
+def _assert_staged_allowlist(repo: Path, run_rel: str) -> list[str]:
+    staged = _staged_paths(repo)
+    bad = [path for path in staged if not _allowed(path, run_rel)]
+    if bad:
+        raise PlanAnvilError(
+            "Staged paths violate the planning allowlist",
+            code="STAGED_PATH_VIOLATION",
+            details=bad,
+        )
+    return staged
 
 
 def _commit(repo: Path, message: str) -> str:
@@ -112,17 +169,15 @@ def _stage_json_blob(repo: Path, relative_path: str, payload: dict[str, Any]) ->
             temporary.unlink(missing_ok=True)
 
 
-def commit_plan(
-    planning: Path,
-    run_root: Path,
+def _commit_plan_locked(
+    repo: Path,
+    run: Path,
+    manifest: dict[str, Any],
+    local_state: dict[str, Any],
     *,
-    source: Path | None = None,
-    message: str | None = None,
+    source: Path | None,
+    message: str | None,
 ) -> dict[str, Any]:
-    repo = discover_repo(planning)
-    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
-    manifest = load_json(run / "manifest.json")
-    local_state = load_json(run / "local-state.json")
     state_path = run / "state.json"
     state = load_json(state_path)
     if state.get("status") not in {"COMPARISON_VALID", "PLAN_COMMITTED"}:
@@ -146,19 +201,7 @@ def commit_plan(
 
     if state.get("status") == "COMPARISON_VALID":
         git(repo, "add", "--", ".gitignore", ".pursue/SYSTEM_PROFILE.md", run_rel)
-        staged = _staged_paths(repo)
-        forbidden = [
-            ".pursue/SYSTEM_PROFILE.local.md",
-            f"{run_rel}/local-state.json",
-            f"{run_rel}/.generation-lock",
-            f"{run_rel}/.execution-lock",
-        ]
-        bad = [
-            path for path in staged
-            if not _allowed(path, run_rel) or any(fnmatch.fnmatchcase(path, item) for item in forbidden)
-        ]
-        if bad:
-            raise PlanAnvilError("Staged paths violate the planning allowlist", code="STAGED_PATH_VIOLATION", details=bad)
+        staged = _assert_staged_allowlist(repo, run_rel)
         if not staged:
             raise PlanAnvilError("No planning artifacts are staged", code="NOTHING_TO_COMMIT")
 
@@ -180,6 +223,7 @@ def commit_plan(
                 run / "reports/plan-review/blind-review.json",
                 run / "reports/plan-review/comparison.json",
             ],
+            lock_held=True,
         )
     else:
         plan_commit = git(repo, "rev-parse", "HEAD").stdout.strip()
@@ -214,12 +258,7 @@ No implementation was executed. Start a separate Codex run using the execution p
     git(repo, "add", "--", report_rel)
     _stage_json_blob(repo, state_rel, stopped_state)
 
-    staged_final = _staged_paths(repo)
-    bad_final = [path for path in staged_final if not _allowed(path, run_rel)]
-    if bad_final:
-        git(repo, "add", "--", state_rel)
-        raise PlanAnvilError("Final staged paths violate allowlist", code="STAGED_PATH_VIOLATION", details=bad_final)
-
+    _assert_staged_allowlist(repo, run_rel)
     _verify_planning_identity(repo, manifest)
     try:
         final_commit = _commit(repo, f"Finalize PlanAnvil plan {plan_id}")
@@ -250,6 +289,29 @@ No implementation was executed. Start a separate Codex run using the execution p
         "pushed": False,
         "implementation_executed": False,
     }
+
+
+def commit_plan(
+    planning: Path,
+    run_root: Path,
+    *,
+    source: Path | None = None,
+    message: str | None = None,
+) -> dict[str, Any]:
+    repo = discover_repo(planning)
+    run = (run_root if run_root.is_absolute() else repo / run_root).resolve()
+    manifest = load_json(run / "manifest.json")
+    local_state = load_json(run / "local-state.json")
+    state_path = run / "state.json"
+    with run_lock(state_path, command="commit-plan"):
+        return _commit_plan_locked(
+            repo,
+            run,
+            manifest,
+            local_state,
+            source=source,
+            message=message,
+        )
 
 
 def main() -> int:
