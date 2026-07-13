@@ -127,7 +127,7 @@
             "$ref": "#/$defs/relative_path"
           },
           "precedence": {
-            "minimum": 0,
+            "minimum": -1,
             "type": "integer"
           },
           "safety_critical_rules": {
