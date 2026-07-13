@@ -46,7 +46,9 @@ _LOCAL_ONLY_NAMES = {
 
 def allowed_planning_path(path: str, run_rel: str) -> bool:
     """Return whether a repository-relative path has a defined planning role."""
-    normalized = path.replace("\\", "/").lstrip("./")
+    normalized = path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
     normalized_run = run_rel.replace("\\", "/").strip("/")
     if normalized in _CONTROL_FILES:
         return True
