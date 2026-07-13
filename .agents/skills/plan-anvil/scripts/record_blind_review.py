@@ -115,6 +115,7 @@ def record_blind_review(
         sidecar = {
             "schema_version": "1.1.0",
             "report_type": "BLIND_PLAN_REVIEW",
+            "author_role": "plan-anvil-reviewer",
             "created_at": utc_now(),
             "inputs": {item["path"]: item["sha256"] for item in expected_files},
             "result": result,
@@ -130,13 +131,11 @@ def record_blind_review(
             raise PlanAnvilError("Blind review sidecar contains private or secret data", code="REVIEW_PRIVACY", details=sidecar_privacy)
 
         original_compliance = compliance_path.read_text(encoding="utf-8")
-        created_md = False
-        created_json = False
+        created_md = not target_md.exists()
+        created_json = not target_json.exists()
         try:
             atomic_write_text(target_md, markdown, exclusive=True)
-            created_md = True
             atomic_write_json(target_json, sidecar, exclusive=True)
-            created_json = True
             assert_valid_file(target_json, review_schema)
 
             compliance = load_json(compliance_path)
