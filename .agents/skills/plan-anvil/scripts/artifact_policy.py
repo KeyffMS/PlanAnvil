@@ -24,6 +24,7 @@ _RUN_EXACT_FILES = {
     "reports/validation/diff.json",
     "reports/validation/path-safety.json",
     "reports/validation/traceability.json",
+    "reports/validation/schema-coverage.json",
     "reports/validation/summary.json",
     "reports/plan-review/review-bundle.json",
     "reports/plan-review/review-prompt.md",
