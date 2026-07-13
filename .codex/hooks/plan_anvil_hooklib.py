@@ -96,25 +96,49 @@ def _explicit_run_id(event: dict[str, Any]) -> str | None:
     return environment.strip() if environment and environment.strip() else None
 
 
-def active_run_for_event(event: dict[str, Any]) -> ActiveRun | None:
+def _source_worktree(active: ActiveRun) -> Path | None:
+    local_state = active.run_root / "local-state.json"
+    try:
+        value = json.loads(local_state.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    paths = value.get("paths") if isinstance(value, dict) else None
+    raw = paths.get("source_worktree") if isinstance(paths, dict) else None
+    return Path(raw).resolve() if isinstance(raw, str) and raw else None
+
+
+def active_run_candidates_for_event(event: dict[str, Any]) -> list[ActiveRun]:
     raw_cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else None
     repo = git_root(raw_cwd)
     if repo is None:
-        return None
-
-    candidates = [item for item in active_runs(repo) if item.worktree == repo]
+        return []
+    all_runs = active_runs(repo)
+    candidates = [
+        item
+        for item in all_runs
+        if item.worktree == repo or _source_worktree(item) == repo
+    ]
     explicit = _explicit_run_id(event)
     if explicit is not None:
-        matches = [item for item in candidates if item.run_root.name == explicit]
-        return matches[0] if len(matches) == 1 else None
+        candidates = [item for item in candidates if item.run_root.name == explicit]
+    unique: dict[Path, ActiveRun] = {item.run_root: item for item in candidates}
+    return sorted(unique.values(), key=lambda item: item.run_root.name)
 
-    cwd = Path(raw_cwd or repo).resolve()
+
+def active_run_for_event(event: dict[str, Any]) -> ActiveRun | None:
+    candidates = active_run_candidates_for_event(event)
+    if not candidates:
+        return None
+    raw_cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else None
+    cwd = Path(raw_cwd or ".").resolve()
     containing = [item for item in candidates if is_within(item.run_root, cwd)]
     if len(containing) == 1:
         return containing[0]
-    if len(candidates) == 1:
-        return candidates[0]
-    return None
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def event_has_ambiguous_active_runs(event: dict[str, Any]) -> bool:
+    return active_run_for_event(event) is None and len(active_run_candidates_for_event(event)) > 1
 
 
 def event_cwd(event: dict[str, Any]) -> Path:
