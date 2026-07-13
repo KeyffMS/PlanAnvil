@@ -14,9 +14,11 @@ from common import (
     emit,
     ensure_inside,
     git,
+    git_worktree_paths,
     list_untracked,
     load_json,
     repo_relative,
+    repository_fingerprint,
     scan_privacy,
     utc_now,
 )
@@ -31,6 +33,40 @@ def _changed_paths(repo: Path, base_sha: str) -> list[str]:
 
 def _matches(path: str, allowed: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in allowed)
+
+
+def _common_git_dir(repo: Path) -> Path:
+    raw = Path(git(repo, "rev-parse", "--git-common-dir").stdout.strip())
+    return raw.resolve() if raw.is_absolute() else (repo / raw).resolve()
+
+
+def _source_identity_findings(
+    planning_repo: Path,
+    source_repo: Path,
+    manifest: dict[str, Any],
+    local_state: dict[str, Any],
+) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    expected_fingerprint = manifest.get("repository", {}).get("fingerprint")
+    actual_fingerprint = repository_fingerprint(source_repo)
+    if actual_fingerprint != expected_fingerprint:
+        findings.append({"kind": "source-repository-fingerprint-mismatch"})
+
+    if _common_git_dir(source_repo) != _common_git_dir(planning_repo):
+        findings.append({"kind": "source-git-common-dir-mismatch"})
+
+    worktrees = set(git_worktree_paths(planning_repo))
+    if source_repo.resolve() not in worktrees or planning_repo.resolve() not in worktrees:
+        findings.append({"kind": "source-worktree-registration-mismatch"})
+
+    snapshot = local_state.get("source_snapshot", {})
+    base_sha = manifest.get("repository", {}).get("base_sha")
+    base_branch = manifest.get("repository", {}).get("base_branch")
+    if snapshot.get("head") != base_sha:
+        findings.append({"kind": "source-snapshot-base-sha-mismatch"})
+    if snapshot.get("branch") != base_branch:
+        findings.append({"kind": "source-snapshot-base-branch-mismatch"})
+    return findings
 
 
 def validate_diff(
@@ -82,7 +118,8 @@ def validate_diff(
         if path.is_file():
             committed_candidates.append(path)
 
-    source_repo = discover_repo(source) if source else Path(local_state["paths"]["source_worktree"])
+    source_repo = discover_repo(source) if source else discover_repo(Path(local_state["paths"]["source_worktree"]))
+    findings.extend(_source_identity_findings(repo, source_repo, manifest, local_state))
     changed_snapshot = compare_snapshot(source_repo, local_state["source_snapshot"])
     if changed_snapshot:
         findings.append({"kind": "source-worktree-changed", "fields": changed_snapshot})
