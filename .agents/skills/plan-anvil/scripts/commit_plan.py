@@ -115,7 +115,10 @@ def _verify_planning_identity(repo: Path, manifest: dict[str, Any]) -> None:
     base_sha = manifest["repository"]["base_sha"]
     ancestor = git(repo, "merge-base", "--is-ancestor", base_sha, "HEAD", check=False)
     if ancestor.returncode != 0:
-        raise PlanAnvilError("Planning branch no longer descends from the recorded base SHA", code="BASE_SHA_MISMATCH")
+        raise PlanAnvilError(
+            "Planning branch no longer descends from the recorded base SHA",
+            code="BASE_SHA_MISMATCH",
+        )
 
 
 def _prepare_stopped_state(state_path: Path, report_path: Path) -> dict[str, Any]:
@@ -187,14 +190,29 @@ def _commit_plan_locked(
         )
 
     _verify_planning_identity(repo, manifest)
-    final_validation = validate_all(repo, run, source=source, phase="final", advance_state=False)
+    final_validation = validate_all(
+        repo,
+        run,
+        source=source,
+        phase="final",
+        advance_state=False,
+        lock_held=True,
+    )
     if not final_validation["ok"]:
-        raise PlanAnvilError("Final validation failed", code="PLAN_VALIDATION_FAILED", details=final_validation["findings"])
+        raise PlanAnvilError(
+            "Final validation failed",
+            code="PLAN_VALIDATION_FAILED",
+            details=final_validation["findings"],
+        )
 
     source_repo = discover_repo(source) if source else Path(local_state["paths"]["source_worktree"])
     changed = compare_snapshot(source_repo, local_state["source_snapshot"])
     if changed:
-        raise PlanAnvilError("Source worktree changed before commit", code="SOURCE_CHANGED", details=changed)
+        raise PlanAnvilError(
+            "Source worktree changed before commit",
+            code="SOURCE_CHANGED",
+            details=changed,
+        )
 
     run_rel = repo_relative(repo, run)
     plan_id = manifest["plan_id"]
@@ -272,10 +290,18 @@ No implementation was executed. Start a separate Codex run using the execution p
 
     status = git(repo, "status", "--porcelain=v1", "--untracked-files=all").stdout
     if status:
-        raise PlanAnvilError("Planning worktree is not clean after final commit", code="PLANNING_WORKTREE_DIRTY", details=status)
+        raise PlanAnvilError(
+            "Planning worktree is not clean after final commit",
+            code="PLANNING_WORKTREE_DIRTY",
+            details=status,
+        )
     changed = compare_snapshot(source_repo, local_state["source_snapshot"])
     if changed:
-        raise PlanAnvilError("Source worktree changed during commit", code="SOURCE_CHANGED", details=changed)
+        raise PlanAnvilError(
+            "Source worktree changed during commit",
+            code="SOURCE_CHANGED",
+            details=changed,
+        )
 
     return {
         "ok": True,
@@ -315,13 +341,22 @@ def commit_plan(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate and commit only approved PlanAnvil planning artifacts")
+    parser = argparse.ArgumentParser(
+        description="Validate and commit only approved PlanAnvil planning artifacts"
+    )
     parser.add_argument("--planning", type=Path, default=Path.cwd())
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--source", type=Path)
     parser.add_argument("--message")
     args = parser.parse_args()
-    return emit(commit_plan(args.planning, args.run_root, source=args.source, message=args.message))
+    return emit(
+        commit_plan(
+            args.planning,
+            args.run_root,
+            source=args.source,
+            message=args.message,
+        )
+    )
 
 
 if __name__ == "__main__":
