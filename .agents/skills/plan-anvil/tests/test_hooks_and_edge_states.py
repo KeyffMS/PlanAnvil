@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from _helpers import init_repo, run
-from common import PlanAnvilError, atomic_write_json
+from common import PlanAnvilError, atomic_write_json, load_json, sha256_file
 from preflight import preflight
 from transition_state import transition_state
 
@@ -48,6 +48,42 @@ class HookAndEdgeStateTests(unittest.TestCase):
         path.parent.mkdir(parents=True)
         atomic_write_json(path, state)
         return repo
+
+    def _write_valid_checkpoint(self, repo: Path) -> Path:
+        run_root = repo / ".pursue/runs/run"
+        state_path = run_root / "state.json"
+        state = load_json(state_path)
+        checkpoint_path = run_root / "checkpoints/CHECKPOINT-01-VERIFIED.json"
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        branch = run("git", "branch", "--show-current", cwd=repo).stdout.strip()
+        head = run("git", "rev-parse", "HEAD", cwd=repo).stdout.strip()
+        checkpoint = {
+            "schema_version": "1.1.0",
+            "id": "CHECKPOINT-01-VERIFIED",
+            "created_at": "2026-07-12T12:05:00Z",
+            "mode": state["mode"],
+            "stage": None,
+            "phase": state["current_phase"],
+            "result": "PASS",
+            "git": {
+                "branch": branch,
+                "head": head,
+                "worktree_role": "PLANNING",
+                "status": "DIRTY",
+            },
+            "tests": {"summary": "No pending test failure.", "evidence": []},
+            "risks": {"open": [], "closed": []},
+            "agent_tree": {"status": "COMPLIANT", "evidence": []},
+            "write_scope": {"status": "COMPLIANT", "evidence": []},
+            "next_action": state["next_action"],
+            "recovery": ["Read canonical state and reconcile the recorded Git worktree."],
+            "artifact_hashes": {},
+        }
+        atomic_write_json(checkpoint_path, checkpoint)
+        state["last_checkpoint"] = "checkpoints/CHECKPOINT-01-VERIFIED.json"
+        state["artifact_hashes"][state["last_checkpoint"]] = sha256_file(checkpoint_path)
+        atomic_write_json(state_path, state)
+        return checkpoint_path
 
     def test_hook_denies_destructive_git_and_product_patch(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -125,6 +161,42 @@ class HookAndEdgeStateTests(unittest.TestCase):
                 {"cwd": str(repo), "hook_event_name": "PreCompact", "trigger": "auto"},
             )
             self.assertFalse(blocked["continue"])
+            self.assertIn("checkpoint", blocked["stopReason"].lower())
+
+    def test_compaction_rejects_missing_checkpoint_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._active_repo(
+                Path(directory),
+                mode="PLAN_EXECUTION",
+                checkpoint="checkpoints/CHECKPOINT-01-VERIFIED.json",
+            )
+            blocked = self._hook(
+                "plan-anvil-compaction.py",
+                repo,
+                {"cwd": str(repo), "hook_event_name": "PreCompact", "trigger": "manual"},
+            )
+            self.assertFalse(blocked["continue"])
+            self.assertIn("missing", blocked["stopReason"].lower())
+
+    def test_compaction_accepts_schema_and_git_valid_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._active_repo(Path(directory), mode="PLAN_EXECUTION")
+            checkpoint_path = self._write_valid_checkpoint(repo)
+            allowed = self._hook(
+                "plan-anvil-compaction.py",
+                repo,
+                {"cwd": str(repo), "hook_event_name": "PreCompact", "trigger": "manual"},
+            )
+            self.assertEqual(allowed, {})
+
+            recovery = self._hook(
+                "plan-anvil-recovery.py",
+                repo,
+                {"cwd": str(repo), "hook_event_name": "SessionStart", "source": "resume"},
+            )
+            message = recovery["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("Validated checkpoint", message)
+            self.assertIn(str(checkpoint_path), message)
 
     def test_detached_head_with_multiple_containing_branches_is_ambiguous(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
