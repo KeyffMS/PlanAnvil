@@ -41,6 +41,20 @@ def _commit(repo: Path, message: str) -> str:
     return git(repo, "rev-parse", "HEAD").stdout.strip()
 
 
+def _verify_planning_identity(repo: Path, manifest: dict[str, Any]) -> None:
+    expected_branch = manifest["repository"]["planning_branch"]
+    actual_branch = git(repo, "symbolic-ref", "--quiet", "--short", "HEAD", check=False).stdout.strip()
+    if actual_branch != expected_branch:
+        raise PlanAnvilError(
+            f"Planning branch changed: expected {expected_branch}, found {actual_branch or 'detached HEAD'}",
+            code="PLANNING_BRANCH_MISMATCH",
+        )
+    base_sha = manifest["repository"]["base_sha"]
+    ancestor = git(repo, "merge-base", "--is-ancestor", base_sha, "HEAD", check=False)
+    if ancestor.returncode != 0:
+        raise PlanAnvilError("Planning branch no longer descends from the recorded base SHA", code="BASE_SHA_MISMATCH")
+
+
 def commit_plan(
     planning: Path,
     run_root: Path,
@@ -60,13 +74,8 @@ def commit_plan(
             code="INVALID_STATE_FOR_COMMIT",
         )
 
-    final_validation = validate_all(
-        repo,
-        run,
-        source=source,
-        phase="final",
-        advance_state=False,
-    )
+    _verify_planning_identity(repo, manifest)
+    final_validation = validate_all(repo, run, source=source, phase="final", advance_state=False)
     if not final_validation["ok"]:
         raise PlanAnvilError("Final validation failed", code="PLAN_VALIDATION_FAILED", details=final_validation["findings"])
 
@@ -74,23 +83,6 @@ def commit_plan(
     changed = compare_snapshot(source_repo, local_state["source_snapshot"])
     if changed:
         raise PlanAnvilError("Source worktree changed before commit", code="SOURCE_CHANGED", details=changed)
-
-    transition_state(
-        state_path,
-        expected_revision=state["revision"],
-        new_status="PLAN_COMMITTED",
-        phase="COMMIT_PLANNING_ARTIFACTS",
-        next_action_type="WRITE_FINAL_REPORT",
-        next_action_target="final/REPORT.md",
-        hash_paths=[
-            run / "PLAN.md",
-            run / "traceability.json",
-            run / "reports/validation/summary.json",
-            run / "reports/plan-review/blind-review.md",
-            run / "reports/plan-review/blind-review.json",
-            run / "reports/plan-review/comparison.json",
-        ],
-    )
 
     run_rel = repo_relative(repo, run)
     git(repo, "add", "--", ".gitignore", ".pursue/SYSTEM_PROFILE.md", run_rel)
@@ -111,7 +103,27 @@ def commit_plan(
         raise PlanAnvilError("No planning artifacts are staged", code="NOTHING_TO_COMMIT")
 
     plan_id = manifest["plan_id"]
+    _verify_planning_identity(repo, manifest)
     plan_commit = _commit(repo, message or f"Add PlanAnvil plan {plan_id}")
+
+    # Advance canonical state only after Git proves the plan commit exists.
+    current_state = load_json(state_path)
+    transition_state(
+        state_path,
+        expected_revision=current_state["revision"],
+        new_status="PLAN_COMMITTED",
+        phase="COMMIT_PLANNING_ARTIFACTS",
+        next_action_type="WRITE_FINAL_REPORT",
+        next_action_target="final/REPORT.md",
+        hash_paths=[
+            run / "PLAN.md",
+            run / "traceability.json",
+            run / "reports/validation/summary.json",
+            run / "reports/plan-review/blind-review.md",
+            run / "reports/plan-review/blind-review.json",
+            run / "reports/plan-review/comparison.json",
+        ],
+    )
 
     comparison = load_json(run / "reports/plan-review/comparison.json")
     report = f"""# PlanAnvil Final Report
@@ -152,6 +164,7 @@ No implementation was executed. Start a separate Codex run using the execution p
     bad_final = [path for path in staged_final if not _allowed(path, run_rel)]
     if bad_final:
         raise PlanAnvilError("Final staged paths violate allowlist", code="STAGED_PATH_VIOLATION", details=bad_final)
+    _verify_planning_identity(repo, manifest)
     final_commit = _commit(repo, f"Finalize PlanAnvil plan {plan_id}")
 
     status = git(repo, "status", "--porcelain=v1", "--untracked-files=all").stdout
