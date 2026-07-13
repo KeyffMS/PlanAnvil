@@ -11,6 +11,11 @@ from transition_state import run_lock, transition_state
 from validate_artifacts import validate_artifacts
 from validate_plan_contract import validate_plan_contract
 
+_PENDING_SEAL_HASHES = {
+    "evidence/instruction-map.json",
+    ".pursue/SYSTEM_PROFILE.md",
+}
+
 
 def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
     repo = discover_repo(planning)
@@ -28,11 +33,19 @@ def seal_artifacts(planning: Path, run_root: Path) -> dict[str, Any]:
         finalize_instruction_context(repo, run)
         plan_result = validate_plan_contract(repo, run, write_report=False)
         artifact_result = validate_artifacts(repo, run, phase="pre-review", write_report=False)
+        artifact_findings = [
+            finding
+            for finding in artifact_result.get("findings", [])
+            if not (
+                finding.get("kind") == "hashed-artifact-stale"
+                and finding.get("path") in _PENDING_SEAL_HASHES
+            )
+        ]
         findings = []
         if not plan_result.get("ok"):
             findings.append({"validator": "validate_plan", "findings": plan_result.get("findings", [])})
-        if not artifact_result.get("ok"):
-            findings.append({"validator": "validate_artifacts", "findings": artifact_result.get("findings", [])})
+        if artifact_findings:
+            findings.append({"validator": "validate_artifacts", "findings": artifact_findings})
         if findings:
             raise PlanAnvilError(
                 "Plan artifacts are incomplete or invalid",
