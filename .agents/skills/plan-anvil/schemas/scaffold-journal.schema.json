@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "hash": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "pattern": "^[^/\\\\]+$",
+      "type": "string"
+    },
+    "sha": {
+      "pattern": "^[0-9a-f]{40,64}$",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "$id": "https://keyffms.github.io/PlanAnvil/schemas/scaffold-journal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "final_name": {
+      "$ref": "#/$defs/name"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "$ref": "#/$defs/sha"
+        },
+        "goal_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "plan_id": {
+          "pattern": "^PG-[0-9]{8}-[0-9]{6}-[A-F0-9]{4}$",
+          "type": "string"
+        },
+        "planning_branch": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "run_id": {
+          "$ref": "#/$defs/name"
+        }
+      },
+      "required": [
+        "plan_id",
+        "run_id",
+        "base_sha",
+        "planning_branch",
+        "goal_hash"
+      ],
+      "type": "object"
+    },
+    "operation": {
+      "const": "SCAFFOLD_RUN"
+    },
+    "phase": {
+      "enum": [
+        "PREPARED",
+        "BUILDING",
+        "READY_TO_PUBLISH",
+        "PUBLISHED"
+      ]
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "staging_name": {
+      "pattern": "^\\.plananvil-scaffold-[^/\\\\]+$",
+      "type": "string"
+    },
+    "updated_at": {
+      "$ref": "#/$defs/timestamp"
+    }
+  },
+  "required": [
+    "schema_version",
+    "operation",
+    "phase",
+    "updated_at",
+    "identity",
+    "staging_name",
+    "final_name"
+  ],
+  "title": "PlanAnvil scaffold transaction journal",
+  "type": "object"
+}

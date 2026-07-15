@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from common import PlanAnvilError, atomic_write_json, load_json, utc_now
+from schema_validator import assert_valid_file, validate_file
+
+
+JOURNAL_SCHEMA = Path(__file__).resolve().parent.parent / "schemas/scaffold-journal.schema.json"
 
 
 @dataclass
@@ -33,6 +37,7 @@ class ScaffoldTransaction:
                 "final_name": self.final_root.name,
             },
         )
+        assert_valid_file(self.journal_path, JOURNAL_SCHEMA)
 
     def publish(self) -> None:
         if self.final_root.exists():
@@ -110,12 +115,19 @@ def begin_scaffold_transaction(final_root: Path, identity: dict[str, Any]) -> Sc
 
     if journal_path.exists():
         try:
+            errors = validate_file(journal_path, JOURNAL_SCHEMA)
             journal = load_json(journal_path)
         except PlanAnvilError as exc:
             raise PlanAnvilError(
                 f"Scaffold journal cannot be verified: {journal_path}",
                 code="SCAFFOLD_JOURNAL_INVALID",
             ) from exc
+        if errors:
+            raise PlanAnvilError(
+                f"Scaffold journal failed schema validation: {journal_path}",
+                code="SCAFFOLD_JOURNAL_INVALID",
+                details=errors,
+            )
         if not isinstance(journal, dict) or journal.get("identity") != identity:
             raise PlanAnvilError(
                 f"Scaffold journal belongs to another run: {journal_path}",
