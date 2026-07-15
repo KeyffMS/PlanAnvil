@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from common import atomic_write_json, cli_main, discover_repo, emit
+from execution_contract import execution_contract_findings
 from path_safety import assert_safe_run_root
 from validate_plan import _frontmatter, validate_plan
 
@@ -41,6 +42,10 @@ def validate_plan_contract(planning: Path, run_root: Path, *, write_report: bool
         ):
             continue
         filtered.append(finding)
+
+    plan_path = run / "PLAN.md"
+    if result.get("plan_status") == "PLAN_READY" and plan_path.is_file():
+        filtered.extend(execution_contract_findings(plan_path.read_text(encoding="utf-8")))
 
     payload = {**result, "findings": filtered, "result": "PASS" if not filtered else "FAIL"}
     payload["ok"] = not filtered

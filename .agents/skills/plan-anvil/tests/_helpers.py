@@ -241,15 +241,22 @@ Classification is LOW risk and behavior-changing. The stage depends on the exist
 
 ## Testing and independent verification
 
-Run a green baseline, add an expected-red regression test, implement the minimum behavior, run the focused and full suites, then obtain independent read-only verification.
+Behavior-changing stages use GREEN BASELINE → EXPECTED RED → IMPLEMENTATION → FULL GREEN → INDEPENDENT VERIFICATION. The expected-red result must fail for the intended behavioral reason.
 
 ## Git, integration, and control-root rules
 
-Use `pursue/{plan_id}/display-name` for task work and `pursue/integration/{plan_id}/display-name` only when integration is needed. Control artifacts remain in the planning worktree. One modifier acts at a time.
+Jim coordinates a flat direct-child topology. Jenny owns approved tests, one implementation agent owns approved product paths, an independent verifier remains read-only, and Winston Wolfe performs read-only incident analysis only after six failures. Only one agent may modify repository files at a time.
+
+Retry model: STRATEGY-A uses ATTEMPT-A1, ATTEMPT-A2, and ATTEMPT-A3. STRATEGY-B uses ATTEMPT-B1, ATTEMPT-B2, and ATTEMPT-B3. After six failures, Winston Wolfe performs read-only incident analysis and execution stops with `BLOCKED_BY_UNRESOLVED_FAILURE`.
+
+Task branch: `pursue/{plan_id}/display-name`.
+Integration branch: `pursue/integration/{plan_id}/display-name`.
+
+Control artifacts remain in the planning worktree. Each completed stage ends in one coherent implementation-and-test commit.
 
 ## Production verification, switching, and approvals
 
-No live switch is required. Base-branch merge or push requires explicit user approval.
+Explicit user approval is required before a base-branch merge or push, switching a live worktree, service, or environment, and any irreversible operation. No live switch or irreversible operation is expected for this plan.
 
 ## Rollback and recovery
 
