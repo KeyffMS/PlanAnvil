@@ -74,10 +74,10 @@ python -m compileall -q .agents/skills/plan-anvil .codex/hooks
 - `docs/IMPLEMENTATION_SPEC.md` — authoritative product and implementation contract
 - `docs/ARCHITECTURE.md` — architecture and trust boundaries
 - `docs/ARTIFACT_SCHEMAS.md` — canonical state and artifact formats
-- `docs/RECOVERY_AND_VALIDATION.md` — crash recovery, checkpoint, schema and path-safety guarantees
 - `docs/OPENAI_COMPLIANCE.md` — Codex compatibility decisions
 - `docs/CODEX_CAPABILITY_BASELINE.md` — reproducible capability release gate
 - `docs/EXAMPLES.md` — expected decisions and output shapes
+- `docs/RECOVERY_AND_VALIDATION.md` — recovery, schema coverage, path-safety and checkpoint guarantees
 - `capabilities/README.md` — evidence-package workflow
 
 ## Author
