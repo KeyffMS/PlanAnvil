@@ -114,6 +114,7 @@ def active_run_candidates_for_event(event: dict[str, Any]) -> list[ActiveRun]:
     repo = git_root(raw_cwd)
     if repo is None:
         return []
+    repo = repo.resolve()
     all_runs = active_runs(repo)
     exact = [item for item in all_runs if item.worktree == repo]
     source = [item for item in all_runs if _source_worktree(item) == repo]

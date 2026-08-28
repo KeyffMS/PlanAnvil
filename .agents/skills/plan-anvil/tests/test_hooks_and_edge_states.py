@@ -196,7 +196,7 @@ class HookAndEdgeStateTests(unittest.TestCase):
             )
             message = recovery["hookSpecificOutput"]["additionalContext"]
             self.assertIn("Validated checkpoint", message)
-            self.assertIn(str(checkpoint_path), message)
+            self.assertIn(str(checkpoint_path.resolve()), message)
 
     def test_detached_head_with_multiple_containing_branches_is_ambiguous(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -2,6 +2,16 @@
 
 All notable changes to PlanAnvil are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- canonicalize event repository paths before active-run routing so source-worktree matching is stable across macOS symlink aliases and Windows path aliases;
+- keep checkpoint recovery assertions platform-neutral by comparing canonical paths;
+- update the artifact-sealing lock regression test to observe the current `validate_plan_contract` gate;
+- make the Git-hook probe fixture emit explicit hook diagnostics while preserving fail-closed classification for unrelated commit failures;
+- synchronize golden blind-review fixtures and dependent comparison hashes with the required independent `plan-anvil-reviewer` author role.
+
 ## [0.1.0] - 2026-07-12
 
 ### Added
