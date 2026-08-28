@@ -101,12 +101,22 @@ class Snapshot:
 
 
 class Transaction:
-    def __init__(self) -> None:
+    def __init__(self, root: Path) -> None:
+        self.root = root.resolve()
         self.snapshots: dict[Path, Snapshot] = {}
+        self.created_dirs: list[Path] = []
 
     def capture(self, path: Path) -> None:
         if path in self.snapshots:
             return
+        cursor = path.parent
+        missing: list[Path] = []
+        while cursor != self.root and not cursor.exists():
+            missing.append(cursor)
+            cursor = cursor.parent
+        for directory in reversed(missing):
+            if directory not in self.created_dirs:
+                self.created_dirs.append(directory)
         if path.exists():
             if path.is_dir():
                 raise DistError(f'expected file, found directory: {path}')
@@ -121,6 +131,11 @@ class Transaction:
                     write_bytes(path, snap.data or b'')
                 elif path.exists():
                     path.unlink()
+            except OSError:
+                pass
+        for directory in sorted(set(self.created_dirs), key=lambda item: len(item.parts), reverse=True):
+            try:
+                directory.rmdir()
             except OSError:
                 pass
 
@@ -364,7 +379,7 @@ def install_or_upgrade(source: Path, target: Path, upgrade: bool, allow_dirty: b
         'config': {'managed_block': block, 'file_created_by_plananvil': not config_path.exists()},
         'hooks': {'entries': managed_hooks, 'file_created_by_plananvil': not hooks_path.exists()},
     }
-    tx = Transaction()
+    tx = Transaction(root)
     state_path = root / STATE_REL
     try:
         for rel, src, _digest, owned in payload:
@@ -451,7 +466,7 @@ def uninstall(target: Path, allow_dirty: bool) -> dict[str, Any]:
     if state is None:
         raise DistError('PlanAnvil is not installed')
     preflight_uninstall(root, state)
-    tx = Transaction()
+    tx = Transaction(root)
     removed: list[str] = []
     state_path = root / STATE_REL
     config_path = root / CONFIG_REL
