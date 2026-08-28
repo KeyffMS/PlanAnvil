@@ -4,6 +4,13 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- refresh the Codex capability baseline to 2.2 against current 2026-08-28 official documentation;
+- replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
+- enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
+- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker.
+
 ### Fixed
 
 - canonicalize event repository paths before active-run routing so source-worktree matching is stable across macOS symlink aliases and Windows path aliases;

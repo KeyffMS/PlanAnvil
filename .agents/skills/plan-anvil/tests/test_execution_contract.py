@@ -85,6 +85,11 @@ class ExecutionContractTests(unittest.TestCase):
         self.assertIn("execution-contract-topology-missing", kinds)
         self.assertIn("execution-contract-single-modifier-missing", kinds)
 
+    def test_legacy_max_depth_does_not_satisfy_flat_topology(self) -> None:
+        text = compliant_plan().replace("flat direct-child topology", "agents.max_depth = 1 topology")
+        kinds = {item["kind"] for item in execution_contract_findings(text)}
+        self.assertIn("execution-contract-topology-missing", kinds)
+
     def test_evidence_cycle_is_enforced(self) -> None:
         findings = execution_contract_findings(compliant_plan().replace("FULL GREEN", "TEST AGAIN"))
         self.assertIn(
