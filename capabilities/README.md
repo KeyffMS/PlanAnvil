@@ -2,7 +2,7 @@
 
 This directory stores sanitized, reproducible evidence for the release gate in `docs/CODEX_CAPABILITY_BASELINE.md`.
 
-`capabilities/templates.tar.gz.b64` contains deterministic prepared C01-C16 packages. Before a live qualification run, materialize them on the evidence branch:
+`capabilities/templates.part*` contains deterministic prepared C01-C16 packages. Before a live qualification run, materialize them on the evidence branch:
 
 ```text
 python tools/prepare_capabilities.py --force
