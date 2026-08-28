@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -152,6 +153,39 @@ class DistributionTests(unittest.TestCase):
                 plananvil_dist.uninstall(repo, True)
             self.assertTrue(path.exists())
             self.assertTrue((repo / '.plananvil/installation.json').exists())
+
+    def test_nested_target_installs_at_monorepo_git_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = init_repo(Path(tmp) / 'repo')
+            nested = repo / 'packages/app'
+            nested.mkdir(parents=True)
+            (nested / 'README.md').write_text('# App\n', encoding='utf-8')
+            commit_all(repo, 'add monorepo package')
+            plananvil_dist.install_or_upgrade(ROOT, nested, False, False)
+            self.assertTrue((repo / '.agents/skills/plan-anvil/SKILL.md').is_file())
+            self.assertTrue((repo / '.plananvil/installation.json').is_file())
+            self.assertFalse((nested / '.plananvil/installation.json').exists())
+            self.assertTrue(plananvil_dist.verify_installation(nested)['ok'])
+
+    def test_failed_payload_copy_rolls_back_partial_install(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = init_repo(Path(tmp) / 'repo')
+            real_copy = plananvil_dist.shutil.copy2
+            calls = {'count': 0}
+
+            def fail_on_second_copy(src, dst, *args, **kwargs):
+                calls['count'] += 1
+                if calls['count'] == 2:
+                    raise OSError('injected copy failure')
+                return real_copy(src, dst, *args, **kwargs)
+
+            with patch.object(plananvil_dist.shutil, 'copy2', side_effect=fail_on_second_copy):
+                with self.assertRaises(OSError):
+                    plananvil_dist.install_or_upgrade(ROOT, repo, False, False)
+            self.assertFalse((repo / '.agents/skills/plan-anvil').exists())
+            self.assertFalse((repo / '.plananvil/installation.json').exists())
+            self.assertFalse((repo / '.codex/hooks/plan-anvil-guard.py').exists())
+            self.assertEqual(run('git', 'status', '--porcelain', cwd=repo).stdout, '')
 
 
 if __name__ == '__main__':
