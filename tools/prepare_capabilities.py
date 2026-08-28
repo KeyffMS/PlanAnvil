@@ -7,7 +7,7 @@ import shutil
 import tarfile
 from pathlib import Path, PurePosixPath
 
-ARCHIVE = Path('capabilities/templates.tar.gz.b64')
+PART_GLOB = 'templates.part*'
 
 
 def _safe_member(name: str) -> PurePosixPath:
@@ -20,7 +20,12 @@ def _safe_member(name: str) -> PurePosixPath:
 def materialize(source_root: Path, target_root: Path, *, force: bool = False) -> list[str]:
     source_root = source_root.resolve()
     target_root = target_root.resolve()
-    raw = base64.b64decode((source_root / ARCHIVE).read_text(encoding='ascii'))
+    part_dir = source_root / 'capabilities'
+    parts = sorted(part_dir.glob(PART_GLOB))
+    if not parts:
+        raise FileNotFoundError('capability template parts are missing')
+    encoded = ''.join(part.read_text(encoding='ascii').strip() for part in parts)
+    raw = base64.b64decode(encoded, validate=True)
     written: list[str] = []
     with tarfile.open(fileobj=io.BytesIO(raw), mode='r:gz') as tar:
         members = [m for m in tar.getmembers() if m.isfile()]
@@ -36,6 +41,8 @@ def materialize(source_root: Path, target_root: Path, *, force: bool = False) ->
                 raise FileExistsError(f'refusing to overwrite existing capability evidence: {target}')
             target.write_bytes(data)
             written.append(rel.as_posix())
+    # The index and package guide are tracked outside the archive and are needed
+    # when materializing into a disposable validation/sandbox root.
     for rel in (Path('capabilities/index.json'), Path('capabilities/README.md')):
         source = source_root / rel
         target = target_root / rel
