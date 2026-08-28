@@ -109,7 +109,7 @@ python tools/release_check.py --candidate
 
 - `docs/RELEASE.md` — deterministic gates, tag workflow and publication contract
 - `docs/CODEX_SANDBOX_RUNBOOK.md` — exact remaining C01-C16 sandbox sequence
-- `capabilities/templates.tar.gz.b64` + `tools/prepare_capabilities.py` — deterministic prepared C01-C16 fixtures/prompts/config/assertions/results/hashes
+- `capabilities/templates.part*` + `tools/prepare_capabilities.py` — deterministic prepared C01-C16 fixtures/prompts/config/assertions/results/hashes
 
 A production tag is rejected by `.github/workflows/release.yml` until every required capability is `REPRODUCED`.
 
