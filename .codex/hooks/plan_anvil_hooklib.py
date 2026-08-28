@@ -109,15 +109,24 @@ def _source_worktree(active: ActiveRun) -> Path | None:
     return Path(raw).resolve() if isinstance(raw, str) and raw else None
 
 
+def _path_identity(path: Path) -> str:
+    return os.path.normcase(os.path.normpath(str(path.resolve())))
+
+
 def active_run_candidates_for_event(event: dict[str, Any]) -> list[ActiveRun]:
     raw_cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else None
     repo = git_root(raw_cwd)
     if repo is None:
         return []
-    repo = repo.resolve()
+    repo_identity = _path_identity(repo)
     all_runs = active_runs(repo)
-    exact = [item for item in all_runs if item.worktree == repo]
-    source = [item for item in all_runs if _source_worktree(item) == repo]
+    exact = [item for item in all_runs if _path_identity(item.worktree) == repo_identity]
+    source = [
+        item
+        for item in all_runs
+        if (source_worktree := _source_worktree(item)) is not None
+        and _path_identity(source_worktree) == repo_identity
+    ]
     if exact:
         candidates = exact
     elif source:
@@ -128,7 +137,7 @@ def active_run_candidates_for_event(event: dict[str, Any]) -> list[ActiveRun]:
     explicit = _explicit_run_id(event)
     if explicit is not None:
         candidates = [item for item in candidates if item.run_root.name == explicit]
-    unique: dict[Path, ActiveRun] = {item.run_root: item for item in candidates}
+    unique: dict[str, ActiveRun] = {_path_identity(item.run_root): item for item in candidates}
     return sorted(unique.values(), key=lambda item: item.run_root.name)
 
 
