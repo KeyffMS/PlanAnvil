@@ -6,9 +6,43 @@ It **generates and validates a plan but never executes it**. Product implementat
 
 ## Status
 
-The deterministic generator core, schemas, templates, tests, optional planning agents, and defense-in-depth hooks are implemented.
+**Distribution version:** 0.2.0.
 
-Release status is **candidate**, not production-ready. The Codex capability matrix in `docs/CODEX_CAPABILITY_BASELINE.md` remains a release gate until the required tests have committed sanitized `REPRODUCED` evidence for the current Codex version, model, operating systems, permission modes, and project-trust modes.
+The deterministic generator core, schemas, templates, tests, optional planning agents, defense-in-depth hooks, repository installer/upgrader/uninstaller, release tooling, and a deterministic C01-C16 live-qualification template archive/materializer are implemented.
+
+Release status is **candidate**, not production-ready. Deterministic CI is green, but production publication remains gated on two external steps:
+
+1. protect `main` with required PR/CI checks (tracked by issue #6);
+2. execute the prepared C01-C16 packages in an authenticated current Codex sandbox and commit required `REPRODUCED` evidence (tracked by issue #7).
+
+The capability contract is defined in `docs/CODEX_CAPABILITY_BASELINE.md`. Deterministic tests and prepared fixtures do not substitute for live Codex evidence.
+
+## Install into another repository
+
+From a PlanAnvil checkout or extracted release archive:
+
+```text
+python tools/plananvil_dist.py install --target /path/to/repository
+```
+
+The installer:
+
+- copies the PlanAnvil skill and project-scoped agent/hook files;
+- preserves an existing `AGENTS.md` unchanged;
+- conservatively merges compatible `[agents]` settings instead of replacing `.codex/config.toml`;
+- structurally merges only PlanAnvil entries into `.codex/hooks.json` while preserving unrelated hooks;
+- records file ownership/hashes in `.plananvil/installation.json`;
+- fails closed on unmanaged conflicts or locally modified managed files.
+
+Verify, upgrade, or uninstall:
+
+```text
+python tools/plananvil_dist.py verify --target /path/to/repository
+python tools/plananvil_dist.py --source /path/to/new/release upgrade --target /path/to/repository
+python tools/plananvil_dist.py uninstall --target /path/to/repository
+```
+
+See `docs/INSTALLATION.md` for the ownership and conflict contract.
 
 ## Use
 
@@ -44,30 +78,40 @@ python .agents/skills/plan-anvil/scripts/plan_anvil.py start \
   --goal "Add validation that rejects an empty display name."
 ```
 
-The bootstrap controller stops after isolation, profiling, run scaffolding, and durable bootstrap evidence. The skill then performs evidence-based analysis and plan authoring before deterministic validation, blind review, and the planning-only commit gate.
-
 ## Safety boundary
 
 PlanAnvil does not modify application code or tests, execute generated stages, deploy, migrate, restart services, switch a live environment, use destructive Git cleanup, or push or merge the base branch.
 
 The retained planning worktree is the durable control root. Machine-specific paths remain only in ignored local files; committed artifacts use repository-relative paths and Git identity.
 
-Project-scoped `.codex` agents and hooks are optional. Hooks require project trust and remain defense in depth; mandatory filesystem and Git postconditions apply in every hook mode.
+Project-scoped `.codex` agents and hooks remain defense in depth; mandatory filesystem and Git postconditions apply in every hook mode.
 
 ## Requirements
 
 - Python 3.11 or newer;
 - Git 2.30 or newer;
 - no elevated privileges;
-- no third-party Python packages for the deterministic core;
-- no network access for local validation.
+- no third-party Python packages for deterministic core/distribution tooling;
+- no network access for local validation or installation.
+
+CI tests Python 3.11 and the current upper supported interpreter on Ubuntu, macOS, and Windows. Parser/preflight tests enforce the Git 2.30 minimum; live Codex C16 remains responsible for the permission-mode Git capability matrix.
 
 ## Validation
 
 ```text
 python -m unittest discover -s .agents/skills/plan-anvil/tests -v
-python -m compileall -q .agents/skills/plan-anvil .codex/hooks
+python -m unittest discover -s tests -v
+python -m compileall -q .agents/skills/plan-anvil .codex/hooks tools tests
+python tools/release_check.py --candidate
 ```
+
+## Release and live qualification
+
+- `docs/RELEASE.md` — deterministic gates, tag workflow and publication contract
+- `docs/CODEX_SANDBOX_RUNBOOK.md` — exact remaining C01-C16 sandbox sequence
+- `capabilities/templates.tar.gz.b64` + `tools/prepare_capabilities.py` — deterministic prepared C01-C16 fixtures/prompts/config/assertions/results/hashes
+
+A production tag is rejected by `.github/workflows/release.yml` until every required capability is `REPRODUCED`.
 
 ## Documentation
 
@@ -77,8 +121,11 @@ python -m compileall -q .agents/skills/plan-anvil .codex/hooks
 - `docs/RECOVERY_AND_VALIDATION.md` — crash recovery, checkpoint, schema and path-safety guarantees
 - `docs/OPENAI_COMPLIANCE.md` — Codex compatibility decisions
 - `docs/CODEX_CAPABILITY_BASELINE.md` — reproducible capability release gate
-- `docs/EXAMPLES.md` — expected decisions and output shapes
-- `capabilities/README.md` — evidence-package workflow
+- `docs/CODEX_CAPABILITY_QUALIFICATION_2026-08-28.md` — latest qualification audit
+- `docs/INSTALLATION.md` — install/upgrade/uninstall contract
+- `docs/TROUBLESHOOTING.md` — operational recovery guidance
+- `docs/RELEASE.md` — release workflow
+- `docs/CODEX_SANDBOX_RUNBOOK.md` — remaining live qualification procedure
 
 ## Author
 
