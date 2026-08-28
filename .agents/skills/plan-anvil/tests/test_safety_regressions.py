@@ -76,15 +76,15 @@ class SafetyRegressionTests(unittest.TestCase):
                     author_valid_plan(context)
 
                 observed: dict[str, str] = {}
-                real_validate_plan = seal_module.validate_plan
+                real_validate_plan_contract = seal_module.validate_plan_contract
 
                 def validate_while_locked(*args, **kwargs):
                     lock_path = context["run_root"] / ".generation-lock"
                     payload = json.loads(lock_path.read_text(encoding="utf-8"))
                     observed["command"] = payload["command"]
-                    return real_validate_plan(*args, **kwargs)
+                    return real_validate_plan_contract(*args, **kwargs)
 
-                with patch.object(seal_module, "validate_plan", side_effect=validate_while_locked):
+                with patch.object(seal_module, "validate_plan_contract", side_effect=validate_while_locked):
                     result = seal_module.seal_artifacts(context["planning"], context["run_root"])
 
                 self.assertTrue(result["ok"])

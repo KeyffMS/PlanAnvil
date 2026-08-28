@@ -1,6 +1,6 @@
 {
   "blind_review_hash": "sha256:0b278c608ef8973584e451cb036f19566af028be8bd5b6c0a4fdac484f30341f",
-  "blind_review_sidecar_hash": "sha256:bfd4b664dea9860ec56d60e87628006165410f59004e3e68250aadcec213a2d9",
+  "blind_review_sidecar_hash": "sha256:389a86eb5fb0d2f8d652c12a0612f21a9ce7073931dabd7146984233ec56f8d5",
   "created_at": "2026-07-12T18:00:00Z",
   "deterministic_validation": "PASS",
   "reasons": [],

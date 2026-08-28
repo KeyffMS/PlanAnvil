@@ -85,7 +85,11 @@ class PreflightAndGitTests(unittest.TestCase):
                 hooks = repo / hooks
             hooks.mkdir(parents=True, exist_ok=True)
             hook = hooks / "pre-commit"
-            hook.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8", newline="\n")
+            hook.write_text(
+                "#!/bin/sh\necho 'pre-commit hook failed' >&2\nexit 1\n",
+                encoding="utf-8",
+                newline="\n",
+            )
             hook.chmod(0o755)
             result = probe_git_capabilities(repo, "probe-hook-block", root / "external")
             self.assertFalse(result["ok"], result)
