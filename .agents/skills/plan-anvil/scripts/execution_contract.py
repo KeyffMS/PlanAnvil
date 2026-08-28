@@ -39,10 +39,7 @@ def execution_contract_findings(plan_text: str) -> list[dict[str, Any]]:
                 }
             )
 
-    if not (
-        _has(plan_text, r"\bflat\b.{0,40}\bdirect[- ]child\b")
-        or _has(plan_text, r"\bagents\.max_depth\s*=\s*1\b")
-    ):
+    if not _has(plan_text, r"\bflat\b.{0,40}\bdirect[- ]child\b"):
         findings.append(
             {
                 "kind": "execution-contract-topology-missing",

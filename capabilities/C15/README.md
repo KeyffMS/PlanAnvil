@@ -3,6 +3,9 @@
 - Expected behavior: Blind review is immutable and detects seeded contract defects.
 - Source: `CONTRACT_DEFINED`
 - Release-gating: `yes`
-- Current result: `NOT_RUN`
+- Current result: `BLOCKED`
+- Qualification attempt: `2026-08-28`
+- Deterministic support: review tamper detection, immutable publication and independent author-role tests passed in run #24.
+- Live blocker: no authenticated Codex runtime is available for a fresh blind reviewer against seeded defects.
 
-Do not change the result to `REPRODUCED` until this directory contains the complete sanitized package defined in `capabilities/README.md`. Record the exact Codex version, model slug, operating system, permission mode, project trust, fixture commit, setup, cleanup, expected result, actual sanitized result, evaluation, and hashes.
+Do not change the result to `REPRODUCED` until the complete sanitized live package exists.
