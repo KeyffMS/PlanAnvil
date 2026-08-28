@@ -1,0 +1,56 @@
+name: PlanAnvil release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  release:
+    name: validate and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - name: Configure Git fixture identity
+        run: |
+          git config --global user.name "PlanAnvil Release CI"
+          git config --global user.email "plananvil-release@example.invalid"
+          git config --global commit.gpgsign false
+          git config --global protocol.file.allow always
+      - name: Compile deterministic code
+        run: python -m compileall -q .agents/skills/plan-anvil .codex/hooks tools tests
+      - name: Run core tests
+        run: python -m unittest discover -s .agents/skills/plan-anvil/tests -v
+      - name: Run distribution tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate live capability evidence
+        run: python tools/validate_capabilities.py
+      - name: Enforce production release gate
+        run: python tools/release_check.py --tag "${GITHUB_REF_NAME}"
+      - name: Build release archive
+        run: python tools/build_release.py --output dist
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(cat VERSION)"
+          gh release create "v${VERSION}" \
+            "dist/plananvil-${VERSION}.zip" \
+            "dist/SHA256SUMS" \
+            --verify-tag \
+            --title "PlanAnvil ${VERSION}" \
+            --notes-file dist/release-notes.md
