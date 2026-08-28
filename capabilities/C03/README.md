@@ -1,8 +1,12 @@
 # C03 — Capability evidence
 
-- Expected behavior: agents.max_depth 1 permits direct children and prevents deeper descendants.
-- Source: `DOCUMENTED`
+- Expected behavior: Generated execution contracts require an explicit flat direct-child topology without relying on a Codex nesting-depth setting.
+- Source: `CONTRACT_DEFINED`
 - Release-gating: `yes`
-- Current result: `NOT_RUN`
+- Current result: `BLOCKED`
+- Qualification attempt: `2026-08-28`
+- Baseline correction: current Codex documentation does not document `agents.max_depth`; PlanAnvil now enforces flat topology in deterministic contract validation.
+- Deterministic support: execution-contract topology tests passed in run #24; qualification adds a regression rejecting legacy-depth-only wording.
+- Live blocker: no authenticated Codex runtime is available to capture the required subagent event tree.
 
-Do not change the result to `REPRODUCED` until this directory contains the complete sanitized package defined in `capabilities/README.md`. Record the exact Codex version, model slug, operating system, permission mode, project trust, fixture commit, setup, cleanup, expected result, actual sanitized result, evaluation, and hashes.
+Do not change the result to `REPRODUCED` until the complete sanitized live package exists.

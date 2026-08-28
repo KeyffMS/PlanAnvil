@@ -1,8 +1,11 @@
 # C16 — Capability evidence
 
-- Expected behavior: Git probe reports refs, branches, worktrees, index, commits, and cleanup.
+- Expected behavior: The Git probe reports refs, branches, worktrees, index, commits and cleanup accurately.
 - Source: `CONTRACT_DEFINED`
 - Release-gating: `yes`
-- Current result: `NOT_RUN`
+- Current result: `BLOCKED`
+- Qualification attempt: `2026-08-28`
+- Deterministic support: reversible probe, source preservation, cleanup and hook-failure classification tests passed in run #24.
+- Live blocker: no authenticated Codex runtime is available to execute the required matrix under supported Codex permission modes.
 
-Do not change the result to `REPRODUCED` until this directory contains the complete sanitized package defined in `capabilities/README.md`. Record the exact Codex version, model slug, operating system, permission mode, project trust, fixture commit, setup, cleanup, expected result, actual sanitized result, evaluation, and hashes.
+Do not change the result to `REPRODUCED` until the complete sanitized live package exists.

@@ -3,6 +3,10 @@
 - Expected behavior: Project instructions follow documented directory scope and precedence.
 - Source: `DOCUMENTED`
 - Release-gating: `yes`
-- Current result: `NOT_RUN`
+- Current result: `BLOCKED`
+- Qualification attempt: `2026-08-28`
+- Documentation check: `PASS`; current docs define root-to-CWD discovery, `AGENTS.override.md` precedence, fallbacks and nearest-guidance override behavior.
+- Deterministic support: instruction-map and conflict tests passed in run #24.
+- Live blocker: no authenticated Codex runtime is available to record actual instruction sources.
 
-Do not change the result to `REPRODUCED` until this directory contains the complete sanitized package defined in `capabilities/README.md`. Record the exact Codex version, model slug, operating system, permission mode, project trust, fixture commit, setup, cleanup, expected result, actual sanitized result, evaluation, and hashes.
+Do not change the result to `REPRODUCED` until the complete sanitized live package exists.
