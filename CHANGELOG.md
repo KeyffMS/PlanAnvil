@@ -4,12 +4,29 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
+No queued changes.
+
+## [0.2.0] - 2026-08-28
+
+### Added
+
+- standard-library repository distribution manager with install, verify, upgrade, status and uninstall operations;
+- transactional rollback, ownership/hash state, conservative Codex config merging, and structural hook merging;
+- distribution tests covering clean repositories, existing `AGENTS.md`, existing `.codex/config.toml`, unrelated hooks, upgrade conflicts and uninstall conflicts;
+- deterministic release archive builder, candidate/production release gate, and tag-driven GitHub Release workflow;
+- deterministic C01-C16 qualification template archive containing fixture, prompt, config, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
+- capability evidence materializer/validator/rehash tools and a live Codex sandbox runbook;
+- installation, troubleshooting, and release documentation.
+
 ### Changed
 
 - refresh the Codex capability baseline to 2.2 against current 2026-08-28 official documentation;
 - replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
 - enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
-- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker.
+- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker;
+- pin GitHub Actions to immutable SHAs and Node-24-based checkout/setup-python releases;
+- expand CI across Python 3.11 and the current upper supported interpreter on Ubuntu, macOS and Windows;
+- split distribution/release-candidate validation into a stable named CI check.
 
 ### Fixed
 
@@ -18,6 +35,10 @@ All notable changes to PlanAnvil are documented here.
 - update the artifact-sealing lock regression test to observe the current `validate_plan_contract` gate;
 - make the Git-hook probe fixture emit explicit hook diagnostics while preserving fail-closed classification for unrelated commit failures;
 - synchronize golden blind-review fixtures and dependent comparison hashes with the required independent `plan-anvil-reviewer` author role.
+
+### Release status
+
+0.2.0 is code-complete as a release candidate. Production publication remains blocked until protected-`main` administration is enabled and required C01-C16 live Codex evidence is committed as `REPRODUCED`.
 
 ## [0.1.0] - 2026-07-12
 
@@ -39,4 +60,4 @@ All notable changes to PlanAnvil are documented here.
 
 ### Release status
 
-The deterministic core is implemented. Production readiness remains gated on reproduced Codex capability evidence defined in `docs/CODEX_CAPABILITY_BASELINE.md`.
+The deterministic core was implemented. Production readiness remained gated on reproduced Codex capability evidence.

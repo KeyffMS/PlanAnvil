@@ -1,0 +1,29 @@
+{
+  "agents_config": {
+    "enabled": true,
+    "max_concurrent_threads_per_session": 4
+  },
+  "copy_roots": [
+    ".agents/skills/plan-anvil",
+    ".codex/agents/plan-anvil-profiler.toml",
+    ".codex/agents/plan-anvil-reviewer.toml",
+    ".codex/hooks/plan-anvil-agent-context.py",
+    ".codex/hooks/plan-anvil-compaction.py",
+    ".codex/hooks/plan-anvil-guard.py",
+    ".codex/hooks/plan-anvil-recovery.py",
+    ".codex/hooks/plan_anvil_checkpoint.py",
+    ".codex/hooks/plan_anvil_hooklib.py"
+  ],
+  "format_version": 1,
+  "hooks_source": ".codex/hooks.json",
+  "product_version": "0.2.0",
+  "release_files": [
+    "VERSION",
+    "LICENSE",
+    "README.md",
+    "distribution/manifest.json",
+    "tools/plananvil_dist.py",
+    "docs/INSTALLATION.md",
+    "docs/TROUBLESHOOTING.md"
+  ]
+}

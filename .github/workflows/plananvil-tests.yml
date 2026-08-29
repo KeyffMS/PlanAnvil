@@ -9,8 +9,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: plananvil-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
 jobs:
-  test:
+  core:
+    name: core (${{ matrix.os }}, py${{ matrix.python-version }})
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -20,12 +29,13 @@ jobs:
           - windows-latest
         python-version:
           - "3.11"
+          - "3.14"
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Configure Git fixture identity
@@ -35,6 +45,38 @@ jobs:
           git config --global commit.gpgsign false
           git config --global protocol.file.allow always
       - name: Compile deterministic scripts and hooks
-        run: python -m compileall -q .agents/skills/plan-anvil .codex/hooks
-      - name: Run unit and integration tests
+        run: python -m compileall -q .agents/skills/plan-anvil .codex/hooks tools tests
+      - name: Run core unit and integration tests
         run: python -m unittest discover -s .agents/skills/plan-anvil/tests -v
+      - name: Check patch whitespace
+        run: git diff --check
+
+  distribution:
+    name: distribution and release candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - name: Configure Git fixture identity
+        run: |
+          git config --global user.name "PlanAnvil CI"
+          git config --global user.email "plananvil-ci@example.invalid"
+          git config --global commit.gpgsign false
+          git config --global protocol.file.allow always
+      - name: Run distribution and release tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate prepared C01-C16 evidence templates
+        run: |
+          python tools/prepare_capabilities.py --target "$RUNNER_TEMP/plananvil-capabilities" --force
+          python tools/validate_capabilities.py --root "$RUNNER_TEMP/plananvil-capabilities"
+      - name: Validate release candidate metadata
+        run: python tools/release_check.py --candidate
+      - name: Build deterministic release archive
+        run: python tools/build_release.py --output "$RUNNER_TEMP/plananvil-dist"
+      - name: Check patch whitespace
+        run: git diff --check
