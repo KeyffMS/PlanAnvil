@@ -4,7 +4,9 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
-No queued changes.
+### Changed
+
+- update pinned `actions/checkout` and `actions/setup-python` workflow SHAs to the current v7 releases while retaining immutable action pinning and Node 24 compatibility.
 
 ## [0.2.0] - 2026-08-28
 
