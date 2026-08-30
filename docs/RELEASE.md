@@ -38,6 +38,16 @@ git push origin v0.2.0
 
 `.github/workflows/release.yml` reruns the deterministic gates, requires all release-gating capabilities to be `REPRODUCED`, builds a deterministic ZIP + checksum, and creates the GitHub Release. It cannot publish while capability evidence remains blocked.
 
+Before any release artifact is built, the tag workflow also fails closed unless:
+
+- the pushed tag is an annotated tag object rather than a lightweight tag;
+- GitHub reports the tag signature as cryptographically verified;
+- the tag points directly to a commit;
+- the tagged commit is reachable from `origin/main`;
+- the checked-out release tree is clean, including untracked files.
+
+The production `release_check.py` enforces clean-tree state in addition to version, changelog, distribution manifest, release-file and live capability gates. Candidate mode intentionally skips the live-evidence and clean-production-tree requirements so ordinary PR CI remains usable.
+
 ## Repository administration prerequisite
 
 Before production release, protect `main` as tracked in issue #6: PR-only changes, required CI, up-to-date branch, conversation resolution, and no force push/delete.
