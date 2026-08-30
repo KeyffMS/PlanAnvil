@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -11,6 +12,22 @@ from prepare_capabilities import materialize
 from validate_capabilities import validate_all
 
 SEMVER = re.compile(r'^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')
+
+
+def _git_clean_blocker(root: Path) -> str | None:
+    result = subprocess.run(
+        ['git', '-C', str(root), 'status', '--porcelain', '--untracked-files=all'],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f'exit {result.returncode}'
+        return f'cannot verify clean release tree: {detail}'
+    if result.stdout.strip():
+        return 'release tree is dirty; commit or remove all tracked and untracked changes before production release'
+    return None
 
 
 def release_blockers(root: Path, *, require_reproduced: bool = True, tag: str | None = None) -> list[str]:
@@ -39,6 +56,9 @@ def release_blockers(root: Path, *, require_reproduced: bool = True, tag: str | 
         blockers.append(f'tag {tag!r} does not match VERSION v{version}')
 
     if require_reproduced:
+        clean_blocker = _git_clean_blocker(root)
+        if clean_blocker is not None:
+            blockers.append(clean_blocker)
         blockers.extend(validate_all(root))
     else:
         try:

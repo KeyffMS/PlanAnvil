@@ -18,11 +18,46 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+      - name: Verify signed annotated tag and main ancestry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          tag = os.environ["GITHUB_REF_NAME"]
+          ref = json.loads(subprocess.check_output([
+              "gh", "api", f"repos/{repository}/git/ref/tags/{tag}"
+          ], text=True))
+          obj = ref.get("object", {})
+          if obj.get("type") != "tag":
+              raise SystemExit("release tag must be an annotated signed tag; lightweight tags are rejected")
+          tag_obj = json.loads(subprocess.check_output([
+              "gh", "api", f"repos/{repository}/git/tags/{obj.get('sha')}"
+          ], text=True))
+          verification = tag_obj.get("verification") or {}
+          if verification.get("verified") is not True:
+              reason = verification.get("reason", "unknown")
+              raise SystemExit(f"release tag signature is not verified by GitHub: {reason}")
+          if (tag_obj.get("object") or {}).get("type") != "commit":
+              raise SystemExit("release tag must point directly to a commit")
+          print("GitHub verified release tag signature.")
+          PY
+          git fetch origin main
+          TAGGED_COMMIT="$(git rev-parse "${GITHUB_REF_NAME}^{}")"
+          git merge-base --is-ancestor "$TAGGED_COMMIT" origin/main || {
+            echo "Release tag target is not reachable from origin/main." >&2
+            exit 1
+          }
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.11"
       - name: Configure Git fixture identity

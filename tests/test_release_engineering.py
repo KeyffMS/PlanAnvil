@@ -4,6 +4,7 @@ import tempfile
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -26,6 +27,21 @@ class ReleaseEngineeringTests(unittest.TestCase):
         self.assertEqual(candidate, [])
         strict = release_check.release_blockers(ROOT, require_reproduced=True)
         self.assertTrue(any('required capability' in item for item in strict), strict)
+
+    def test_production_release_rejects_dirty_tree(self) -> None:
+        completed = type('Completed', (), {'returncode': 0, 'stdout': ' M README.md\n', 'stderr': ''})()
+        with patch.object(release_check.subprocess, 'run', return_value=completed):
+            blockers = release_check.release_blockers(ROOT, require_reproduced=True)
+        self.assertIn(
+            'release tree is dirty; commit or remove all tracked and untracked changes before production release',
+            blockers,
+        )
+
+    def test_production_release_fails_closed_if_git_cleanliness_cannot_be_verified(self) -> None:
+        completed = type('Completed', (), {'returncode': 128, 'stdout': '', 'stderr': 'not a git repository'})()
+        with patch.object(release_check.subprocess, 'run', return_value=completed):
+            blockers = release_check.release_blockers(ROOT, require_reproduced=True)
+        self.assertIn('cannot verify clean release tree: not a git repository', blockers)
 
     def test_release_archive_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
