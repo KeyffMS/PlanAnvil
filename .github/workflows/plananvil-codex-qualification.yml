@@ -40,6 +40,11 @@ jobs:
           test -n "${workspace}"
           test -d "${workspace}"
           cd "${workspace}"
+
+          # The workspace helper intentionally provides a disposable empty
+          # directory. Initialize a local fixture repository before invoking
+          # Codex so Git-based qualification checks have a valid boundary.
+          git init -q
           git rev-parse --is-inside-work-tree
 
           before="$(git status --porcelain=v1 --untracked-files=all)"
