@@ -4,11 +4,18 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- add a controlled `workflow_dispatch`-only Codex qualification workflow for the trusted `plananvil-codex` self-hosted runner;
+- add a sequential C01-C16 live qualification controller that creates disposable fixture repositories, runs fresh ephemeral Codex trials, sanitizes structural evidence, rehashes/validates each package, and exports evidence only as a GitHub Actions artifact;
+- add regression tests ensuring the live qualification controller redacts private-looking data and never disables the Codex sandbox/approval boundary.
+
 ### Changed
 
 - update pinned `actions/checkout` and `actions/setup-python` workflow SHAs to the current v7 releases while retaining immutable action pinning and Node 24 compatibility;
 - require production releases to use a GitHub-verified signed annotated tag whose target is reachable from `main`;
-- fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified.
+- fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
+- document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.
 
 ## [0.2.0] - 2026-08-28
 
