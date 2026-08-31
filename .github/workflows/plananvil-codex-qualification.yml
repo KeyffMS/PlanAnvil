@@ -2,6 +2,15 @@ name: PlanAnvil Codex qualification
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Qualification mode
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - full
 
 permissions:
   contents: read
@@ -13,7 +22,7 @@ concurrency:
 jobs:
   smoke:
     name: codex smoke test
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'smoke'
     environment: plananvil-codex
     runs-on:
       - self-hosted
@@ -40,10 +49,6 @@ jobs:
           test -n "${workspace}"
           test -d "${workspace}"
           cd "${workspace}"
-
-          # The workspace helper intentionally provides a disposable empty
-          # directory. Initialize a local fixture repository before invoking
-          # Codex so Git-based qualification checks have a valid boundary.
           git init -q
           git rev-parse --is-inside-work-tree
 
@@ -53,3 +58,87 @@ jobs:
           printf '%s\n' "${output}" | grep -Fq 'PLANANVIL_CODEX_SMOKE_OK'
           after="$(git status --porcelain=v1 --untracked-files=all)"
           test "${before}" = "${after}"
+
+  full:
+    name: C01-C16 live qualification
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'full'
+    environment: plananvil-codex
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - plananvil
+      - codex
+    timeout-minutes: 180
+    steps:
+      - name: Validate controlled runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          command -v plananvil-qualification-workspace
+          command -v codex
+          command -v git
+          command -v python3
+          codex --version
+          git --version
+          python3 --version
+
+      - name: Create trusted main qualification workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace="$(plananvil-qualification-workspace)"
+          test -n "${workspace}"
+          test -d "${workspace}"
+          repo="${workspace}/repo"
+          artifact="${workspace}/evidence-artifact"
+          mkdir -p "${repo}" "${artifact}"
+
+          git -C "${repo}" init -q
+          git -C "${repo}" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C "${repo}" fetch --depth=1 origin "${GITHUB_SHA}"
+          git -C "${repo}" checkout --detach -q "${GITHUB_SHA}"
+          test "$(git -C "${repo}" rev-parse HEAD)" = "${GITHUB_SHA}"
+
+          echo "QUALIFICATION_REPO=${repo}" >> "${GITHUB_ENV}"
+          echo "QUALIFICATION_ARTIFACT=${artifact}" >> "${GITHUB_ENV}"
+
+      - name: Materialize and validate evidence templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${QUALIFICATION_REPO}"
+          python3 tools/prepare_capabilities.py --force
+          python3 tools/validate_capabilities.py
+
+      - name: Run C01-C16 sequential qualification
+        id: qualify
+        shell: bash
+        run: |
+          set -uo pipefail
+          cd "${QUALIFICATION_REPO}"
+          python3 tools/live_codex_qualification.py \
+            --root "${QUALIFICATION_REPO}" \
+            --source-commit "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --output "${QUALIFICATION_ARTIFACT}"
+          rc=$?
+          echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      - name: Upload sanitized capability evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plananvil-codex-evidence-${{ github.run_id }}
+          path: ${{ env.QUALIFICATION_ARTIFACT }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce live release gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ steps.qualify.outputs.exit_code }}" = "0"
