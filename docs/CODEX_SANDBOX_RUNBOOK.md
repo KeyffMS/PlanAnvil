@@ -12,7 +12,19 @@ This is the remaining live-runtime step after deterministic/release hardening is
 - Git available and target fixture repositories disposable;
 - no real credentials, private repository URLs, personal paths, or proprietary source in fixtures/evidence.
 
-Start the evidence branch by running:
+## Controlled GitHub Actions path
+
+The preferred qualification path is `.github/workflows/plananvil-codex-qualification.yml` in `full` mode. The workflow is intentionally `workflow_dispatch`-only, accepts execution only from `main`, uses Environment `plananvil-codex`, and targets `[self-hosted, linux, x64, plananvil, codex]`.
+
+The controlled runner must provide `plananvil-qualification-workspace`. The workflow creates a disposable workspace with that helper, fetches only the exact dispatched `main` SHA, materializes the C01-C16 evidence templates, and runs `tools/live_codex_qualification.py` sequentially. The controller invokes every agent task through `codex exec --ephemeral`, pins model `gpt-5.6-sol`, uses approval policy `never`, disables network access for model-generated commands, and grants `workspace-write` only to disposable fixture roots when a trial requires writes. Vetted project hooks may bypass the interactive hook-trust prompt; approval and filesystem sandboxing remain enabled.
+
+Raw Codex session streams are not retained. The controller keeps only sanitized final assertions, event-type counts, and relative Git structure required for evaluation. The self-hosted runner has repository read permission only and never pushes qualification changes.
+
+The workflow uploads `plananvil-codex-evidence-<run-id>` as a short-lived artifact. Review that artifact before committing evidence through a normal protected pull request. A full workflow run exits successfully only when every release-gating capability is `REPRODUCED`; partial/failed runs still upload their sanitized evidence artifact for diagnosis.
+
+## Manual fallback
+
+For an equivalent manual run in a dedicated sandbox:
 
 ```text
 codex --version
