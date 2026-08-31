@@ -116,14 +116,16 @@ jobs:
         id: qualify
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           cd "${QUALIFICATION_REPO}"
+          set +e
           python3 tools/live_codex_qualification.py \
             --root "${QUALIFICATION_REPO}" \
             --source-commit "${GITHUB_SHA}" \
             --run-id "${GITHUB_RUN_ID}" \
             --output "${QUALIFICATION_ARTIFACT}"
           rc=$?
+          set -e
           echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
           exit 0
 
