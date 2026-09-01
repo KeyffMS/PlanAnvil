@@ -80,9 +80,25 @@ jobs:
           command -v codex
           command -v git
           command -v python3
-          codex --version
+          CODEX_VERSION="$(codex --version)"
+          printf '%s\n' "${CODEX_VERSION}"
           git --version
           python3 --version
+          python3 - "${CODEX_VERSION}" <<'PY'
+          import re
+          import sys
+
+          raw = sys.argv[1]
+          match = re.search(r"(\d+)\.(\d+)\.(\d+)", raw)
+          if not match:
+              raise SystemExit(f"unable to parse Codex version: {raw}")
+          current = tuple(int(part) for part in match.groups())
+          minimum = (0, 150, 1)
+          if current < minimum:
+              raise SystemExit(
+                  f"Codex {current[0]}.{current[1]}.{current[2]} is too old for baseline 2.2 live qualification; require >= 0.150.1"
+              )
+          PY
 
       - name: Validate Linux Codex sandbox prerequisites
         shell: bash
@@ -93,8 +109,8 @@ jobs:
             exit 2
           fi
           bwrap --version
-          if ! bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true; then
-            echo "::error::bubblewrap cannot create the user namespace required by the Codex command sandbox. Fix the Podman/host user-namespace policy before running C01-C16."
+          if ! bwrap --unshare-user --unshare-pid --uid 0 --gid 0 --ro-bind / / --proc /proc /bin/true; then
+            echo "::error::bubblewrap cannot construct the user/PID/proc namespace required by the Codex command sandbox. Check Podman masked paths/unmask configuration before running C01-C16."
             exit 2
           fi
 
@@ -117,6 +133,25 @@ jobs:
 
           echo "QUALIFICATION_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "QUALIFICATION_ARTIFACT=${artifact}" >> "${GITHUB_ENV}"
+
+      - name: Validate actual Codex command sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${QUALIFICATION_REPO}"
+          probe="$(codex exec \
+            --ephemeral \
+            --json \
+            --ignore-user-config \
+            --model gpt-5.6-sol \
+            --sandbox read-only \
+            -c 'approval_policy="never"' \
+            -c 'sandbox_workspace_write.network_access=false' \
+            -c "projects.$(python3 -c 'import json,os; print(json.dumps(os.getcwd()))').trust_level=\"trusted\"" \
+            'Use the shell tool to run /bin/true. Only after that command succeeds, reply with exactly PLANANVIL_CODEX_SANDBOX_OK.')"
+          printf '%s\n' "${probe}"
+          printf '%s\n' "${probe}" | grep -Fq 'command_execution'
+          printf '%s\n' "${probe}" | grep -Fq 'PLANANVIL_CODEX_SANDBOX_OK'
 
       - name: Materialize and validate evidence templates
         shell: bash
