@@ -10,7 +10,18 @@ This is the remaining live-runtime step after deterministic/release hardening is
 - operating system recorded;
 - permission mode and project-trust mode recorded;
 - Git available and target fixture repositories disposable;
+- system `bubblewrap` installed on Linux (`apt install bubblewrap` on Debian/Ubuntu);
+- Linux user-namespace creation must work from the runner process;
 - no real credentials, private repository URLs, personal paths, or proprietary source in fixtures/evidence.
+
+On a Podman-hosted runner, Codex creates an inner Linux command sandbox. The outer container must therefore permit the runner user to create the user namespace required by `bwrap`. Before a full qualification run, this probe must succeed inside the runner container:
+
+```text
+command -v bwrap
+bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true
+```
+
+If the probe fails with `setting up uid map: Operation not permitted`, fix the Podman/host user-namespace policy rather than disabling Codex sandboxing. The qualification workflow deliberately does not use `danger-full-access` or `--dangerously-bypass-approvals-and-sandbox`.
 
 ## Controlled GitHub Actions path
 
@@ -20,7 +31,7 @@ The controlled runner must provide `plananvil-qualification-workspace`. The work
 
 Raw Codex session streams are not retained. The controller keeps only sanitized final assertions, event-type counts, and relative Git structure required for evaluation. The self-hosted runner has repository read permission only and never pushes qualification changes.
 
-The workflow uploads `plananvil-codex-evidence-<run-id>` as a short-lived artifact. Review that artifact before committing evidence through a normal protected pull request. A full workflow run exits successfully only when every release-gating capability is `REPRODUCED`; partial/failed runs still upload their sanitized evidence artifact for diagnosis.
+The workflow performs the Linux `bubblewrap` user-namespace probe before preparing fixtures, so an incompatible container fails in seconds instead of consuming a full C01-C16 run. It uploads `plananvil-codex-evidence-<run-id>` as a short-lived artifact. Review that artifact before committing evidence through a normal protected pull request. A full workflow run exits successfully only when every release-gating capability is `REPRODUCED`; partial/failed runs still upload their sanitized evidence artifact for diagnosis.
 
 ## Manual fallback
 
