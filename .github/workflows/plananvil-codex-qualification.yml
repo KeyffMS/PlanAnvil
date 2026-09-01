@@ -84,6 +84,20 @@ jobs:
           git --version
           python3 --version
 
+      - name: Validate Linux Codex sandbox prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v bwrap >/dev/null 2>&1; then
+            echo "::error::System bubblewrap is required on the trusted Linux qualification runner. Install the Debian bubblewrap package instead of relying on the bundled Codex helper."
+            exit 2
+          fi
+          bwrap --version
+          if ! bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true; then
+            echo "::error::bubblewrap cannot create the user namespace required by the Codex command sandbox. Fix the Podman/host user-namespace policy before running C01-C16."
+            exit 2
+          fi
+
       - name: Create trusted main qualification workspace
         shell: bash
         run: |
@@ -131,7 +145,7 @@ jobs:
 
       - name: Upload sanitized capability evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: plananvil-codex-evidence-${{ github.run_id }}
           path: ${{ env.QUALIFICATION_ARTIFACT }}

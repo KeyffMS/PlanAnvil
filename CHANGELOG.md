@@ -13,6 +13,8 @@ All notable changes to PlanAnvil are documented here.
 ### Changed
 
 - update pinned `actions/checkout` and `actions/setup-python` workflow SHAs to the current v7 releases while retaining immutable action pinning and Node 24 compatibility;
+- require the full Linux Codex qualification job to pass a system-`bubblewrap` user-namespace probe before C01-C16, so incompatible Podman runners fail fast instead of timing out capability-by-capability;
+- update the qualification evidence uploader to the Node-24-native `actions/upload-artifact` v6 immutable SHA;
 - require production releases to use a GitHub-verified signed annotated tag whose target is reachable from `main`;
 - fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
 - document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.

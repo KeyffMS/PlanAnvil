@@ -104,6 +104,21 @@ class LiveCodexQualificationTests(unittest.TestCase):
         }
         self.assertIn("duplicate", live.validate_plan("C01", plan) or "")
 
+    def test_workflow_fails_fast_without_linux_user_namespace_sandbox(self) -> None:
+        workflow = (ROOT / ".github/workflows/plananvil-codex-qualification.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("command -v bwrap", workflow)
+        self.assertIn(
+            "bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true",
+            workflow,
+        )
+        self.assertIn(
+            "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6",
+            workflow,
+        )
+        self.assertNotIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
