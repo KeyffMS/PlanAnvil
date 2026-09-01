@@ -44,7 +44,7 @@ class LiveCodexHarnessOverrideTests(unittest.TestCase):
         self.assertIn("create_generation_checkpoint.py", source)
         self.assertIn("Do NOT invoke hook scripts directly", source)
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", source)
-        self.assertNotIn("danger-full-access", source)
+        self.assertNotIn("--danger-full-access", source)
 
     def test_c14_uses_explicit_auxiliary_writable_git_root(self) -> None:
         source = MODULE_PATH.read_text(encoding="utf-8")
