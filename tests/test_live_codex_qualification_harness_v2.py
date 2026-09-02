@@ -13,6 +13,9 @@ class LiveCodexHarnessV2Tests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.source = MODULE_PATH.read_text(encoding="utf-8")
 
+    def test_wrapper_compiles(self) -> None:
+        compile(self.source, str(MODULE_PATH), "exec")
+
     def test_exact_target_capabilities(self) -> None:
         for capability in ["C02", "C09", "C11", "C13", "C14", "C16"]:
             self.assertIn(f'"{capability}"', self.source)
