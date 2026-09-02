@@ -19,6 +19,7 @@ All notable changes to PlanAnvil are documented here.
 - extend deterministic live qualification for C02, C09, C11, C13, C14, and C16 with explicit-only skill policy, current AGENTS precedence evidence, project-scoped SubagentStart semantics, bytecode-free PlanAnvil bootstrap, and real Git signing/hook failure diagnostics;
 - make C12 a deterministic runtime byte-budget probe with redundant `project_doc_max_bytes` enforcement, secret head/tail markers, zero-tool automatic-loading evidence, and outer PlanAnvil full-file hash verification;
 - make C06, C08, and C09 deterministic live probes using the real PlanAnvil PreToolUse/PreCompact/PostCompact hooks, explicit postcondition evidence, low-limit `body_after_prefix` auto-compaction triggers, checkpoint repair, repeated compaction, and post-second-compaction continuation checks;
+- add a diagnostic-only C13 transport mode that keeps `full` strict-ephemeral, retries non-ephemeral only for the recognized parent-thread registration failure, uses an isolated disposable `CODEX_HOME`, requires cleanup/auth-metadata invariants, and verifies real SubagentStart semantics with an outer-generated context proof before any baseline 2.3 decision;
 - require production releases to use a GitHub-verified signed annotated tag whose target is reachable from `main`;
 - fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
 - document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.
@@ -31,7 +32,7 @@ All notable changes to PlanAnvil are documented here.
 - transactional rollback, ownership/hash state, conservative Codex config merging, and structural hook merging;
 - distribution tests covering clean repositories, existing `AGENTS.md`, existing `.codex/config.toml`, unrelated hooks, upgrade conflicts and uninstall conflicts;
 - deterministic release archive builder, candidate/production release gate, and tag-driven GitHub Release workflow;
-- deterministic C01-C16 qualification template archive containing fixture, prompt, config, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
+- deterministic C01-C16 qualification template archive containing fixture, prompt, config, run command, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
 - capability evidence materializer/validator/rehash tools and a live Codex sandbox runbook;
 - installation, troubleshooting, and release documentation.
 
@@ -40,7 +41,7 @@ All notable changes to PlanAnvil are documented here.
 - refresh the Codex capability baseline to 2.2 against current 2026-08-28 official documentation;
 - replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
 - enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
-- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker;
+- record the 2026-08-28 qualification attempt and its live Codex runtime blocker;
 - pin GitHub Actions to immutable SHAs and Node-24-based checkout/setup-python releases;
 - expand CI across Python 3.11 and the current upper supported interpreter on Ubuntu, macOS and Windows;
 - split distribution/release-candidate validation into a stable named CI check.
