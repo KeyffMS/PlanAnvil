@@ -55,12 +55,16 @@ class LiveCodexHarnessV4Tests(unittest.TestCase):
         self.assertIn('sandbox="read-only"', self.source)
         self.assertIn('sandbox="workspace-write"', self.source)
 
-    def test_v4_is_chained_under_current_v5_wrapper(self) -> None:
-        current = (ROOT / "tools" / "live_codex_qualification_harness_v5.py").read_text(
+    def test_v4_is_chained_under_current_v6_wrapper(self) -> None:
+        v5 = (ROOT / "tools" / "live_codex_qualification_harness_v5.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn("import live_codex_qualification_harness_v4 as prior", current)
-        self.assertIn("python3 tools/live_codex_qualification_harness_v5.py", self.workflow)
+        v6 = (ROOT / "tools" / "live_codex_qualification_harness_v6.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("import live_codex_qualification_harness_v4 as prior", v5)
+        self.assertIn("import live_codex_qualification_harness_v5 as prior", v6)
+        self.assertIn("python3 tools/live_codex_qualification_harness_v6.py", self.workflow)
 
 
 if __name__ == "__main__":

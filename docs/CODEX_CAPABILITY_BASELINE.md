@@ -1,7 +1,7 @@
 # PlanAnvil — Codex Capability Baseline
 
-> **Baseline version:** 2.2  
-> **Review date:** 2026-08-28  
+> **Baseline version:** 2.3  
+> **Review date:** 2026-09-02  
 > **Purpose:** define current expected Codex behavior and reproducible release tests.  
 > **Authority:** current official OpenAI documentation has precedence.
 
@@ -66,16 +66,16 @@ Do not commit session transcripts, credentials, private paths, unrelated Git dat
 | C10 | `PostCompact` and `SessionStart` can provide recovery context | DOCUMENTED | BLOCKED | Inject only a recovery pointer |
 | C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | BLOCKED | Explicitly map affected instructions |
 | C12 | `project_doc_max_bytes` can truncate automatic instruction loading | DOCUMENTED | BLOCKED | Read, size and hash complete files explicitly |
-| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context and audit only |
+| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context/audit only; qualify ephemeral-first with a controlled home-scoped fallback when the recognized ephemeral parent-thread blocker occurs |
 | C14 | Planning isolation preserves the source branch, SHA, index and files | CONTRACT_DEFINED | BLOCKED | Planning worktree isolation is mandatory |
 | C15 | Blind review is immutable and detects seeded contract defects | CONTRACT_DEFINED | BLOCKED | Hash review before separate comparison |
 | C16 | The Git probe accurately reports refs, branches, worktrees, index, commits and cleanup | CONTRACT_DEFINED | BLOCKED | No artifact generation before required Git capabilities pass |
 
 ## 4. Release gate
 
-C01, C02, C03 and C05 through C16 must be `REPRODUCED` before production readiness. C04 is informational for PlanAnvil 2.2 because generated execution deliberately forbids nested descendants.
+C01, C02, C03 and C05 through C16 must be `REPRODUCED` before production readiness. C04 is informational for PlanAnvil 2.3 because generated execution deliberately forbids nested descendants.
 
-The 2026-08-28 qualification attempt is `BLOCKED` for live Codex reproduction because the available execution environment does not expose an authenticated Codex runtime or `codex` executable. Deterministic contract tests remain useful supporting evidence but cannot substitute for the required live packages.
+Baseline 2.3 does not mark C13 reproduced from the 2026-09-02 transport diagnostic. That run separated two runtime limitations from the semantic assertion: `codex exec --ephemeral` reproduced the known parent-thread registration failure before `SubagentStart`, while a non-ephemeral attempt progressed past that failure but a project-scoped synthetic custom agent still did not reach `SubagentStart`. The next release-gating run must still obtain real semantic evidence.
 
 ## 5. Test requirements
 
@@ -86,6 +86,24 @@ Verify nested-directory discovery, explicit activation, disabled implicit activa
 ### Agent topology
 
 Use current documented agent configuration (`agents.enabled` and `agents.max_concurrent_threads_per_session`). Record the event tree for required reviewer/profiler dispatch. Do not rely on undocumented nesting-depth configuration. Separately assert that generated execution contracts require a flat direct-child topology.
+
+### C13 SubagentStart qualification transport
+
+The semantic assertion under test is the documented `SubagentStart` behavior, not `codex exec --ephemeral` persistence and not project-scoped custom-agent discovery.
+
+C13 therefore uses this fail-closed transport contract:
+
+1. start with a fresh real `codex exec --ephemeral` trial using an aligned project-scoped synthetic agent (`fixture_agent.toml`, declared name `fixture_agent`) and a real project-scoped `SubagentStart` hook;
+2. if that trial reaches `SubagentStart`, evaluate the semantics directly and do not use a fallback;
+3. permit a non-ephemeral retry only when the ephemeral attempt matches the recognized `collab spawn failed: no thread with id` parent-thread registration failure before `SubagentStart`;
+4. for that retry, create a separate disposable repository containing the project-scoped hook/config but no project-scoped custom agent;
+5. materialize the synthetic `fixture_agent` only under a private disposable `CODEX_HOME/agents/fixture_agent.toml`, retaining the real project-scoped `SubagentStart` hook as the semantic boundary under test;
+6. keep approval `never`, C13 sandbox `read-only`, model-tool network disabled and project trust limited to the disposable fixture;
+7. bridge file-backed authentication only through a temporary symlink, never read or copy the credential file, isolate SQLite/log state, disable message-history persistence, then remove the complete disposable `CODEX_HOME` and verify auth metadata is unchanged;
+8. require exactly one real `SubagentStart`, `additionalContext` from that hook, `continue=false` from the same hook, and a child echo of an opaque proof that was not present in the root-agent prompt;
+9. classify missing transport/discovery evidence as `BLOCKED`, and classify contradictory behavior after the real `SubagentStart` boundary is reached as `FAILED`.
+
+The fallback is a qualification transport exception only. It does not make home-scoped custom agents a PlanAnvil product requirement and it does not weaken sandbox, approval, trust, network or evidence-sanitization boundaries.
 
 ### File handoff
 
@@ -115,7 +133,7 @@ Use seeded defects including missing rollback, uncovered requirements, risks wit
 
 Record separate outcomes for ordinary file writes, temporary refs, branches, linked worktrees, index updates, commits, signing, repository hooks and cleanup under every supported permission mode.
 
-## 6. Current official documentation checked on 2026-08-28
+## 6. Current official documentation checked on 2026-09-02
 
 - Skills: `https://developers.openai.com/codex/skills`
 - Configuration reference: `https://developers.openai.com/codex/config-reference`
@@ -123,7 +141,9 @@ Record separate outcomes for ordinary file writes, temporary refs, branches, lin
 - Hooks: `https://developers.openai.com/codex/hooks`
 - AGENTS.md: `https://developers.openai.com/codex/guides/agents-md`
 
-Notable drift from baseline 2.1: current subagent documentation exposes `agents.enabled` and `agents.max_concurrent_threads_per_session`; it does not document `agents.max_depth`. `agents.max_threads` is retained only as a legacy concurrency alias. PlanAnvil therefore enforces flat topology in its generated execution contract instead of relying on a runtime depth setting.
+Baseline 2.3 keeps the semantic capability matrix from 2.2 and changes only the C13 qualification transport contract. The change is motivated by controlled live observations plus upstream runtime reports for ephemeral parent-thread registration and project-scoped custom-agent spawning; those reports are diagnostic evidence, not normative sources for the expected `SubagentStart` semantics.
+
+The earlier 2.2 subagent decision remains: current subagent documentation exposes `agents.enabled` and `agents.max_concurrent_threads_per_session`; it does not document `agents.max_depth`. PlanAnvil therefore enforces flat topology in its generated execution contract instead of relying on a runtime depth setting.
 
 ## 7. Architecture rule
 
