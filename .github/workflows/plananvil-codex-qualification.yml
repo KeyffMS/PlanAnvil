@@ -136,12 +136,15 @@ jobs:
         run: |
           set -euo pipefail
           cd "${QUALIFICATION_REPO}"
-          qualification_args=()
+          # Baseline 2.3 permits the narrowly gated C13 fallback in both full and
+          # C13-only modes. The harness still tries ephemeral first and ignores
+          # this permission unless the recognized parent-thread failure occurs.
+          qualification_args=(--allow-c13-non-ephemeral-fallback)
           if [ "${{ inputs.mode }}" = "c13" ]; then
-            qualification_args+=(--only C13 --allow-c13-non-ephemeral-fallback)
+            qualification_args+=(--only C13)
           fi
           set +e
-          python3 tools/live_codex_qualification_harness_v5.py \
+          python3 tools/live_codex_qualification_harness_v6.py \
             --root "${QUALIFICATION_REPO}" \
             --source-commit "${GITHUB_SHA}" \
             --run-id "${GITHUB_RUN_ID}" \
