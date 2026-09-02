@@ -1,5 +1,5 @@
 {
-  "baseline_version": "2.2",
+  "baseline_version": "2.3",
   "capabilities": [
     {"evidence_directory":"capabilities/C01","expected_behavior":"Repository skills are discovered from .agents/skills","id":"C01","required":true,"result":"BLOCKED","source":"DOCUMENTED"},
     {"evidence_directory":"capabilities/C02","expected_behavior":"allow_implicit_invocation false disables implicit invocation while explicit invocation remains available","id":"C02","required":true,"result":"BLOCKED","source":"DOCUMENTED"},
@@ -19,14 +19,13 @@
     {"evidence_directory":"capabilities/C16","expected_behavior":"Git probe reports refs, branches, worktrees, index, commits, and cleanup","id":"C16","required":true,"result":"BLOCKED","source":"CONTRACT_DEFINED"}
   ],
   "evidence_package_state": "TEMPLATE_ARCHIVE_READY",
-  "generated_at": "2026-08-28",
+  "generated_at": "2026-09-02",
   "qualification_attempt": {
-    "date": "2026-08-28",
-    "deterministic_ci_commit": "0e1091fc4168671215ebcd89c92db702ea33ccdd",
-    "deterministic_ci_run": 26,
-    "deterministic_ci_result": "PASS",
-    "live_codex_result": "BLOCKED",
-    "blocker": "No authenticated Codex runtime or codex executable is available in the qualification execution environment."
+    "date": "2026-09-02",
+    "diagnostic_run": 8,
+    "diagnostic_source_commit": "ebc8cb119434df746b64ffaba3201d0d0ca4c6cd",
+    "live_codex_result": "PARTIAL",
+    "blocker": "C13 run #8 separated the ephemeral parent-thread registration blocker and project-scoped synthetic-agent spawn limitation from the SubagentStart semantic assertion; baseline 2.3 prepares the controlled full qualification transport but does not mark C13 REPRODUCED."
   },
   "release_gate": "Required capabilities must have committed sanitized REPRODUCED evidence before production readiness."
 }
