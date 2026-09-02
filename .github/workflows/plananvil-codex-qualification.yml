@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - smoke
+          - c13
           - full
 
 permissions:
@@ -60,8 +61,11 @@ jobs:
           test "${before}" = "${after}"
 
   full:
-    name: C01-C16 live qualification
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'full'
+    name: live capability qualification
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      (inputs.mode == 'full' || inputs.mode == 'c13')
     environment: plananvil-codex
     runs-on:
       - self-hosted
@@ -94,7 +98,7 @@ jobs:
           fi
           bwrap --version
           if ! bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true; then
-            echo "::error::bubblewrap cannot create the user namespace required by the Codex command sandbox. Fix the Podman/host user-namespace policy before running C01-C16."
+            echo "::error::bubblewrap cannot create the user namespace required by the Codex command sandbox. Fix the Podman/host user-namespace policy before live qualification."
             exit 2
           fi
 
@@ -126,18 +130,23 @@ jobs:
           python3 tools/prepare_capabilities.py --force
           python3 tools/validate_capabilities.py
 
-      - name: Run C01-C16 sequential qualification
+      - name: Run selected live qualification
         id: qualify
         shell: bash
         run: |
           set -euo pipefail
           cd "${QUALIFICATION_REPO}"
+          qualification_args=()
+          if [ "${{ inputs.mode }}" = "c13" ]; then
+            qualification_args+=(--only C13 --allow-c13-non-ephemeral-fallback)
+          fi
           set +e
-          python3 tools/live_codex_qualification_harness_v4.py \
+          python3 tools/live_codex_qualification_harness_v5.py \
             --root "${QUALIFICATION_REPO}" \
             --source-commit "${GITHUB_SHA}" \
             --run-id "${GITHUB_RUN_ID}" \
-            --output "${QUALIFICATION_ARTIFACT}"
+            --output "${QUALIFICATION_ARTIFACT}" \
+            "${qualification_args[@]}"
           rc=$?
           set -e
           echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
@@ -152,7 +161,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Enforce live release gate
+      - name: Enforce selected live gate
         if: always()
         shell: bash
         run: |
