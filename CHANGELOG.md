@@ -18,6 +18,7 @@ All notable changes to PlanAnvil are documented here.
 - use deterministic live-qualification harness setup for C01, C05, C09, and C14 so repository-skill discovery, stale handoff rejection, genuine auto-compaction, and writable auxiliary Git isolation are actually exercised;
 - extend deterministic live qualification for C02, C09, C11, C13, C14, and C16 with explicit-only skill policy, current AGENTS precedence evidence, project-scoped SubagentStart semantics, bytecode-free PlanAnvil bootstrap, and real Git signing/hook failure diagnostics;
 - make C12 a deterministic runtime byte-budget probe with redundant `project_doc_max_bytes` enforcement, secret head/tail markers, zero-tool automatic-loading evidence, and outer PlanAnvil full-file hash verification;
+- make C06, C08, and C09 deterministic live probes using the real PlanAnvil PreToolUse/PreCompact/PostCompact hooks, explicit postcondition evidence, low-limit `body_after_prefix` auto-compaction triggers, checkpoint repair, repeated compaction, and post-second-compaction continuation checks;
 - require production releases to use a GitHub-verified signed annotated tag whose target is reachable from `main`;
 - fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
 - document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.
