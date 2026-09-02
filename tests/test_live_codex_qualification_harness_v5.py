@@ -81,9 +81,9 @@ class LiveCodexHarnessV5Tests(unittest.TestCase):
         self.assertIn("inputs.mode == 'full'", self.workflow)
 
     def test_runbook_documents_baseline23_full_transport(self) -> None:
-        self.assertIn("`c13`", self.runbook)
+        self.assertIn("mode=c13", self.runbook)
         self.assertIn("baseline 2.3", self.runbook.lower())
-        self.assertIn("home-scoped", self.runbook)
+        self.assertIn("CODEX_HOME/agents/fixture_agent.toml", self.runbook)
         self.assertIn("project-scoped", self.runbook)
         self.assertIn("mode=full", self.runbook)
 
