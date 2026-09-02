@@ -54,7 +54,7 @@ class LiveCodexHarnessV5Tests(unittest.TestCase):
         self.assertIn("session_cleanup_verified", self.source)
         self.assertIn("auth_metadata_unchanged", self.source)
 
-    def test_full_release_path_cannot_enable_fallback_yet(self) -> None:
+    def test_v5_historical_controller_remains_diagnostic_only(self) -> None:
         self.assertIn(
             "C13 non-ephemeral fallback is diagnostic-only until the baseline contract is updated",
             self.source,
@@ -72,19 +72,20 @@ class LiveCodexHarnessV5Tests(unittest.TestCase):
         self.assertIn("completed_file_change_items", self.source)
         self.assertIn("repository_unchanged", self.source)
 
-    def test_workflow_exposes_c13_diagnostic_but_keeps_full_separate(self) -> None:
+    def test_current_workflow_uses_v6_and_keeps_c13_short_mode(self) -> None:
         self.assertIn("- c13", self.workflow)
         self.assertIn("inputs.mode == 'c13'", self.workflow)
-        self.assertIn("python3 tools/live_codex_qualification_harness_v5.py", self.workflow)
+        self.assertIn("python3 tools/live_codex_qualification_harness_v6.py", self.workflow)
         self.assertIn("--only C13", self.workflow)
         self.assertIn("--allow-c13-non-ephemeral-fallback", self.workflow)
         self.assertIn("inputs.mode == 'full'", self.workflow)
 
-    def test_runbook_marks_c13_mode_diagnostic_only(self) -> None:
+    def test_runbook_documents_baseline23_full_transport(self) -> None:
         self.assertIn("`c13`", self.runbook)
-        self.assertIn("diagnostic", self.runbook.lower())
-        self.assertIn("baseline 2.3", self.runbook)
-        self.assertIn("full", self.runbook)
+        self.assertIn("baseline 2.3", self.runbook.lower())
+        self.assertIn("home-scoped", self.runbook)
+        self.assertIn("project-scoped", self.runbook)
+        self.assertIn("mode=full", self.runbook)
 
 
 if __name__ == "__main__":
