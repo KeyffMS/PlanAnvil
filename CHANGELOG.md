@@ -68,7 +68,12 @@ All notable changes to PlanAnvil are documented here.
 - isolated planning branch and linked-worktree creation;
 - repository and local profiling, freshness hashes, instruction mapping with critical-conflict blocking, and run scaffolding;
 - durable Git-capability and lifecycle bootstrap evidence plus immutable goal analysis;
-- versioned JSON Schemas, canonical state transitions, privacy checks, freshness, schema-traversal, and hook tests;
+- versioned JSON Schemas, canonical state transitions, privacy checks, and atomic writes;
+- plan, stage, diff, artifact, source-immutability, and traceability validation;
+- immutable blind-review bundle, recording, and comparison workflow;
+- planning-only commit gate and observable final stop;
+- optional read-only Codex agents and defense-in-depth hooks;
+- unit, integration, boundary, privacy, freshness, schema-traversal, and hook tests;
 - golden contract examples and capability-evidence scaffolding.
 
 ### Release status
