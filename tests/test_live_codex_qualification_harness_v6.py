@@ -65,7 +65,7 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn("ephemeral-first", self.baseline)
         self.assertIn("home-scoped", self.baseline)
         self.assertIn("baseline 2.3", self.runbook.lower())
-        self.assertIn("home-scoped", self.runbook)
+        self.assertIn("CODEX_HOME/agents/fixture_agent.toml", self.runbook)
         self.assertIn("project-scoped", self.runbook)
 
     def test_safety_boundary_is_not_weakened(self) -> None:
