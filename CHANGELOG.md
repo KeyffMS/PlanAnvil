@@ -32,7 +32,7 @@ All notable changes to PlanAnvil are documented here.
 - transactional rollback, ownership/hash state, conservative Codex config merging, and structural hook merging;
 - distribution tests covering clean repositories, existing `AGENTS.md`, existing `.codex/config.toml`, unrelated hooks, upgrade conflicts and uninstall conflicts;
 - deterministic release archive builder, candidate/production release gate, and tag-driven GitHub Release workflow;
-- deterministic C01-C16 qualification template archive containing fixture, prompt, config, run command, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
+- deterministic C01-C16 qualification template archive containing fixture, prompt, config, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
 - capability evidence materializer/validator/rehash tools and a live Codex sandbox runbook;
 - installation, troubleshooting, and release documentation.
 
@@ -41,7 +41,7 @@ All notable changes to PlanAnvil are documented here.
 - refresh the Codex capability baseline to 2.2 against current 2026-08-28 official documentation;
 - replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
 - enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
-- record the 2026-08-28 qualification attempt and its live Codex runtime blocker;
+- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker;
 - pin GitHub Actions to immutable SHAs and Node-24-based checkout/setup-python releases;
 - expand CI across Python 3.11 and the current upper supported interpreter on Ubuntu, macOS and Windows;
 - split distribution/release-candidate validation into a stable named CI check.
@@ -68,12 +68,7 @@ All notable changes to PlanAnvil are documented here.
 - isolated planning branch and linked-worktree creation;
 - repository and local profiling, freshness hashes, instruction mapping with critical-conflict blocking, and run scaffolding;
 - durable Git-capability and lifecycle bootstrap evidence plus immutable goal analysis;
-- versioned JSON Schemas, canonical state transitions, privacy checks, and atomic writes;
-- plan, stage, diff, artifact, source-immutability, and traceability validation;
-- immutable blind-review bundle, recording, and comparison workflow;
-- planning-only commit gate and observable final stop;
-- optional read-only Codex agents and defense-in-depth hooks;
-- unit, integration, boundary, privacy, freshness, schema-traversal, and hook tests;
+- versioned JSON Schemas, canonical state transitions, privacy checks, freshness, schema-traversal, and hook tests;
 - golden contract examples and capability-evidence scaffolding.
 
 ### Release status
