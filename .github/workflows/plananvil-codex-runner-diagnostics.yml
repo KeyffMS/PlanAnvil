@@ -1,0 +1,102 @@
+name: PlanAnvil Codex runner diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plananvil-codex-runner-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  diagnostics:
+    name: Codex runner variant matrix
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    environment: plananvil-codex
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - plananvil
+      - codex
+    timeout-minutes: 120
+    steps:
+      - name: Validate controlled runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          command -v plananvil-qualification-workspace
+          command -v codex
+          command -v git
+          command -v python3
+          codex --version
+          git --version
+          python3 --version
+
+      - name: Validate Linux Codex sandbox prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v bwrap
+          bwrap --version
+          bwrap --unshare-user --uid 0 --gid 0 --ro-bind / / /bin/true
+
+      - name: Create diagnostic workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace="$(plananvil-qualification-workspace)"
+          test -n "${workspace}"
+          test -d "${workspace}"
+          root="${workspace}/runner-diagnostics-${GITHUB_RUN_ID}"
+          repo="${root}/source"
+          fixtures="${root}/fixtures"
+          artifact="${root}/artifact"
+          mkdir -p "${repo}" "${fixtures}" "${artifact}"
+
+          git -C "${repo}" init -q
+          git -C "${repo}" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C "${repo}" fetch --depth=1 origin "${GITHUB_SHA}"
+          git -C "${repo}" checkout --detach -q "${GITHUB_SHA}"
+          test "$(git -C "${repo}" rev-parse HEAD)" = "${GITHUB_SHA}"
+
+          echo "DIAGNOSTIC_SOURCE=${repo}" >> "${GITHUB_ENV}"
+          echo "DIAGNOSTIC_FIXTURES=${fixtures}" >> "${GITHUB_ENV}"
+          echo "DIAGNOSTIC_ARTIFACT=${artifact}" >> "${GITHUB_ENV}"
+
+      - name: Run diagnostic variant matrix
+        id: diagnose
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${DIAGNOSTIC_SOURCE}"
+          set +e
+          python3 tools/codex_runner_variant_matrix.py \
+            --root "${DIAGNOSTIC_FIXTURES}" \
+            --output "${DIAGNOSTIC_ARTIFACT}"
+          rc=$?
+          set -e
+          echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      - name: Upload sanitized diagnostic matrix
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: plananvil-codex-runner-diagnostics-${{ github.run_id }}
+          path: ${{ env.DIAGNOSTIC_ARTIFACT }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce diagnostic harness execution only
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ steps.diagnose.outputs.exit_code }}" = "0"
+          test -f "${DIAGNOSTIC_ARTIFACT}/matrix-summary.json"
+          # Variant observations are intentionally non-gating. This step checks
+          # only that the diagnostic harness itself completed and produced evidence.
