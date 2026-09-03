@@ -33,7 +33,8 @@ class Codex0152ProductAlignmentTests(unittest.TestCase):
         self.assertIn("`plan_anvil_reviewer`", self.contract)
 
     def test_product_has_deterministic_mutation_postcondition(self) -> None:
-        self.assertIn("Treat `PreToolUse` as an early guard, not the sole enforcement boundary", self.contract)
+        self.assertIn("hook enforcement is an early guard only", self.contract)
+        self.assertIn("deterministic planning-diff/source-immutability validator is authoritative", self.contract)
         self.assertIn("immediately run `validate_diff.py", self.skill)
         self.assertIn("after every file-changing tool call", self.template)
         self.assertIn("actual changed paths", self.execution)
