@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 import live_codex_qualification_harness_v5 as prior
-import live_codex_qualification_regression as regression
+import live_codex_qualification_codex0152 as compat
 
 base = prior.base
 
-TARGET_CAPABILITIES = regression.TARGET_CAPABILITIES
+TARGET_CAPABILITIES = compat.TARGET_CAPABILITIES
 _ORIGINAL_CAPABILITY_RUNTIME = prior.capability_runtime
 ALLOW_NON_EPHEMERAL_FALLBACK = False
 HOME_AGENT_NAME = "fixture_agent"
@@ -166,6 +166,7 @@ def _c13_runtime(
         )
         trial_e["agent_fixture_scope"] = "project"
         trial_e["agent_name_matches_filename"] = True
+        trial_e["required_spawn_agent_type"] = HOME_AGENT_NAME
 
         trials: list[dict[str, Any]] = [base.sanitize(trial_e)]
         fallback_used = False
@@ -271,6 +272,7 @@ def _c13_runtime(
                 trial_n["home_agent_materialized"] = home_agent_materialized
                 trial_n["project_scoped_subagent_start_hook"] = True
                 trial_n["agent_name_matches_filename"] = True
+                trial_n["required_spawn_agent_type"] = HOME_AGENT_NAME
                 trial_n["fallback_fixture_commit"] = fallback_fixture_commit
                 trials.append(base.sanitize(trial_n))
                 final_outcome = outcome_n
@@ -331,6 +333,7 @@ def _c13_runtime(
             f"session_cleanup_verified={str(cleanup_verified).lower()}",
             f"auth_metadata_unchanged={str(auth_unchanged).lower()}",
             f"transport_resolution={transport_resolution}",
+            f"required_spawn_agent_type={HOME_AGENT_NAME}",
         ],
         blocker=blocker,
         summary=summary,
@@ -349,16 +352,16 @@ def capability_runtime(**kwargs: Any) -> tuple[str, bool]:
         return _ORIGINAL_CAPABILITY_RUNTIME(**kwargs)
     common = {key: value for key, value in kwargs.items() if key != "capability_id"}
     if capability_id == "C03":
-        return regression.run_c03(**common)
+        return compat.run_c03(**common)
     if capability_id == "C06":
-        return regression.run_c06(**common)
+        return compat.run_c06(**common)
     if capability_id == "C08":
-        return regression.run_c08(**common)
+        return compat.run_c08(**common)
     if capability_id == "C09":
-        return regression.run_c09(**common)
+        return compat.run_c09(**common)
     if capability_id == "C13":
-        return regression.run_c13(_c13_runtime, **common)
-    return regression.run_c16(**common)
+        return compat.run_c13(_c13_runtime, **common)
+    return compat.run_c16(**common)
 
 
 def main(argv: list[str] | None = None) -> int:
