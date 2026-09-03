@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "tools" / "live_codex_qualification_harness_v6.py"
+REGRESSION_PATH = ROOT / "tools" / "live_codex_qualification_regression.py"
 WORKFLOW_PATH = ROOT / ".github" / "workflows" / "plananvil-codex-qualification.yml"
 BASELINE_PATH = ROOT / "docs" / "CODEX_CAPABILITY_BASELINE.md"
 RUNBOOK_PATH = ROOT / "docs" / "CODEX_SANDBOX_RUNBOOK.md"
@@ -15,14 +16,19 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.source = MODULE_PATH.read_text(encoding="utf-8")
+        cls.regression = REGRESSION_PATH.read_text(encoding="utf-8")
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
         cls.baseline = BASELINE_PATH.read_text(encoding="utf-8")
         cls.runbook = RUNBOOK_PATH.read_text(encoding="utf-8")
 
-    def test_v6_overrides_only_c13_and_inherits_v5(self) -> None:
-        self.assertIn('TARGET_CAPABILITIES = {"C13"}', self.source)
-        self.assertIn("import live_codex_qualification_harness_v5 as prior", self.source)
+    def test_v6_consolidates_exact_regression_audit_targets(self) -> None:
+        self.assertIn("import live_codex_qualification_regression as regression", self.source)
+        self.assertIn("TARGET_CAPABILITIES = regression.TARGET_CAPABILITIES", self.source)
+        self.assertIn('TARGET_CAPABILITIES = {"C03", "C06", "C08", "C09", "C13", "C16"}', self.regression)
         self.assertIn("_ORIGINAL_CAPABILITY_RUNTIME = prior.capability_runtime", self.source)
+        for capability_id in ("C03", "C06", "C08", "C09", "C13"):
+            self.assertIn(f'if capability_id == "{capability_id}"', self.source)
+        self.assertIn("return regression.run_c16(**common)", self.source)
 
     def test_agent_identity_is_aligned(self) -> None:
         self.assertIn('HOME_AGENT_NAME = "fixture_agent"', self.source)
@@ -41,6 +47,7 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn('trial_n["agent_fixture_scope"] = "disposable_CODEX_HOME"', self.source)
         self.assertIn('trial_n["project_agent_present"] = False', self.source)
         self.assertIn('trial_n["project_scoped_subagent_start_hook"] = True', self.source)
+        self.assertIn("regression.run_c13(_c13_runtime", self.source)
 
     def test_fallback_is_still_known_error_gated(self) -> None:
         self.assertIn("known_e and ALLOW_NON_EPHEMERAL_FALLBACK", self.source)
@@ -54,13 +61,13 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn("auth_metadata_unchanged", self.source)
         self.assertIn("home_scoped_fixture_agent_materialized", self.source)
 
-    def test_full_workflow_enables_baseline23_fallback(self) -> None:
+    def test_full_workflow_stays_on_v6_and_enables_baseline23_fallback(self) -> None:
         self.assertIn("python3 tools/live_codex_qualification_harness_v6.py", self.workflow)
         self.assertIn("qualification_args=(--allow-c13-non-ephemeral-fallback)", self.workflow)
         self.assertIn("--only C13", self.workflow)
         self.assertIn("inputs.mode == 'full'", self.workflow)
 
-    def test_baseline_and_runbook_are_23(self) -> None:
+    def test_baseline_and_runbook_remain_23(self) -> None:
         self.assertIn("Baseline version:** 2.3", self.baseline)
         self.assertIn("ephemeral-first", self.baseline)
         self.assertIn("home-scoped", self.baseline)
@@ -69,12 +76,13 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn("project-scoped", self.runbook)
 
     def test_safety_boundary_is_not_weakened(self) -> None:
-        self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", self.source)
-        self.assertNotIn("danger-full-access", self.source)
-        self.assertNotIn("--privileged", self.source)
-        self.assertNotIn("SYS_ADMIN", self.source)
+        combined = self.source + "\n" + self.regression
+        self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", combined)
+        self.assertNotIn("danger-full-access", combined)
+        self.assertNotIn("--privileged", combined)
+        self.assertNotIn("SYS_ADMIN", combined)
         self.assertIn('sandbox_mode = "read-only"', self.source)
-        self.assertIn("base.git_snapshot", self.source)
+        self.assertIn("base.git_snapshot", combined)
 
 
 if __name__ == "__main__":
