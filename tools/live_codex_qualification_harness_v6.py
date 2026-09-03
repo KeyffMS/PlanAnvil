@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any
 
 import live_codex_qualification_harness_v5 as prior
+import live_codex_qualification_regression as regression
 
 base = prior.base
 
-TARGET_CAPABILITIES = {"C13"}
+TARGET_CAPABILITIES = regression.TARGET_CAPABILITIES
 _ORIGINAL_CAPABILITY_RUNTIME = prior.capability_runtime
 ALLOW_NON_EPHEMERAL_FALLBACK = False
 HOME_AGENT_NAME = "fixture_agent"
@@ -136,8 +137,6 @@ def _c13_runtime(
     with prior.prior.v2._python_bytecode_disabled():
         proof = prior._context_proof(source_commit)
 
-        # Attempt 1 remains project-scoped and ephemeral. Filename, declared name,
-        # prompt target, and hook matcher are deliberately identical.
         base.ensure_git_repo(project_repo)
         _seed_project_fixture(project_repo, proof, include_project_agent=True)
         project_fixture_commit = base.commit_fixture_baseline(project_repo)
@@ -190,11 +189,6 @@ def _c13_runtime(
                 else "ephemeral_unclassified_blocker"
             )
         else:
-            # Run #8 proved that non-ephemeral registration survives the parent-thread
-            # failure but the project-scoped synthetic agent can still be rejected before
-            # SubagentStart. Baseline 2.3 therefore isolates the semantic probe from that
-            # independent discovery limitation: the synthetic child is home-scoped inside
-            # a disposable CODEX_HOME while the hook under test remains project-scoped.
             fallback_used = True
             base.ensure_git_repo(fallback_repo)
             _seed_project_fixture(fallback_repo, proof, include_project_agent=False)
@@ -354,7 +348,17 @@ def capability_runtime(**kwargs: Any) -> tuple[str, bool]:
     if capability_id not in TARGET_CAPABILITIES:
         return _ORIGINAL_CAPABILITY_RUNTIME(**kwargs)
     common = {key: value for key, value in kwargs.items() if key != "capability_id"}
-    return _c13_runtime(**common)
+    if capability_id == "C03":
+        return regression.run_c03(**common)
+    if capability_id == "C06":
+        return regression.run_c06(**common)
+    if capability_id == "C08":
+        return regression.run_c08(**common)
+    if capability_id == "C09":
+        return regression.run_c09(**common)
+    if capability_id == "C13":
+        return regression.run_c13(_c13_runtime, **common)
+    return regression.run_c16(**common)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -364,8 +368,6 @@ def main(argv: list[str] | None = None) -> int:
     ALLOW_NON_EPHEMERAL_FALLBACK = allow_flag in args
     args = [item for item in args if item != allow_flag]
 
-    # The v5 C13-only controller is still useful as a short diagnostic surface,
-    # but baseline 2.3 also permits the same narrowly gated fallback in full mode.
     base.capability_runtime = capability_runtime
     prior.capability_runtime = capability_runtime
     if "--only" in args:
