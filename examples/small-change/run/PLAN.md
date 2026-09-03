@@ -4,7 +4,7 @@
 
 - Plan ID: `PG-20260712-180000-A1B2`
 - Run ID: `20260712T180000Z_PG-20260712-180000-A1B2_display-name`
-- Contract: PlanAnvil 2.1
+- Contract: PlanAnvil 2.3
 - Artifact schema: 1.1.0
 - Base branch: `main`
 - Base SHA: `dedb6ab6843bf06d3ac7899aaf37923896915ee7`
@@ -25,6 +25,14 @@ PlanAnvil generates and validates this contract only. It does not modify product
 ## Separate execution-run prompt
 
 In a separate Codex run, load this plan and canonical state, reconcile Git and the latest checkpoint, then execute only the next approved stage.
+
+## Execution runtime invariants
+
+Use a flat direct-child topology. Jim coordinates and never modifies product code or tests. Jenny owns approved tests only. One implementation agent modifies approved product paths. The independent verifier remains read-only. Winston Wolfe performs read-only incident analysis only after six implementation failures.
+
+Only one agent modifies repository files at a time. After every file-changing tool call, verify the actual changed paths against the approved stage scope before another mutation; `PreToolUse` is an early guard, not the sole mutation boundary.
+
+Use STRATEGY-A with ATTEMPT-A1, ATTEMPT-A2, and ATTEMPT-A3. If that strategy is exhausted, use materially different STRATEGY-B with ATTEMPT-B1, ATTEMPT-B2, and ATTEMPT-B3. After six implementation failures, stop for Winston Wolfe analysis.
 
 ## Scope
 
@@ -66,13 +74,16 @@ Behavior stages require GREEN BASELINE → EXPECTED RED → IMPLEMENTATION → F
 
 Product changes occur only in task or integration worktrees. The planning worktree remains the control root. One modifier acts at a time.
 
+- Task branch: `pursue/PG-20260712-180000-A1B2/display-name`
+- Integration branch: `pursue/integration/PG-20260712-180000-A1B2/display-name`
+
 ## Production verification, switching, and approvals
 
-Any live switch, irreversible action, or base-branch integration requires explicit user approval.
+Explicit user approval is required before any base merge or push, any live switching or environment/service switch, and every irreversible operation.
 
 ## Rollback and recovery
 
-Each stage has a rollback boundary. Resume only after canonical files and Git reconcile.
+Each stage has a rollback boundary. Resume only after canonical files and Git reconcile. Compaction recovery uses observed lifecycle events and canonical checkpoint/Git state rather than an assumed token count.
 
 ## Resume and reconciliation
 
