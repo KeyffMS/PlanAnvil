@@ -38,7 +38,7 @@ class QualificationRegressionAuditTests(unittest.TestCase):
     def test_c03_uses_explicit_auxiliary_git_source_and_outer_decision(self) -> None:
         self.assertIn('source = worktrees / "source"', self.source)
         self.assertIn('planning = worktrees / "planning"', self.source)
-        self.assertIn('"plan_anvil.py", "start"', self.source)
+        self.assertIn('".agents/skills/plan-anvil/scripts/plan_anvil.py", "start"', self.source)
         self.assertIn("source_core_unchanged", self.source)
         self.assertIn("execution_contract_findings", self.source)
         self.assertIn("flat\\s+direct[- ]child\\s+topology", self.source)
