@@ -76,7 +76,8 @@ class QualificationRegressionAuditTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, self.source)
         self.assertIn('sandbox="workspace-write"', self.source)
-        self.assertIn('sandbox="read-only"', self.source)
+        self.assertIn("_patched_v4", self.source)
+        self.assertIn("_patched_v5_c13", self.source)
 
     def test_audit_records_root_causes_and_exit_gate(self) -> None:
         for marker in (
