@@ -31,6 +31,9 @@ class Codex0152ProductAlignmentTests(unittest.TestCase):
         self.assertIn("`SubagentStart` matcher input is the spawned `agent_type`", self.contract)
         self.assertIn("`plan_anvil_profiler`", self.contract)
         self.assertIn("`plan_anvil_reviewer`", self.contract)
+        product_config = (ROOT / ".codex" / "config.toml").read_text(encoding="utf-8")
+        self.assertIn("[agents.plan_anvil_profiler]", product_config)
+        self.assertIn("[agents.plan_anvil_reviewer]", product_config)
 
     def test_product_has_deterministic_mutation_postcondition(self) -> None:
         self.assertIn("hook enforcement is an early guard only", self.contract)
@@ -49,6 +52,13 @@ class Codex0152ProductAlignmentTests(unittest.TestCase):
         self.assertIn('v4._set_compact_config = set_compact_config', self.compat)
         self.assertIn('_set_feature(text, "token_budget", "false")', self.compat)
         self.assertIn("finally:\n        v4._set_compact_config = old_set", self.compat)
+
+    def test_qualification_persists_project_trust_in_isolated_codex_home(self) -> None:
+        self.assertIn("_write_persisted_project_trust", self.compat)
+        self.assertIn('kwargs["trust_project"] = False', self.compat)
+        self.assertIn('item != "--ignore-user-config"', self.compat)
+        self.assertIn("_isolated_persisted_trust_runtime(cap_runtime)", self.compat)
+        self.assertIn('os.environ["CODEX_HOME"] = str(home)', self.compat)
 
     def test_c06_qualifies_codex0152_guaranteed_hook_and_product_postcondition(self) -> None:
         self.assertIn("C06_SUPPORTED_HOOK", self.compat)

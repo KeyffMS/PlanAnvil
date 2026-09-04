@@ -41,20 +41,31 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn("required_spawn_agent_type", self.source)
         self.assertIn("agent_type` exactly `fixture_agent`", self.compat)
 
-    def test_ephemeral_attempt_remains_project_scoped(self) -> None:
+    def test_ephemeral_attempt_remains_project_scoped_and_persistently_trusted(self) -> None:
         self.assertIn("_seed_project_fixture(project_repo, proof, include_project_agent=True)", self.source)
+        self.assertIn("_prepare_trusted_ephemeral_home(cap_runtime, project_repo)", self.source)
+        self.assertIn("isolated_codex_home=ephemeral_home", self.source)
         self.assertIn("ephemeral=True", self.source)
         self.assertIn('trial_e["agent_fixture_scope"] = "project"', self.source)
+        self.assertIn('trial_e["persisted_project_trust"] = True', self.source)
+        self.assertIn("ephemeral_cleanup_verified", self.source)
+        self.assertIn("ephemeral_auth_metadata_unchanged", self.source)
 
     def test_fallback_separates_agent_discovery_from_project_hook(self) -> None:
         self.assertIn("_seed_project_fixture(fallback_repo, proof, include_project_agent=False)", self.source)
         self.assertIn('home / "agents" / HOME_AGENT_FILENAME', self.source)
+        self.assertIn("compat._write_persisted_project_trust(home, repo)", self.source)
+        self.assertIn("_declare_home_agent(home)", self.source)
+        self.assertIn("_prepare_home_scoped_fallback_agent(cap_runtime, fallback_repo)", self.source)
         self.assertIn('trial_n["agent_fixture_scope"] = "disposable_CODEX_HOME"', self.source)
         self.assertIn('trial_n["project_agent_present"] = False', self.source)
         self.assertIn('trial_n["project_scoped_subagent_start_hook"] = True', self.source)
+        self.assertIn('trial_n["persisted_project_trust"] = True', self.source)
         self.assertIn("compat.run_c13(_c13_runtime", self.source)
 
-    def test_fallback_is_still_known_error_gated(self) -> None:
+    def test_known_ephemeral_parent_failure_always_uses_the_gated_fallback(self) -> None:
+        self.assertIn('if known_e:\n            outcome_e = "BLOCKED"', self.source)
+        self.assertIn("recognized ephemeral parent-thread registration failure", self.source)
         self.assertIn("known_e and ALLOW_NON_EPHEMERAL_FALLBACK", self.source)
         self.assertIn("ephemeral_known_transport_blocker_fallback_not_enabled", self.source)
         self.assertIn("non_ephemeral_home_agent_fallback", self.source)

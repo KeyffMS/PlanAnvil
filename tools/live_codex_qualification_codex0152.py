@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -32,6 +33,81 @@ def _set_feature(text: str, key: str, value: str) -> str:
     return text.rstrip() + f"\n\n[features]\n{key} = {value}\n"
 
 
+def _write_persisted_project_trust(home: Path, repo: Path) -> None:
+    """Persist the Codex 0.152 project trust decision in an isolated user config.
+
+    Codex 0.152 project trust is a user-config setting. Passing
+    `projects.<path>.trust_level` through `-c` is not a valid strict CLI override
+    and, without strict config, can be ignored. Qualification therefore mirrors
+    the supported product runtime by storing trust in the disposable CODEX_HOME.
+    """
+
+    config_path = home / "config.toml"
+    text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    text = _set_feature(text, "hooks", "true")
+    project_header = f"[projects.{base.toml_quote(str(repo.resolve()))}]"
+    if project_header not in text:
+        text = text.rstrip() + f"\n\n{project_header}\ntrust_level = \"trusted\"\n"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(text.rstrip() + "\n", encoding="utf-8")
+
+
+def _persisted_trust_args() -> Iterator[None]:
+    """Route targeted 0.152 probes through persisted trust, never CLI trust."""
+
+    old_common = base.common_codex_args
+
+    def common_codex_args(**kwargs: Any) -> list[str]:
+        kwargs["trust_project"] = False
+        args = old_common(**kwargs)
+        return [item for item in args if item != "--ignore-user-config"]
+
+    base.common_codex_args = common_codex_args
+    try:
+        yield
+    finally:
+        base.common_codex_args = old_common
+
+
+_persisted_trust_args = contextlib.contextmanager(_persisted_trust_args)
+
+
+@contextlib.contextmanager
+def _isolated_persisted_trust_runtime(cap_runtime: Path) -> Iterator[Path]:
+    """Use one disposable CODEX_HOME and trust every probed cwd explicitly."""
+
+    home, auth_path, auth_before = v5._prepare_isolated_codex_home(
+        cap_runtime / "codex0152-persisted-trust"
+    )
+    old_common = base.common_codex_args
+    previous_home = os.environ.get("CODEX_HOME")
+
+    def common_codex_args(**kwargs: Any) -> list[str]:
+        cwd = Path(kwargs["cwd"]).resolve()
+        _write_persisted_project_trust(home, cwd)
+        kwargs["trust_project"] = False
+        args = old_common(**kwargs)
+        return [item for item in args if item != "--ignore-user-config"]
+
+    base.common_codex_args = common_codex_args
+    os.environ["CODEX_HOME"] = str(home)
+    try:
+        yield home
+    finally:
+        base.common_codex_args = old_common
+        if previous_home is None:
+            os.environ.pop("CODEX_HOME", None)
+        else:
+            os.environ["CODEX_HOME"] = previous_home
+        cleanup, auth_unchanged = v5._cleanup_isolated_codex_home(
+            home, auth_path, auth_before
+        )
+        if not cleanup or not auth_unchanged:
+            raise base.QualificationError(
+                "Codex 0.152 persisted-trust runtime did not clean up safely"
+            )
+
+
 @contextlib.contextmanager
 def _codex0152_compaction(cap_runtime: Path, capability_id: str) -> Iterator[None]:
     """Exercise real auto-compaction without the 0.152 TokenBudget fallback buffer.
@@ -60,13 +136,19 @@ def _codex0152_compaction(cap_runtime: Path, capability_id: str) -> Iterator[Non
 
 def run_c08(**kwargs: Any):
     cap_runtime = Path(kwargs["runtime_root"]) / "C08"
-    with _codex0152_compaction(cap_runtime, "C08"):
+    with (
+        _codex0152_compaction(cap_runtime, "C08"),
+        _isolated_persisted_trust_runtime(cap_runtime),
+    ):
         return v4._c08_runtime(**kwargs)
 
 
 def run_c09(**kwargs: Any):
     cap_runtime = Path(kwargs["runtime_root"]) / "C09"
-    with _codex0152_compaction(cap_runtime, "C09"):
+    with (
+        _codex0152_compaction(cap_runtime, "C09"),
+        _isolated_persisted_trust_runtime(cap_runtime),
+    ):
         return v4._c09_runtime(**kwargs)
 
 
@@ -106,7 +188,7 @@ def _c13_contract(cap_runtime: Path) -> Iterator[None]:
 
 def run_c13(current_runtime: Callable[..., tuple[str, bool]], **kwargs: Any):
     cap_runtime = Path(kwargs["runtime_root"]) / "C13"
-    with _c13_contract(cap_runtime):
+    with _persisted_trust_args(), _c13_contract(cap_runtime):
         return current_runtime(**kwargs)
 
 
@@ -144,7 +226,11 @@ def run_c06(
     _cap, cap_runtime, _spec, repo, _worktrees, results, _eval = regression._runtime_paths(
         root=root, runtime_root=runtime_root, capability_id=cid
     )
-    with v2._python_bytecode_disabled(), regression._patched_v4(cap_runtime, cid):
+    with (
+        v2._python_bytecode_disabled(),
+        regression._patched_v4(cap_runtime, cid),
+        _isolated_persisted_trust_runtime(cap_runtime),
+    ):
         base.ensure_git_repo(repo)
         regression.v1._install_plananvil_release(root, repo)
         v4._instrument_hooks(repo, event_to_script={"PreToolUse": "plan-anvil-guard.py"})
