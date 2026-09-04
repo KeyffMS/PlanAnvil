@@ -72,10 +72,10 @@ class LiveCodexHarnessV5Tests(unittest.TestCase):
         self.assertIn("completed_file_change_items", self.source)
         self.assertIn("repository_unchanged", self.source)
 
-    def test_current_workflow_uses_v6_and_keeps_c13_short_mode(self) -> None:
+    def test_current_workflow_uses_v7_and_keeps_c13_short_mode(self) -> None:
         self.assertIn("- c13", self.workflow)
         self.assertIn("inputs.mode == 'c13'", self.workflow)
-        self.assertIn("python3 tools/live_codex_qualification_harness_v6.py", self.workflow)
+        self.assertIn("python3 tools/live_codex_qualification_harness_v7.py", self.workflow)
         self.assertIn("--only C13", self.workflow)
         self.assertIn("--allow-c13-non-ephemeral-fallback", self.workflow)
         self.assertIn("inputs.mode == 'full'", self.workflow)
@@ -83,9 +83,10 @@ class LiveCodexHarnessV5Tests(unittest.TestCase):
     def test_runbook_documents_baseline23_full_transport(self) -> None:
         self.assertIn("mode=c13", self.runbook)
         self.assertIn("baseline 2.3", self.runbook.lower())
-        self.assertIn("CODEX_HOME/agents/fixture_agent.toml", self.runbook)
+        self.assertIn("project-scoped synthetic agent", self.runbook)
         self.assertIn("project-scoped", self.runbook)
         self.assertIn("mode=full", self.runbook)
+        self.assertIn("live_codex_qualification_harness_v7.py", self.runbook)
 
 
 if __name__ == "__main__":

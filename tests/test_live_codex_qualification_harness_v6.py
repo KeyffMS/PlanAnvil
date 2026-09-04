@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "tools" / "live_codex_qualification_harness_v6.py"
+V7_PATH = ROOT / "tools" / "live_codex_qualification_harness_v7.py"
 COMPAT_PATH = ROOT / "tools" / "live_codex_qualification_codex0152.py"
 REGRESSION_PATH = ROOT / "tools" / "live_codex_qualification_regression.py"
 WORKFLOW_PATH = ROOT / ".github" / "workflows" / "plananvil-codex-qualification.yml"
@@ -17,6 +18,7 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.source = MODULE_PATH.read_text(encoding="utf-8")
+        cls.v7 = V7_PATH.read_text(encoding="utf-8")
         cls.compat = COMPAT_PATH.read_text(encoding="utf-8")
         cls.regression = REGRESSION_PATH.read_text(encoding="utf-8")
         cls.workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
@@ -51,34 +53,29 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
         self.assertIn("ephemeral_cleanup_verified", self.source)
         self.assertIn("ephemeral_auth_metadata_unchanged", self.source)
 
-    def test_fallback_separates_agent_discovery_from_project_hook(self) -> None:
-        self.assertIn("_seed_project_fixture(fallback_repo, proof, include_project_agent=False)", self.source)
-        self.assertIn('home / "agents" / HOME_AGENT_FILENAME', self.source)
-        self.assertIn("compat._write_persisted_project_trust(home, repo)", self.source)
-        self.assertIn("_declare_home_agent(home)", self.source)
-        self.assertIn("_prepare_home_scoped_fallback_agent(cap_runtime, fallback_repo)", self.source)
-        self.assertIn('trial_n["agent_fixture_scope"] = "disposable_CODEX_HOME"', self.source)
-        self.assertIn('trial_n["project_agent_present"] = False', self.source)
-        self.assertIn('trial_n["project_scoped_subagent_start_hook"] = True', self.source)
-        self.assertIn('trial_n["persisted_project_trust"] = True', self.source)
-        self.assertIn("compat.run_c13(_c13_runtime", self.source)
+    def test_v6_historical_fallback_is_superseded_by_v7_project_fallback(self) -> None:
+        self.assertIn("_prepare_home_scoped_fallback_agent", self.source)
+        self.assertIn("_seed_declared_project_fixture(fallback_repo, proof)", self.v7)
+        self.assertIn('trial_n["project_agent_present"] = True', self.v7)
+        self.assertIn('trial_n["project_scoped_subagent_start_hook"] = True', self.v7)
+        self.assertIn('trial_n["home_agent_materialized"] = False', self.v7)
 
-    def test_known_ephemeral_parent_failure_always_uses_the_gated_fallback(self) -> None:
-        self.assertIn('if known_e:\n            outcome_e = "BLOCKED"', self.source)
-        self.assertIn("recognized ephemeral parent-thread registration failure", self.source)
-        self.assertIn("known_e and ALLOW_NON_EPHEMERAL_FALLBACK", self.source)
-        self.assertIn("ephemeral_known_transport_blocker_fallback_not_enabled", self.source)
-        self.assertIn("non_ephemeral_home_agent_fallback", self.source)
+    def test_known_ephemeral_parent_failure_remains_gated(self) -> None:
+        self.assertIn('if known_e:\n            outcome_e = "BLOCKED"', self.v7)
+        self.assertIn("recognized ephemeral parent-thread registration failure", self.v7)
+        self.assertIn("v6.ALLOW_NON_EPHEMERAL_FALLBACK", self.v7)
+        self.assertIn("ephemeral_known_transport_blocker_fallback_not_enabled", self.v7)
+        self.assertIn("non_ephemeral_project_agent_fallback", self.v7)
 
     def test_non_ephemeral_cleanup_and_auth_invariants_remain_required(self) -> None:
-        self.assertIn("prior._prepare_isolated_codex_home", self.source)
-        self.assertIn("prior._cleanup_isolated_codex_home", self.source)
-        self.assertIn("session_cleanup_verified", self.source)
-        self.assertIn("auth_metadata_unchanged", self.source)
-        self.assertIn("home_scoped_fixture_agent_materialized", self.source)
+        self.assertIn("prior._prepare_isolated_codex_home", self.v7)
+        self.assertIn("prior._cleanup_isolated_codex_home", self.v7)
+        self.assertIn("session_cleanup_verified", self.v7)
+        self.assertIn("auth_metadata_unchanged", self.v7)
+        self.assertIn("project_agent_materialized", self.v7)
 
-    def test_full_workflow_stays_on_v6_and_enables_baseline23_fallback(self) -> None:
-        self.assertIn("python3 tools/live_codex_qualification_harness_v6.py", self.workflow)
+    def test_full_workflow_uses_v7_and_enables_baseline23_fallback(self) -> None:
+        self.assertIn("python3 tools/live_codex_qualification_harness_v7.py", self.workflow)
         self.assertIn("qualification_args=(--allow-c13-non-ephemeral-fallback)", self.workflow)
         self.assertIn("--only C13", self.workflow)
         self.assertIn("inputs.mode == 'full'", self.workflow)
@@ -86,13 +83,13 @@ class LiveCodexHarnessV6Tests(unittest.TestCase):
     def test_baseline_and_runbook_remain_23(self) -> None:
         self.assertIn("Baseline version:** 2.3", self.baseline)
         self.assertIn("ephemeral-first", self.baseline)
-        self.assertIn("home-scoped", self.baseline)
+        self.assertIn("project-scoped non-ephemeral fallback", self.baseline)
         self.assertIn("baseline 2.3", self.runbook.lower())
-        self.assertIn("CODEX_HOME/agents/fixture_agent.toml", self.runbook)
+        self.assertIn("project-scoped synthetic agent", self.runbook)
         self.assertIn("project-scoped", self.runbook)
 
     def test_safety_boundary_is_not_weakened(self) -> None:
-        combined = self.source + "\n" + self.compat + "\n" + self.regression
+        combined = self.source + "\n" + self.v7 + "\n" + self.compat + "\n" + self.regression
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", combined)
         self.assertNotIn("danger-full-access", combined)
         self.assertNotIn("--privileged", combined)

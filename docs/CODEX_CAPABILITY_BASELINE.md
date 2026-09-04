@@ -66,7 +66,7 @@ Do not commit session transcripts, credentials, private paths, unrelated Git dat
 | C10 | `PostCompact` and `SessionStart` can provide recovery context | DOCUMENTED | BLOCKED | Inject only a recovery pointer |
 | C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | BLOCKED | Explicitly map affected instructions |
 | C12 | `project_doc_max_bytes` can truncate automatic instruction loading | DOCUMENTED | BLOCKED | Read, size and hash complete files explicitly |
-| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context/audit only; qualify ephemeral-first with a controlled home-scoped fallback when the recognized ephemeral parent-thread blocker occurs |
+| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context/audit only; qualify ephemeral-first with a controlled project-scoped non-ephemeral fallback when the recognized ephemeral parent-thread blocker occurs |
 | C14 | Planning isolation preserves the source branch, SHA, index and files | CONTRACT_DEFINED | BLOCKED | Planning worktree isolation is mandatory |
 | C15 | Blind review is immutable and detects seeded contract defects | CONTRACT_DEFINED | BLOCKED | Hash review before separate comparison |
 | C16 | The Git probe accurately reports refs, branches, worktrees, index, commits and cleanup | CONTRACT_DEFINED | BLOCKED | No artifact generation before required Git capabilities pass |
@@ -75,7 +75,7 @@ Do not commit session transcripts, credentials, private paths, unrelated Git dat
 
 C01, C02, C03 and C05 through C16 must be `REPRODUCED` before production readiness. C04 is informational for PlanAnvil 2.3 because generated execution deliberately forbids nested descendants.
 
-Baseline 2.3 does not mark C13 reproduced from the 2026-09-02 transport diagnostic. That run separated two runtime limitations from the semantic assertion: `codex exec --ephemeral` reproduced the known parent-thread registration failure before `SubagentStart`, while a non-ephemeral attempt progressed past that failure but a project-scoped synthetic custom agent still did not reach `SubagentStart`. The next release-gating run must still obtain real semantic evidence.
+Baseline 2.3 does not infer C13 reproduction from transport diagnostics. Controlled Codex 0.152 runs established that `codex exec --ephemeral` can hit a parent-thread registration failure even when project roles are otherwise valid, while non-ephemeral project-agent execution can progress normally. The release-gating fallback must therefore keep both the synthetic role and the `SubagentStart` hook project-scoped and use an isolated user home only for trust, authentication bridging, and disposable persistence.
 
 ## 5. Test requirements
 
@@ -89,21 +89,21 @@ Use current documented agent configuration (`agents.enabled` and `agents.max_con
 
 ### C13 SubagentStart qualification transport
 
-The semantic assertion under test is the documented `SubagentStart` behavior, not `codex exec --ephemeral` persistence and not project-scoped custom-agent discovery.
+The semantic assertion under test is the documented `SubagentStart` behavior, not `codex exec --ephemeral` persistence.
 
 C13 therefore uses this fail-closed transport contract:
 
 1. start with a fresh real `codex exec --ephemeral` trial using an aligned project-scoped synthetic agent (`fixture_agent.toml`, declared name `fixture_agent`) and a real project-scoped `SubagentStart` hook;
-2. if that trial reaches `SubagentStart`, evaluate the semantics directly and do not use a fallback;
-3. permit a non-ephemeral retry only when the ephemeral attempt matches the recognized `collab spawn failed: no thread with id` parent-thread registration failure before `SubagentStart`;
-4. for that retry, create a separate disposable repository containing the project-scoped hook/config but no project-scoped custom agent;
-5. materialize the synthetic `fixture_agent` only under a private disposable `CODEX_HOME/agents/fixture_agent.toml`, retaining the real project-scoped `SubagentStart` hook as the semantic boundary under test;
+2. if that trial reaches `SubagentStart` without the recognized transport failure, evaluate the semantics directly and do not use a fallback;
+3. permit a non-ephemeral retry only when the ephemeral attempt matches the recognized `collab spawn failed: no thread with id` parent-thread registration failure;
+4. for that retry, create a separate disposable repository that keeps the synthetic `fixture_agent` project-scoped, explicitly declares `[agents.fixture_agent]`, and keeps the real `SubagentStart` hook project-scoped;
+5. use a private disposable `CODEX_HOME` only to persist the fixture trust decision, bridge file-backed authentication, and isolate non-ephemeral session/SQLite/log state; do not move the agent or hook into the home layer;
 6. keep approval `never`, C13 sandbox `read-only`, model-tool network disabled and project trust limited to the disposable fixture;
 7. bridge file-backed authentication only through a temporary symlink, never read or copy the credential file, isolate SQLite/log state, disable message-history persistence, then remove the complete disposable `CODEX_HOME` and verify auth metadata is unchanged;
-8. require exactly one real `SubagentStart`, `additionalContext` from that hook, `continue=false` from the same hook, and a child echo of an opaque proof that was not present in the root-agent prompt;
+8. require exactly one real project-scoped `SubagentStart`, `additionalContext` from that hook, `continue=false` from the same hook, and a child echo of an opaque proof that was not present in the root-agent prompt;
 9. classify missing transport/discovery evidence as `BLOCKED`, and classify contradictory behavior after the real `SubagentStart` boundary is reached as `FAILED`.
 
-The fallback is a qualification transport exception only. It does not make home-scoped custom agents a PlanAnvil product requirement and it does not weaken sandbox, approval, trust, network or evidence-sanitization boundaries.
+The fallback is a qualification transport exception only. It does not change PlanAnvil's project-scoped agent/hook product contract and it does not weaken sandbox, approval, trust, network or evidence-sanitization boundaries.
 
 ### File handoff
 
@@ -141,7 +141,7 @@ Record separate outcomes for ordinary file writes, temporary refs, branches, lin
 - Hooks: `https://developers.openai.com/codex/hooks`
 - AGENTS.md: `https://developers.openai.com/codex/guides/agents-md`
 
-Baseline 2.3 keeps the semantic capability matrix from 2.2 and changes only the C13 qualification transport contract. The change is motivated by controlled live observations plus upstream runtime reports for ephemeral parent-thread registration and project-scoped custom-agent spawning; those reports are diagnostic evidence, not normative sources for the expected `SubagentStart` semantics.
+Baseline 2.3 keeps the semantic capability matrix from 2.2 and changes only the C13 qualification transport contract. The transport remains ephemeral-first, but a recognized Codex 0.152 parent-thread registration failure may be retried non-ephemerally without changing the project-scoped role/hook semantics under test.
 
 The earlier 2.2 subagent decision remains: current subagent documentation exposes `agents.enabled` and `agents.max_concurrent_threads_per_session`; it does not document `agents.max_depth`. PlanAnvil therefore enforces flat topology in its generated execution contract instead of relying on a runtime depth setting.
 
