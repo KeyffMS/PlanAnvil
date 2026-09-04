@@ -410,7 +410,7 @@ def _execute_variant(
     return base.sanitize(payload)
 
 
-def _hook_variant(root: Path, output: Path, name: str, *, matcher: str, representation: str, bypass: bool, hooks_enabled: bool, sidecar_env: bool) -> dict[str, Any]:
+def _hook_variant(root: Path, output: Path, name: str, matcher: str, representation: str, bypass: bool, hooks_enabled: bool, sidecar_env: bool) -> dict[str, Any]:
     repo = root / name
     _init_repo(repo)
     _seed_pretool(repo, matcher=matcher, representation=representation)
@@ -424,7 +424,7 @@ def _hook_variant(root: Path, output: Path, name: str, *, matcher: str, represen
     return _execute_variant(name, repo, args, env=env, local_logs=(".diag/pretool.jsonl",), sidecar=sidecar if sidecar_env else None)
 
 
-def _compact_variant(root: Path, name: str, *, scope: str, token_budget: bool, two_step: bool) -> dict[str, Any]:
+def _compact_variant(root: Path, name: str, scope: str, token_budget: bool, two_step: bool) -> dict[str, Any]:
     repo = root / name
     _init_repo(repo)
     _seed_compaction(repo)
@@ -444,7 +444,7 @@ def _compact_variant(root: Path, name: str, *, scope: str, token_budget: bool, t
     return _execute_variant(name, repo, args, timeout=900, local_logs=(".diag/compact.jsonl",))
 
 
-def _subagent_variant(root: Path, output: Path, name: str, *, v2: bool, explicit: bool, home_non_ephemeral: bool = False) -> dict[str, Any]:
+def _subagent_variant(root: Path, output: Path, name: str, v2: bool, explicit: bool, home_non_ephemeral: bool = False) -> dict[str, Any]:
     repo = root / name
     _init_repo(repo)
     _seed_subagent(repo, project_agent=not home_non_ephemeral)
