@@ -1,3 +1,11 @@
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 4
+
+[agents.plan_anvil_profiler]
+description = "Read-only repository profiler for PlanAnvil evidence gathering and instruction discovery."
+config_file = "./agents/plan-anvil-profiler.toml"
+
+[agents.plan_anvil_reviewer]
+description = "Fresh read-only blind reviewer for generated PlanAnvil contracts."
+config_file = "./agents/plan-anvil-reviewer.toml"
