@@ -11,7 +11,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import codex_runner_variant_matrix as matrix
 
-WORKFLOW = ROOT / ".github" / "workflows" / "plananvil-codex-runner-diagnostics.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "plananvil-codex-qualification.yml"
+STANDALONE_WORKFLOW = ROOT / ".github" / "workflows" / "plananvil-codex-runner-diagnostics.yml"
 SOURCE = ROOT / "tools" / "codex_runner_variant_matrix.py"
 
 
@@ -104,17 +105,21 @@ class CodexRunnerVariantMatrixTests(unittest.TestCase):
         self.assertIn("_prepare_isolated_codex_home", source)
         self.assertIn("_cleanup_isolated_codex_home", source)
 
-    def test_workflow_is_main_only_self_hosted_and_diagnostic_only(self) -> None:
+    def test_diagnostics_route_through_existing_runner_allowed_workflow(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
+        self.assertFalse(STANDALONE_WORKFLOW.exists())
         self.assertIn("workflow_dispatch", workflow)
+        self.assertIn("- diagnostics", workflow)
+        self.assertIn("inputs.mode == 'diagnostics'", workflow)
         self.assertIn("github.ref == 'refs/heads/main'", workflow)
+        diagnostics = workflow[workflow.index("  diagnostics:"):workflow.index("  full:")]
         for label in ("self-hosted", "linux", "x64", "plananvil", "codex"):
-            self.assertIn(f"- {label}", workflow)
-        self.assertIn("codex_runner_variant_matrix.py", workflow)
-        self.assertIn("plananvil-codex-runner-diagnostics-${{ github.run_id }}", workflow)
-        self.assertIn("Variant observations are intentionally non-gating", workflow)
-        self.assertNotIn("release_gate_passed", workflow)
-        self.assertNotIn("live_codex_qualification_harness_v6.py", workflow)
+            self.assertIn(f"- {label}", diagnostics)
+        self.assertIn("codex_runner_variant_matrix.py", diagnostics)
+        self.assertIn("plananvil-codex-runner-diagnostics-${{ github.run_id }}", diagnostics)
+        self.assertIn("Variant observations are intentionally non-gating", diagnostics)
+        self.assertNotIn("release_gate_passed", diagnostics)
+        self.assertNotIn("live_codex_qualification_harness_v6.py", diagnostics)
 
     def test_diagnostic_output_does_not_persist_raw_transcripts(self) -> None:
         source = SOURCE.read_text(encoding="utf-8")
