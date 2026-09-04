@@ -103,12 +103,43 @@ max_concurrent_threads_per_session = 2
             handle.write(prior.C13_HOOK_LOG_RELATIVE + "\n")
 
 
+def _declare_home_agent(home: Path) -> None:
+    config_path = home / "config.toml"
+    text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    header = f"[agents.{HOME_AGENT_NAME}]"
+    if header in text:
+        return
+    text = text.rstrip() + (
+        "\n\n[agents]\n"
+        "enabled = true\n"
+        "max_concurrent_threads_per_session = 2\n"
+        f"\n{header}\n"
+        'description = "C13 qualification child for real SubagentStart context semantics."\n'
+        f'config_file = "./agents/{HOME_AGENT_FILENAME}"\n'
+    )
+    _write(config_path, text.rstrip() + "\n")
+
+
+def _prepare_trusted_ephemeral_home(
+    cap_runtime: Path,
+    repo: Path,
+) -> tuple[Path, Path | None, tuple[int, int, int] | None]:
+    home, auth_path, auth_before = prior._prepare_isolated_codex_home(
+        cap_runtime / "ephemeral"
+    )
+    compat._write_persisted_project_trust(home, repo)
+    return home, auth_path, auth_before
+
+
 def _prepare_home_scoped_fallback_agent(
     cap_runtime: Path,
+    repo: Path,
 ) -> tuple[Path, Path | None, tuple[int, int, int] | None, bool]:
     home, auth_path, auth_before = prior._prepare_isolated_codex_home(cap_runtime)
+    compat._write_persisted_project_trust(home, repo)
     agent_path = home / "agents" / HOME_AGENT_FILENAME
     _write(agent_path, _agent_toml())
+    _declare_home_agent(home)
     return home, auth_path, auth_before, agent_path.is_file()
 
 
@@ -141,18 +172,34 @@ def _c13_runtime(
         _seed_project_fixture(project_repo, proof, include_project_agent=True)
         project_fixture_commit = base.commit_fixture_baseline(project_repo)
 
+        ephemeral_home, ephemeral_auth_path, ephemeral_auth_before = (
+            _prepare_trusted_ephemeral_home(cap_runtime, project_repo)
+        )
+        ephemeral_cleanup_verified = True
+        ephemeral_auth_unchanged = True
         prior._clear_hook_log(project_repo)
         before_ephemeral = base.git_snapshot(project_repo)
-        payload_e, events_e, error_e, known_e = prior._run_c13_codex(
-            repo=project_repo,
-            schemas=schemas,
-            results_dir=results_dir,
-            position=1,
-            ephemeral=True,
-            timeout=600,
-        )
-        after_ephemeral = base.git_snapshot(project_repo)
-        records_e = prior._read_hook_records(project_repo)
+        try:
+            payload_e, events_e, error_e, known_e = prior._run_c13_codex(
+                repo=project_repo,
+                schemas=schemas,
+                results_dir=results_dir,
+                position=1,
+                ephemeral=True,
+                isolated_codex_home=ephemeral_home,
+                timeout=600,
+            )
+            after_ephemeral = base.git_snapshot(project_repo)
+            records_e = prior._read_hook_records(project_repo)
+        finally:
+            ephemeral_cleanup_verified, ephemeral_auth_unchanged = (
+                prior._cleanup_isolated_codex_home(
+                    ephemeral_home,
+                    ephemeral_auth_path,
+                    ephemeral_auth_before,
+                )
+            )
+
         outcome_e, trial_e = prior._evaluate_transport(
             transport="ephemeral",
             payload=payload_e,
@@ -164,9 +211,21 @@ def _c13_runtime(
             git_before=before_ephemeral,
             git_after=after_ephemeral,
         )
+        if known_e:
+            outcome_e = "BLOCKED"
+            trial_e["outcome"] = "BLOCKED"
+            trial_e["blocker"] = "recognized ephemeral parent-thread registration failure"
+        elif not (ephemeral_cleanup_verified and ephemeral_auth_unchanged):
+            outcome_e = "BLOCKED"
+            trial_e["outcome"] = "BLOCKED"
+            trial_e["blocker"] = "isolated ephemeral CODEX_HOME cleanup/auth invariants failed"
         trial_e["agent_fixture_scope"] = "project"
         trial_e["agent_name_matches_filename"] = True
         trial_e["required_spawn_agent_type"] = HOME_AGENT_NAME
+        trial_e["persisted_project_trust"] = True
+        trial_e["isolated_codex_home"] = True
+        trial_e["isolated_home_cleanup_verified"] = ephemeral_cleanup_verified
+        trial_e["auth_metadata_unchanged"] = ephemeral_auth_unchanged
 
         trials: list[dict[str, Any]] = [base.sanitize(trial_e)]
         fallback_used = False
@@ -196,7 +255,7 @@ def _c13_runtime(
             fallback_fixture_commit = base.commit_fixture_baseline(fallback_repo)
 
             isolated_home, auth_path, auth_before, home_agent_materialized = (
-                _prepare_home_scoped_fallback_agent(cap_runtime)
+                _prepare_home_scoped_fallback_agent(cap_runtime, fallback_repo)
             )
             fallback_available = auth_path is not None and home_agent_materialized
 
@@ -218,6 +277,7 @@ def _c13_runtime(
                             f"{str(home_agent_materialized).lower()}",
                             "file_backed_auth_bridge_available="
                             f"{str(auth_path is not None).lower()}",
+                            "persisted_project_trust=true",
                             f"session_cleanup_verified={str(cleanup_verified).lower()}",
                         ],
                         "blocker": "isolated non-ephemeral home-agent fallback preflight unavailable",
@@ -274,6 +334,7 @@ def _c13_runtime(
                 trial_n["agent_name_matches_filename"] = True
                 trial_n["required_spawn_agent_type"] = HOME_AGENT_NAME
                 trial_n["fallback_fixture_commit"] = fallback_fixture_commit
+                trial_n["persisted_project_trust"] = True
                 trials.append(base.sanitize(trial_n))
                 final_outcome = outcome_n
                 transport_resolution = "non_ephemeral_home_agent_fallback"
@@ -325,6 +386,9 @@ def _c13_runtime(
         observations=[
             f"ephemeral_outcome={outcome_e}",
             f"ephemeral_known_parent_thread_failure={str(known_e).lower()}",
+            "ephemeral_persisted_project_trust=true",
+            f"ephemeral_cleanup_verified={str(ephemeral_cleanup_verified).lower()}",
+            f"ephemeral_auth_metadata_unchanged={str(ephemeral_auth_unchanged).lower()}",
             f"non_ephemeral_fallback_enabled={str(ALLOW_NON_EPHEMERAL_FALLBACK).lower()}",
             f"non_ephemeral_fallback_used={str(fallback_used).lower()}",
             f"non_ephemeral_fallback_available={str(fallback_available).lower()}",
