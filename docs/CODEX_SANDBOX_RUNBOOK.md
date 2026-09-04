@@ -29,17 +29,19 @@ The preferred qualification path is `.github/workflows/plananvil-codex-qualifica
 
 Use `mode=full` for the release-gating C01-C16 sequence. `mode=c13` remains available as a shorter C13-only probe, but it is not a substitute for the full release gate.
 
-The controlled runner must provide `plananvil-qualification-workspace`. The workflow creates a disposable workspace with that helper, fetches only the exact dispatched `main` SHA, materializes the C01-C16 evidence templates, and runs `tools/live_codex_qualification_harness_v6.py`. Model `gpt-5.6-sol` is pinned, approval policy remains `never`, model-tool network access is disabled, and `workspace-write` is granted only to disposable fixture roots when a trial requires it. Vetted project hooks may bypass only the interactive hook-trust prompt; approval and filesystem sandboxing remain enabled.
+The controlled runner must provide `plananvil-qualification-workspace`. The workflow creates a disposable workspace with that helper, fetches only the exact dispatched `main` SHA, materializes the C01-C16 evidence templates, and runs `tools/live_codex_qualification_harness_v7.py`. Model `gpt-5.6-sol` is pinned, approval policy remains `never`, model-tool network access is disabled, and `workspace-write` is granted only to disposable fixture roots when a trial requires it. Vetted project hooks may bypass only the interactive hook-trust prompt; approval and filesystem sandboxing remain enabled.
 
-All normal agent tasks remain ephemeral. Baseline 2.3 introduces exactly one transport exception for C13: the harness may retry C13 non-ephemerally only when the first real ephemeral attempt fails before `SubagentStart` with the recognized `collab spawn failed: no thread with id` parent-thread registration error. Any other ephemeral blocker remains `BLOCKED` and does not activate the exception.
+For C08/C09, Codex 0.152 project trust remains a persisted user-config setting, but long full runs must use the runner's real `CODEX_HOME` so the CLI can refresh live authentication normally. The harness temporarily appends only the disposable fixture trust entry to the runner's `config.toml`, removes the invalid CLI trust path, and restores `config.toml` byte-for-byte after the capability. Authentication/session files are not copied or replaced by this trust bridge.
+
+All normal agent tasks remain ephemeral. Baseline 2.3 introduces exactly one transport exception for C13: the harness may retry C13 non-ephemerally only when the first real ephemeral attempt matches the recognized `collab spawn failed: no thread with id` parent-thread registration error. Any other ephemeral blocker remains `BLOCKED` and does not activate the exception.
 
 ### C13 baseline 2.3 transport
 
-C13 tests the documented `SubagentStart` semantics, not persistence of `codex exec --ephemeral` and not project-scoped custom-agent discovery.
+C13 tests the documented `SubagentStart` semantics, not persistence of `codex exec --ephemeral`.
 
-The first C13 attempt is still a real project-scoped configuration. The synthetic agent file is `.codex/agents/fixture_agent.toml`, its declared name is `fixture_agent`, the prompt requests `fixture_agent`, and the project-scoped `SubagentStart` matcher targets the same name. The hook injects an outer-generated opaque context proof and intentionally returns `continue=false`.
+The first C13 attempt is a real project-scoped configuration. The synthetic agent file is `.codex/agents/fixture_agent.toml`, `[agents.fixture_agent]` points to that file, the prompt requests `fixture_agent`, and the project-scoped `SubagentStart` matcher targets the same name. The hook injects an outer-generated opaque context proof and intentionally returns `continue=false`.
 
-If and only if that ephemeral attempt hits the recognized parent-thread registration failure before the hook, the harness creates a second disposable Git repository. That repository contains the project-scoped C13 hook/config but deliberately contains **no** `.codex/agents` custom agent. The synthetic `fixture_agent` is instead materialized under a private disposable `CODEX_HOME/agents/fixture_agent.toml`. This separates the `SubagentStart` semantic assertion from the independently observed project-scoped custom-agent discovery/spawn limitation while keeping the hook under test project-scoped.
+If and only if that ephemeral attempt hits the recognized parent-thread registration failure, the harness creates a second disposable Git repository and retries non-ephemerally. The fallback remains product-aligned: the synthetic agent is still project-scoped, explicitly declared as `[agents.fixture_agent]`, and the real `SubagentStart` hook remains project-scoped. The disposable `CODEX_HOME` is used only for the fixture trust decision, file-backed authentication bridge, and isolated non-ephemeral persistence.
 
 The non-ephemeral retry preserves all security boundaries:
 
@@ -55,9 +57,9 @@ The non-ephemeral retry preserves all security boundaries:
 - the authenticated source `auth.json` metadata must remain unchanged;
 - evidence retains only structural counts/booleans and never session/thread IDs or the opaque proof value.
 
-C13 is `REPRODUCED` only when exactly one real project-scoped `SubagentStart` hook event occurs, that hook returns both `additionalContext` and `continue=false`, and the real child returns the unseen injected proof. If the semantic boundary is reached but the child lacks the context or startup is stopped by `continue=false`, the result is `FAILED`. If the semantic boundary is not reached or cleanup/auth isolation cannot be proved, the result is `BLOCKED`.
+C13 is `REPRODUCED` only when exactly one real project-scoped `SubagentStart` hook event occurs, that hook returns both `additionalContext` and `continue=false`, and the real project-scoped child returns the unseen injected proof. If the semantic boundary is reached but the child lacks the context or startup is stopped by `continue=false`, the result is `FAILED`. If the semantic boundary is not reached or cleanup/auth isolation cannot be proved, the result is `BLOCKED`.
 
-The run #8 diagnostic on Codex 0.152.0 established the reason for this baseline change: ephemeral execution reproduced the parent-thread registration blocker, while a non-ephemeral retry progressed further but the project-scoped synthetic agent still failed before `SubagentStart`. Baseline 2.3 changes the qualification transport only; it does not count that diagnostic as C13 semantic reproduction.
+The transport correction is deliberately narrow. It does not move PlanAnvil roles or hooks into user configuration, does not treat a home-scoped synthetic role as product-equivalent, and does not weaken sandbox, approval, trust, network, source-immutability, or evidence-sanitization requirements.
 
 ## Evidence and sanitization
 
@@ -82,7 +84,7 @@ python tools/validate_capabilities.py
 The release-gating controller invocation must include the baseline 2.3 C13 transport permission:
 
 ```text
-python tools/live_codex_qualification_harness_v6.py \
+python tools/live_codex_qualification_harness_v7.py \
   --source-commit <FULL_MAIN_SHA> \
   --run-id <RUN_ID> \
   --output <SANITIZED_ARTIFACT_DIR> \
