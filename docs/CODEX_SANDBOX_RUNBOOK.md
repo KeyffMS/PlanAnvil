@@ -39,9 +39,9 @@ All normal agent tasks remain ephemeral. Baseline 2.3 introduces exactly one tra
 
 C13 tests the documented `SubagentStart` semantics, not persistence of `codex exec --ephemeral`.
 
-The first C13 attempt is a real project-scoped configuration. The synthetic agent file is `.codex/agents/fixture_agent.toml`, `[agents.fixture_agent]` points to that file, the prompt requests `fixture_agent`, and the project-scoped `SubagentStart` matcher targets the same name. The hook injects an outer-generated opaque context proof and intentionally returns `continue=false`.
+The first C13 attempt is a real project-scoped configuration. The project-scoped synthetic agent file is `.codex/agents/fixture_agent.toml`, `[agents.fixture_agent]` points to that file, the prompt requests `fixture_agent`, and the project-scoped `SubagentStart` matcher targets the same name. The hook injects an outer-generated opaque context proof and intentionally returns `continue=false`.
 
-If and only if that ephemeral attempt hits the recognized parent-thread registration failure, the harness creates a second disposable Git repository and retries non-ephemerally. The fallback remains product-aligned: the synthetic agent is still project-scoped, explicitly declared as `[agents.fixture_agent]`, and the real `SubagentStart` hook remains project-scoped. The disposable `CODEX_HOME` is used only for the fixture trust decision, file-backed authentication bridge, and isolated non-ephemeral persistence.
+If and only if that ephemeral attempt hits the recognized parent-thread registration failure, the harness creates a second disposable Git repository and retries non-ephemerally. The fallback remains product-aligned: the project-scoped synthetic agent is explicitly declared as `[agents.fixture_agent]`, and the real `SubagentStart` hook remains project-scoped. The disposable `CODEX_HOME` is used only for the fixture trust decision, file-backed authentication bridge, and isolated non-ephemeral persistence.
 
 The non-ephemeral retry preserves all security boundaries:
 
