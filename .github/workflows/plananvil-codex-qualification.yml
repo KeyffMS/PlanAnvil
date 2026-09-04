@@ -326,7 +326,7 @@ jobs:
             qualification_args+=(--only C13)
           fi
           set +e
-          python3 tools/live_codex_qualification_harness_v6.py \
+          python3 tools/live_codex_qualification_harness_v7.py \
             --root "${QUALIFICATION_REPO}" \
             --source-commit "${GITHUB_SHA}" \
             --run-id "${GITHUB_RUN_ID}" \
