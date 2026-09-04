@@ -215,7 +215,7 @@ jobs:
           set -euo pipefail
           cd "${PRECISION_SOURCE}"
           set +e
-          python3 tools/codex_runner_precision_matrix.py \
+          python3 tools/codex_runner_precision_v2.py \
             --root "${PRECISION_FIXTURES}" \
             --output "${PRECISION_ARTIFACT}"
           rc=$?
