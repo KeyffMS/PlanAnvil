@@ -389,6 +389,13 @@ def _install() -> None:
     v6.compat.run_c09 = run_c09
     v6._c13_runtime = _c13_runtime
 
+    # C10 owns its fixture outside the model-authored generic planner. The live
+    # lifecycle still runs through the product SessionStart/PreCompact/PostCompact
+    # hooks and the product checkpoint validator.
+    import live_codex_qualification_c10 as c10
+
+    c10.install(v6, _live_runner_persisted_trust_runtime)
+
 
 def main(argv: list[str] | None = None) -> int:
     _install()
