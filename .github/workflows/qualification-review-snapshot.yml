@@ -1,0 +1,29 @@
+name: Qualification offline review snapshot
+on:
+  push:
+    branches: [fix/recovery-observability]
+    paths: [.github/workflows/qualification-review-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Archive tracked source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/plananvil-review-source.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/plananvil-review-source.sha"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: plananvil-review-source
+          path: |
+            ${{ runner.temp }}/plananvil-review-source.tar.gz
+            ${{ runner.temp }}/plananvil-review-source.sha
+          retention-days: 1
+          if-no-files-found: error
