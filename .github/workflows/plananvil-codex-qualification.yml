@@ -13,6 +13,7 @@ on:
           - c13
           - diagnostics
           - precision
+          - recovery
           - full
 
 permissions:
@@ -247,7 +248,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      (inputs.mode == 'full' || inputs.mode == 'c13')
+      (inputs.mode == 'full' || inputs.mode == 'c13' || inputs.mode == 'recovery')
     environment: plananvil-codex
     runs-on:
       - self-hosted
@@ -318,20 +319,28 @@ jobs:
         run: |
           set -euo pipefail
           cd "${QUALIFICATION_REPO}"
-          # Baseline 2.3 permits the narrowly gated C13 fallback in both full and
-          # C13-only modes. The harness still tries ephemeral first and ignores
-          # this permission unless the recognized parent-thread failure occurs.
+          # All selected modes retain ephemeral-first C13. Permission to retry
+          # never applies unless the recognized parent-thread failure occurs.
           qualification_args=(--allow-c13-non-ephemeral-fallback)
           if [ "${{ inputs.mode }}" = "c13" ]; then
             qualification_args+=(--only C13)
           fi
           set +e
-          python3 tools/live_codex_qualification_harness_v7.py \
-            --root "${QUALIFICATION_REPO}" \
-            --source-commit "${GITHUB_SHA}" \
-            --run-id "${GITHUB_RUN_ID}" \
-            --output "${QUALIFICATION_ARTIFACT}" \
-            "${qualification_args[@]}"
+          if [ "${{ inputs.mode }}" = "recovery" ]; then
+            python3 tools/live_codex_qualification_recovery.py \
+              --root "${QUALIFICATION_REPO}" \
+              --source-commit "${GITHUB_SHA}" \
+              --run-id "${GITHUB_RUN_ID}" \
+              --output "${QUALIFICATION_ARTIFACT}" \
+              "${qualification_args[@]}"
+          else
+            python3 tools/live_codex_qualification_harness_v7.py \
+              --root "${QUALIFICATION_REPO}" \
+              --source-commit "${GITHUB_SHA}" \
+              --run-id "${GITHUB_RUN_ID}" \
+              --output "${QUALIFICATION_ARTIFACT}" \
+              "${qualification_args[@]}"
+          fi
           rc=$?
           set -e
           echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"

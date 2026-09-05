@@ -48,91 +48,122 @@ C13_BASELINE23_OVERLAY = {
 - Release-gating: `yes`
 - Current result: `BLOCKED`
 - Qualification package state: `READY_FOR_LIVE_RUN`
-- Prepared: `2026-09-03`
+- Prepared: `2026-09-05`
 - Baseline: `2.3`
-- Target runtime: Codex CLI `0.152.x`
+- Target runtime: Codex CLI `0.153.4`; record the exact executed version
 
 ## Objective
 
-Verify real `SubagentStart` context injection and the documented non-blocking meaning of `continue=false` without conflating those semantics with independent ephemeral parent-thread registration or project-scoped synthetic-agent discovery limitations.
+Verify real project-scoped `SubagentStart` context injection and the documented non-blocking meaning of `continue=false`, separately from the known ephemeral parent-thread failure and from errors in the qualification proxy process.
 
-Codex 0.152 matches `SubagentStart` handlers against the spawned `agent_type`. The qualification child must therefore be spawned with `agent_type` exactly `fixture_agent`; a default or unnamed child is not equivalent.
+Codex matches `SubagentStart` handlers against the spawned `agent_type`. The qualification child must therefore be spawned with `agent_type` exactly `fixture_agent`; a default or unnamed child is not equivalent.
 
 ## Baseline 2.3 transport
 
-The live harness attempts the aligned project-scoped `fixture_agent` through `codex exec --ephemeral` first. Only the recognized `collab spawn failed: no thread with id` failure may activate a controlled non-ephemeral retry. That retry uses a separate disposable repository containing the project-scoped hook/config but no project-scoped synthetic agent; the child is materialized as `CODEX_HOME/agents/fixture_agent.toml` inside a disposable `CODEX_HOME`.
+The v7 live harness attempts the explicitly declared project-scoped `fixture_agent` through `codex exec --ephemeral` first. Only the recognized `collab spawn failed: no thread with id` failure may activate a controlled non-ephemeral retry. That retry uses a separate disposable repository containing both the project-scoped agent and the project-scoped hook. Its disposable `CODEX_HOME` supplies persisted project trust and isolated runtime persistence, not a substitute agent or hook.
 
-`REPRODUCED` still requires one real project-scoped `SubagentStart`, `additionalContext`, a child echo of an outer-generated proof absent from the root prompt, unchanged repository state, verified session cleanup, and unchanged authentication metadata. `continue=false` is recorded as a compatibility signal but is not expected to stop `SubagentStart` on Codex 0.152.
+`REPRODUCED` requires one real project-scoped `SubagentStart`, `additionalContext`, a child echo of an outer-generated proof absent from the root prompt, unchanged repository state, verified session cleanup, and unchanged authentication metadata. `continue=false` is recorded as a compatibility signal but is not expected to stop `SubagentStart`.
+
+The generated qualification proxy command must pass both required arguments: `SubagentStart subagent-start-fixture.py`. Offline process tests verify this contract but never constitute live capability evidence.
 
 ## Live metadata to record
 
-Before changing this result to `REPRODUCED`, record the exact Codex version, model slug, OS, permission mode, project trust, fixture commit, transport used, exact requested `agent_type`, setup/cleanup, sanitized observations, evaluation, and hashes. Do not commit transcripts, credentials, private paths, proof values, session IDs, or unrelated repository data.
+Record the exact Codex version, model slug, OS, permission mode, persisted project trust, fixture commit, transport used, exact requested `agent_type`, setup/cleanup, sanitized observations, evaluation, and hashes. Do not commit transcripts, credentials, private paths, proof values, session IDs, or unrelated repository data.
 ''',
     'fixture/README.md': '''# C13 fixture
 
-The deterministic harness owns this synthetic fixture.
-
-Ephemeral attempt:
-- project-scoped agent file `.codex/agents/fixture_agent.toml`;
-- declared agent name `fixture_agent`;
+Both the ephemeral attempt and the recognized-error-only fallback use:
+- project-scoped agent `.codex/agents/fixture_agent.toml`;
+- explicit `[agents.fixture_agent]` with `config_file = "./agents/fixture_agent.toml"`;
 - spawn request with `agent_type` exactly `fixture_agent`;
-- project-scoped `SubagentStart` hook matcher `^fixture_agent$`.
+- project-scoped `SubagentStart` matcher `^fixture_agent$`;
+- a proxy command with arguments `SubagentStart subagent-start-fixture.py`.
 
-Recognized-error fallback only:
-- separate disposable Git repository with the same project-scoped hook/config;
-- no project-scoped `.codex/agents` child definition;
-- synthetic child materialized only as `CODEX_HOME/agents/fixture_agent.toml` inside a disposable `CODEX_HOME`;
-- spawn request still uses `agent_type` exactly `fixture_agent`;
-- sandbox remains read-only and repository state must remain unchanged.
+The fallback uses a separate disposable Git repository and an isolated CODEX_HOME. It does not materialize a home-scoped agent or hook. The sandbox remains read-only and repository state must remain unchanged. No manual invocation of the fixture hook can count as live evidence.
 ''',
     'fixture/agent-role.txt': '''Synthetic agent role: fixture_agent.
-The real spawn request must set agent_type exactly to fixture_agent because Codex 0.152 uses agent_type as the SubagentStart matcher input. The ephemeral attempt is project-scoped. The recognized-error fallback materializes the same role only in disposable CODEX_HOME/agents while keeping SubagentStart hooks project-scoped.
+The real spawn request must set agent_type exactly to fixture_agent. Both transports declare the role in the project and keep SubagentStart project-scoped. The child echoes only context it actually received; the opaque value is absent from its own instructions and from the root prompt.
 ''',
     'config/README.md': '''# C13 sandbox configuration — baseline 2.3
 
-Use the deterministic live qualification harness rather than an interactive manual session.
-
-Common requirements:
+Use the deterministic v7 live qualification harness rather than an interactive manual session.
 
 ```toml
 [agents]
 enabled = true
 max_concurrent_threads_per_session = 2
+
+[agents.fixture_agent]
+description = "C13 qualification child for real SubagentStart context semantics."
+config_file = "./agents/fixture_agent.toml"
 ```
 
 - model: `gpt-5.6-sol`;
 - approval: `never`;
 - sandbox: `read-only`;
 - model-tool network: disabled;
-- trusted disposable Git repository;
-- real project-scoped `SubagentStart` hook;
-- aligned agent filename/name/matcher: `fixture_agent.toml` / `fixture_agent` / `^fixture_agent$`;
+- project trust persisted in the disposable user config, never passed as a projects CLI override;
+- real project-scoped agent and `SubagentStart` hook;
+- filename/name/matcher: `fixture_agent.toml` / `fixture_agent` / `^fixture_agent$`;
 - real spawn request uses `agent_type=fixture_agent`.
 
-Transport is ephemeral-first. A non-ephemeral retry is allowed only for the recognized parent-thread registration failure. The retry uses a disposable `CODEX_HOME`, home-scoped synthetic agent, temporary file-backed auth symlink, isolated SQLite/log paths, `history.persistence="none"`, mandatory cleanup, and auth-metadata verification.
+Transport is ephemeral-first. A non-ephemeral retry is allowed only for the recognized parent-thread registration failure. The retry uses a disposable CODEX_HOME, temporary file-backed auth symlink, isolated SQLite/log paths, history.persistence="none", mandatory cleanup, and auth-metadata verification. No home-scoped synthetic agent or hook substitutes for the project integration.
 ''',
-    'prompt.txt': '''Capability qualification C13: real SubagentStart context semantics on Codex 0.152.
+    'prompt.txt': '''Capability qualification C13: real project-scoped SubagentStart context semantics.
 
 Start exactly one configured child through the real Codex `spawn_agent` mechanism with `agent_type` exactly `fixture_agent`. Do not omit agent_type, do not use a default/unnamed child, do not simulate the child, and do not invoke hook scripts manually. The root session must not use command/file mutation tools.
 
-The real project-scoped SubagentStart hook injects an opaque proof that is not present in this prompt and returns `continue=false`. On Codex 0.152, continue=false is a compatibility signal for this event, not a stop control. Wait for the real child and preserve only the minimal structural result needed to establish whether it received and echoed the injected proof.
+The real project-scoped SubagentStart hook injects an opaque proof that is not present in this prompt and returns `continue=false`. This is a compatibility signal for the event, not a stop control. Wait for the real child and preserve only the minimal structural result needed to establish whether it received and echoed the injected proof.
 
 Do not expose credentials, proof values, usernames, home directories, session/thread IDs, private repository URLs, or full transcripts.
 ''',
-    'run-command.txt': '''# Preferred controlled execution from main:
-# Actions -> PlanAnvil Codex qualification -> mode=full
-#
-# Equivalent controller invocation inside the trusted disposable qualification workspace:
-python3 tools/live_codex_qualification_harness_v6.py \\
+    'run-command.txt': '''# Targeted validation: existing workflow, branch main, mode=recovery (C09/C10/C13).
+# Full release qualification: the same workflow, mode=full, after targeted validation.
+python3 tools/live_codex_qualification_harness_v7.py \\
   --root <QUALIFICATION_REPO> \\
   --source-commit <FULL_MAIN_SHA> \\
   --run-id <RUN_ID> \\
   --output <SANITIZED_ARTIFACT_DIR> \\
   --allow-c13-non-ephemeral-fallback
-#
-# The permission flag does not force non-ephemeral execution. C13 always runs
-# ephemeral first and activates the fallback only for the recognized parent-thread failure.
+# C13 always runs ephemeral first. Only the recognized parent-thread failure
+# may activate the project-scoped non-ephemeral fallback.
 ''',
+}
+
+C09_COMPLETION_OVERLAY = {
+    'fixture/README.md': '''# C09 fixture and completion requirements
+
+The outer harness installs the actual product, creates the planning worktree and a valid checkpoint, and then exercises genuine automatic compaction.
+
+Two real compaction cycles, coherent checkpoint/Git state, and subsequent real tool use remain required. They are not sufficient when Codex times out or fails to return a completed positive structured C09 result. Partial event counts cannot turn an incomplete invocation into REPRODUCED.
+
+The deliberately low fixture threshold is not a product default. This correction does not silently retune it or weaken C08's intentional negative stop trial. Record a remaining timeout as BLOCKED.
+''',
+    'run-command.txt': '''# Existing controlled workflow: main -> recovery for C09/C10/C13.
+# The recovery driver selects the same v7 capability runtime used by full.
+python3 tools/live_codex_qualification_recovery.py --root <QUALIFICATION_REPO> --source-commit <FULL_MAIN_SHA> --run-id <RUN_ID> --output <SANITIZED_ARTIFACT_DIR> --allow-c13-non-ephemeral-fallback
+# A targeted pass is not a full C01-C16 release pass.
+''',
+}
+
+C10_ISOLATION_OVERLAY = {
+    'fixture/README.md': '''# C10 independent recovery fixtures
+
+Prepare each fixture deterministically through the actual installer, product start command, checkpoint creator and checkpoint validator. The model must not construct its own prerequisites.
+
+SessionStart and PostCompact use independent source repositories, planning worktrees and opaque next-action targets. For PostCompact, remove SessionStart from the root checkout's hook declarations BEFORE the fixture commit and bootstrap. Codex 0.153.4 redirects linked-worktree hook declarations to the root checkout; changing only planning/.codex/hooks.json is not isolation.
+
+The live runtime must observe the actual product recovery hook and an exact opaque echo without unauthorized file/tool reads. Keep both source and planning state unchanged and redact proof values from persisted evidence. Offline command/lifecycle-driver tests verify setup, not live capability reproduction.
+''',
+    'config/README.md': '''# C10 configuration provenance
+
+Use the same v7 runner live-auth/persisted-trust context as C08/C09. Do not copy or restore authentication tokens. The runner config.toml is restored byte-for-byte after the probe.
+
+The SessionStart fixture retains the product startup hook. The independent PostCompact fixture retains PreCompact and PostCompact, excludes SessionStart at the primary hook source, and checks that the linked checkout has identical declarations. Source configuration is prepared before product snapshots/checkpoints, not mutated afterwards.
+
+Sandbox remains read-only, approval remains never, model-tool network access remains disabled. A low auto-compaction threshold and token_budget=false apply only to the disposable compaction fixture, not product defaults.
+''',
+    'run-command.txt': C09_COMPLETION_OVERLAY['run-command.txt'],
 }
 
 
@@ -194,11 +225,11 @@ def materialize(source_root: Path, target_root: Path, *, force: bool = False) ->
             target.write_bytes(data)
             written.append(rel.as_posix())
 
-    # The stable archive remains the historical prepared-package source. Small
-    # deterministic overlays keep runtime-sensitive release-gating capability
-    # documentation synchronized with the current product/harness contract and
-    # recompute package hashes before validation.
+    # Keep documentation synchronized without changing expected assertions or
+    # synthesizing live results. Recompute hashes before package validation.
     written.extend(_apply_overlay(target_root, 'C06', C06_CODEX0152_OVERLAY))
+    written.extend(_apply_overlay(target_root, 'C09', C09_COMPLETION_OVERLAY))
+    written.extend(_apply_overlay(target_root, 'C10', C10_ISOLATION_OVERLAY))
     written.extend(_apply_overlay(target_root, 'C13', C13_BASELINE23_OVERLAY))
 
     # The index and package guide are tracked outside the archive and are needed

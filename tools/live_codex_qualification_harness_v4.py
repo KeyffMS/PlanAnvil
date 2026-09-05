@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import live_codex_qualification_harness as v1
 import live_codex_qualification_harness_v2 as v2
@@ -449,6 +449,7 @@ def _start_active_run(
     create_checkpoint: bool,
     segments: int,
     segment_bytes: int,
+    prepare_repo: Callable[[Path], None] | None = None,
 ) -> tuple[Path, str]:
     v1._install_plananvil_release(root, repo)
     _instrument_hooks(
@@ -470,6 +471,10 @@ def _start_active_run(
         repeats = max(1, segment_bytes // len(marker))
         text = (marker * repeats)[:segment_bytes]
         _write(payload_dir / f"segment-{index:02d}.txt", text + "\n")
+    # Configure the actual root-checkout hook source before any source snapshot,
+    # linked worktree, active run or checkpoint exists. Defaults are unchanged.
+    if prepare_repo is not None:
+        prepare_repo(repo)
     base.git(repo, "add", "-A")
     base.git(repo, "commit", "--allow-empty", "-q", "-m", "Install deterministic compaction fixture")
 
@@ -841,6 +846,15 @@ def _c09_runtime(
     continued_after_second = _continued_after_second_postcompact(records)
     checkpoint_coherent = bool(checkpoint_before.get("ok")) and bool(checkpoint_after.get("ok"))
     no_stop_loop = not stops and continued_after_second
+    invocation_completed = (
+        error is None
+        and not events.get("timeout")
+        and payload.get("capability_id") == capability_id
+        and payload.get("outcome") == "PASS"
+    )
+    completion_blocker = error or (
+        None if invocation_completed else "C09 did not return a completed positive structured result."
+    )
 
     trial = {
         "capability_id": capability_id,
@@ -848,10 +862,15 @@ def _c09_runtime(
         "trial_name": "checkpoint_auto_compact_recover_recompact",
         "outcome": (
             "BLOCKED"
-            if not two_compactions
+            if not invocation_completed or not two_compactions
             else ("PASS" if checkpoint_coherent and no_stop_loop else "FAIL")
         ),
         "assertions": [
+            {
+                "name": "codex_invocation_completed_without_timeout",
+                "status": "PASS" if invocation_completed else "BLOCKED",
+                "evidence": f"invocation_completed={str(invocation_completed).lower()}",
+            },
             {
                 "name": "valid_checkpoint_allows_compaction",
                 "status": "PASS" if two_compactions and not stops else ("BLOCKED" if not two_compactions else "FAIL"),
@@ -867,10 +886,11 @@ def _c09_runtime(
             },
             {
                 "name": "second_valid_compaction_path_is_not_permanently_blocked",
-                "status": "PASS" if two_compactions and no_stop_loop else ("BLOCKED" if not two_compactions else "FAIL"),
+                "status": "PASS" if two_compactions and no_stop_loop and invocation_completed else ("BLOCKED" if not two_compactions or not invocation_completed else "FAIL"),
                 "evidence": (
                     f"second_postcompact_observed={str(len(post) >= 2).lower()}; "
-                    f"tool_use_after_second_postcompact={str(continued_after_second).lower()}"
+                    f"tool_use_after_second_postcompact={str(continued_after_second).lower()}; "
+                    f"invocation_completed={str(invocation_completed).lower()}"
                 ),
             },
         ],
@@ -882,8 +902,9 @@ def _c09_runtime(
             f"checkpoint_before_valid={str(bool(checkpoint_before.get('ok'))).lower()}",
             f"checkpoint_after_valid={str(bool(checkpoint_after.get('ok'))).lower()}",
             f"invocation_error={error or 'none'}",
+            f"invocation_completed={str(invocation_completed).lower()}",
         ],
-        "blocker": error if not two_compactions else None,
+        "blocker": completion_blocker,
         "event_summary": events,
         "git_before": before,
         "git_after": after,
@@ -902,6 +923,11 @@ def _c09_runtime(
         expected_met = False
         blocker = "The deterministic C09 fixture did not begin with a valid checkpoint."
         summary = "C09 blocked during deterministic fixture preparation."
+    elif not invocation_completed:
+        result = "BLOCKED"
+        expected_met = False
+        blocker = completion_blocker
+        summary = "C09 blocked because partial lifecycle observations do not prove successful completion."
     elif not two_compactions:
         result = "BLOCKED"
         expected_met = False
@@ -939,6 +965,7 @@ def _c09_runtime(
             f"postcompact_count={len(post)}",
             f"continued_after_second={str(continued_after_second).lower()}",
             f"checkpoint_after_valid={str(bool(checkpoint_after.get('ok'))).lower()}",
+            f"invocation_completed={str(invocation_completed).lower()}",
         ],
         blocker=blocker,
         summary=summary,

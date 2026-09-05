@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+import json
 from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 from unittest import mock
@@ -26,17 +28,28 @@ class LiveCodexC10Tests(unittest.TestCase):
         source = C10_SOURCE.read_text(encoding="utf-8")
         self.assertIn("v4._start_active_run(", source)
         self.assertIn("v4._create_checkpoint(planning=planning, run_root=run_root)", source)
-        self.assertGreaterEqual(source.count("v4._checkpoint_validation(planning)"), 4)
+        self.assertEqual(source.count("v4._checkpoint_validation(planning)"), 2)
+        self.assertEqual(source.count("v4._checkpoint_validation(compact_planning)"), 2)
         self.assertIn('"fixture_prepared_by_outer_harness=true"', source)
         self.assertNotIn("planner_prompt", source)
 
     def test_postcompact_is_independent_of_session_start_context(self) -> None:
-        source = C10_SOURCE.read_text(encoding="utf-8")
-        self.assertIn('configured.pop("SessionStart", None)', source)
-        self.assertIn('bool(configured.get("PreCompact"))', source)
-        self.assertIn('bool(configured.get("PostCompact"))', source)
-        self.assertIn("not compact_session_start", source)
-        self.assertIn("postcompact_isolated", source)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            hooks = {"hooks": {name: [{"hooks": [{"type": "command", "command": "fixture"}]}]
+                               for name in ("SessionStart", "PreCompact", "PostCompact")}}
+            c10.base.json_dump(repo / ".codex/hooks.json", hooks)
+            self.assertTrue(c10._disable_session_start_for_postcompact(repo))
+            remaining = c10.base.load_json(repo / ".codex/hooks.json")["hooks"]
+            self.assertNotIn("SessionStart", remaining)
+            self.assertEqual(remaining["PreCompact"], hooks["hooks"]["PreCompact"])
+            self.assertEqual(remaining["PostCompact"], hooks["hooks"]["PostCompact"])
+
+    def test_missing_compaction_handler_fails_isolation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            c10.base.json_dump(repo / ".codex/hooks.json", {"hooks": {"SessionStart": []}})
+            self.assertFalse(c10._disable_session_start_for_postcompact(repo))
 
     def test_compaction_trigger_is_qualification_only(self) -> None:
         source = C10_SOURCE.read_text(encoding="utf-8")
@@ -46,12 +59,14 @@ class LiveCodexC10Tests(unittest.TestCase):
         self.assertIn("C10_COMPACT_LIMIT = 200", source)
 
     def test_opaque_recovery_value_is_not_persisted_in_evidence(self) -> None:
-        source = C10_SOURCE.read_text(encoding="utf-8")
-        self.assertIn("proof = secrets.token_hex(16)", source)
-        self.assertIn("def _payload_summary", source)
-        self.assertIn('"opaque_recovery_value_persisted=false"', source)
-        self.assertNotIn('"model_payload": session_payload', source)
-        self.assertNotIn('"model_payload": compact_payload', source)
+        secret_a, secret_b = "a" * 32, "b" * 32
+        raw = {"error": "failure " + secret_a, "trials": [{"detail": "target=" + secret_b}]}
+        redacted = c10._redact_proofs(raw, (secret_a, secret_b))
+        self.assertNotIn(secret_a, json.dumps(redacted))
+        self.assertNotIn(secret_b, json.dumps(redacted))
+        self.assertIn(secret_a, raw["error"])
+        self.assertFalse(c10._exact_echo({"observations": ["C10_RECOVERY_ECHO=" + secret_b]}, secret_a))
+        self.assertTrue(c10._exact_echo({"observations": ["C10_RECOVERY_ECHO=" + secret_a]}, secret_a))
 
     def test_install_routes_only_c10(self) -> None:
         calls: list[dict[str, object]] = []
