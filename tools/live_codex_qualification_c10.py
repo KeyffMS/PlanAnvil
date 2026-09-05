@@ -47,15 +47,15 @@ def _inject_recovery_probe_state(planning: Path, run_root: str, proof: str) -> N
     base.json_dump(state_path, state)
 
 
-def _set_compaction_trigger(planning: Path) -> None:
-    """Make genuine auto-compaction deterministic without changing product defaults."""
+def _set_compaction_trigger(repo: Path) -> None:
+    """Prepare the disposable root checkout before the product captures its state."""
 
     v4._set_compact_config(
-        planning,
+        repo,
         limit=C10_COMPACT_LIMIT,
         scope=v4.COMPACT_SCOPE,
     )
-    config_path = planning / ".codex" / "config.toml"
+    config_path = repo / ".codex" / "config.toml"
     text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
     config_path.write_text(
         compat._set_feature(text, "token_budget", "false"),
@@ -63,10 +63,10 @@ def _set_compaction_trigger(planning: Path) -> None:
     )
 
 
-def _disable_session_start_for_postcompact(planning: Path) -> bool:
-    """Isolate PostCompact so the opaque proof cannot arrive through SessionStart."""
+def _disable_session_start_for_postcompact(repo: Path) -> bool:
+    """Modify the root-checkout hook source, not a linked-worktree override."""
 
-    hooks_path = planning / ".codex" / "hooks.json"
+    hooks_path = repo / ".codex" / "hooks.json"
     hooks = base.load_json(hooks_path)
     configured = hooks.get("hooks") if isinstance(hooks, dict) else None
     if not isinstance(configured, dict):
@@ -78,6 +78,38 @@ def _disable_session_start_for_postcompact(planning: Path) -> bool:
         and bool(configured.get("PreCompact"))
         and bool(configured.get("PostCompact"))
     )
+
+
+def _prepare_postcompact_repo(repo: Path) -> None:
+    # Codex rust-v0.153.4 loads linked-worktree hook declarations from the
+    # corresponding root checkout. This runs BEFORE commit/start/checkpoint.
+    if not _disable_session_start_for_postcompact(repo):
+        raise base.QualificationError("C10 could not isolate the root-checkout hook source")
+    _set_compaction_trigger(repo)
+
+
+def _postcompact_hooks_isolated(repo: Path, planning: Path) -> bool:
+    source = repo / ".codex" / "hooks.json"
+    local = planning / ".codex" / "hooks.json"
+    hooks = base.load_json(source).get("hooks", {})
+    return (
+        source.read_bytes() == local.read_bytes()
+        and "SessionStart" not in hooks
+        and bool(hooks.get("PreCompact"))
+        and bool(hooks.get("PostCompact"))
+    )
+
+
+def _redact_proofs(value: Any, proofs: tuple[str, ...]) -> Any:
+    if isinstance(value, str):
+        for proof in proofs:
+            value = value.replace(proof, "<recovery-proof>")
+        return value
+    if isinstance(value, list):
+        return [_redact_proofs(item, proofs) for item in value]
+    if isinstance(value, dict):
+        return {key: _redact_proofs(item, proofs) for key, item in value.items()}
+    return value
 
 
 def _session_prompt() -> str:
@@ -151,6 +183,7 @@ def run_c10(
     ) = v4._runtime_paths(root=root, runtime_root=runtime_root, capability_id=capability_id)
 
     proof = secrets.token_hex(16)
+    compact_proof = secrets.token_hex(16)
     setup_error: str | None = None
     session_error: str | None = None
     compact_error: str | None = None
@@ -169,7 +202,10 @@ def run_c10(
     checkpoint_before_compact: dict[str, Any] = {"ok": False}
     checkpoint_after_compact: dict[str, Any] = {"ok": False}
     postcompact_isolated = False
+    source_session_unchanged = False
+    source_compact_unchanged = False
     fixture_commit = "unavailable"
+    compact_fixture_commit = "unavailable"
 
     try:
         with v2._python_bytecode_disabled():
@@ -195,6 +231,7 @@ def run_c10(
 
             with live_trust_runtime():
                 v4._clear_hook_log(planning)
+                source_before_session = base.git_snapshot(repo)
                 before_session = base.git_snapshot(planning)
                 session_payload, session_events, session_error = v4._run_codex_probe(
                     cwd=planning,
@@ -206,16 +243,41 @@ def run_c10(
                     timeout=600,
                 )
                 after_session = base.git_snapshot(planning)
+                source_session_unchanged = source_before_session == base.git_snapshot(repo)
                 session_records = v4._read_hook_records(planning)
                 checkpoint_after_session = v4._checkpoint_validation(planning)
 
-                postcompact_isolated = _disable_session_start_for_postcompact(planning)
-                _set_compaction_trigger(planning)
-                checkpoint_before_compact = v4._checkpoint_validation(planning)
-                v4._clear_hook_log(planning)
-                before_compact = base.git_snapshot(planning)
+                # Independent source checkout and proof: no edits to the first
+                # source after bootstrap, and no SessionStart proof carry-over.
+                compact_repo = cap_runtime / "postcompact-repo"
+                compact_worktrees = worktrees / "postcompact"
+                compact_worktrees.mkdir(parents=True, exist_ok=True)
+                base.ensure_git_repo(compact_repo)
+                compact_planning, compact_run_root = v4._start_active_run(
+                    root=root,
+                    repo=compact_repo,
+                    worktrees=compact_worktrees,
+                    version=version,
+                    compact_limit=C10_COMPACT_LIMIT,
+                    create_checkpoint=False,
+                    segments=1,
+                    segment_bytes=C10_SEGMENT_BYTES,
+                    prepare_repo=_prepare_postcompact_repo,
+                )
+                compact_fixture_commit = base.git(compact_repo, "rev-parse", "HEAD")
+                postcompact_isolated = _postcompact_hooks_isolated(compact_repo, compact_planning)
+                if not postcompact_isolated:
+                    raise base.QualificationError("C10 root-checkout PostCompact isolation failed")
+                _inject_recovery_probe_state(compact_planning, compact_run_root, compact_proof)
+                v4._create_checkpoint(planning=compact_planning, run_root=compact_run_root)
+                checkpoint_before_compact = v4._checkpoint_validation(compact_planning)
+                if not bool(checkpoint_before_compact.get("ok")):
+                    raise base.QualificationError("C10 PostCompact fixture checkpoint is invalid")
+                v4._clear_hook_log(compact_planning)
+                source_before_compact = base.git_snapshot(compact_repo)
+                before_compact = base.git_snapshot(compact_planning)
                 compact_payload, compact_events, compact_error = v4._run_codex_probe(
-                    cwd=planning,
+                    cwd=compact_planning,
                     prompt=_postcompact_prompt(),
                     schemas=schemas,
                     results_dir=results_dir,
@@ -225,9 +287,10 @@ def run_c10(
                     compact_scope=v4.COMPACT_SCOPE,
                     timeout=900,
                 )
-                after_compact = base.git_snapshot(planning)
-                compact_records = v4._read_hook_records(planning)
-                checkpoint_after_compact = v4._checkpoint_validation(planning)
+                after_compact = base.git_snapshot(compact_planning)
+                source_compact_unchanged = source_before_compact == base.git_snapshot(compact_repo)
+                compact_records = v4._read_hook_records(compact_planning)
+                checkpoint_after_compact = v4._checkpoint_validation(compact_planning)
     except Exception as exc:
         setup_error = base.sanitize_text(f"{type(exc).__name__}: {exc}")
 
@@ -235,7 +298,7 @@ def run_c10(
     session_context = [item for item in session_start if item.get("additional_context")]
     session_echo = _exact_echo(session_payload, proof)
     session_no_tools = int(session_events.get("completed_command_items") or 0) == 0
-    session_unchanged = bool(before_session) and before_session == after_session
+    session_unchanged = bool(before_session) and before_session == after_session and source_session_unchanged
     session_checkpoint_ok = (
         bool(checkpoint_before.get("ok")) and bool(checkpoint_after_session.get("ok"))
     )
@@ -255,9 +318,9 @@ def run_c10(
     compact_session_start = v4._event_records(compact_records, "SessionStart")
     post_context = [item for item in postcompact if item.get("additional_context")]
     compact_stops = [item for item in precompact if item.get("continue") is False]
-    compact_echo = _exact_echo(compact_payload, proof)
+    compact_echo = _exact_echo(compact_payload, compact_proof)
     compact_one_command = int(compact_events.get("completed_command_items") or 0) == 1
-    compact_unchanged = bool(before_compact) and before_compact == after_compact
+    compact_unchanged = bool(before_compact) and before_compact == after_compact and source_compact_unchanged
     compact_checkpoint_ok = (
         bool(checkpoint_before_compact.get("ok"))
         and bool(checkpoint_after_compact.get("ok"))
@@ -318,6 +381,7 @@ def run_c10(
             f"command_items={int(session_events.get('completed_command_items') or 0)}",
             f"checkpoint_valid={str(session_checkpoint_ok).lower()}",
             f"repository_unchanged={str(session_unchanged).lower()}",
+            f"source_worktree_unchanged={str(source_session_unchanged).lower()}",
         ],
         "blocker": session_error or setup_error,
         "event_summary": session_events,
@@ -385,17 +449,22 @@ def run_c10(
             f"command_items={int(compact_events.get('completed_command_items') or 0)}",
             f"checkpoint_valid={str(compact_checkpoint_ok).lower()}",
             f"repository_unchanged={str(compact_unchanged).lower()}",
+            f"source_worktree_unchanged={str(source_compact_unchanged).lower()}",
         ],
         "blocker": compact_error or setup_error,
         "event_summary": compact_events,
         "checkpoint_before": checkpoint_before_compact,
         "checkpoint_after": checkpoint_after_compact,
         "model_payload_summary": _payload_summary(compact_payload),
+        "fixture_commit": compact_fixture_commit,
         "config_evidence": {
             "model_auto_compact_token_limit": C10_COMPACT_LIMIT,
             "model_auto_compact_token_limit_scope": v4.COMPACT_SCOPE,
             "token_budget_disabled_in_isolated_fixture": True,
             "session_start_removed_only_for_postcompact_isolation": True,
+            "hook_source": "disposable_root_checkout",
+            "configured_before_bootstrap": True,
+            "independent_recovery_proof": True,
         },
     }
 
@@ -430,13 +499,13 @@ def run_c10(
             f"postcompact_recovery_context={str(compact_ok).lower()}",
             "opaque_recovery_value_persisted=false",
         ],
-        blocker=blocker,
+        blocker=_redact_proofs(blocker, (proof, compact_proof)),
         summary=(
-            "C10 reproduced with an outer-harness-created active PlanAnvil run and product-validated checkpoint; real SessionStart and isolated real PostCompact each supplied recovery context to the model."
+            "C10 reproduced with independent outer-harness-created PlanAnvil runs and product-validated checkpoints; real SessionStart and isolated real PostCompact each supplied recovery context to the model."
             if met
             else "C10 deterministic recovery qualification did not completely reproduce both lifecycle context paths."
         ),
-        trials=[session_trial, compact_trial],
+        trials=_redact_proofs([session_trial, compact_trial], (proof, compact_proof)),
         fixture_commit=fixture_commit,
         version=version,
         os_name=os_name,
