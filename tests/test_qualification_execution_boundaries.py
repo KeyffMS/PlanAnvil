@@ -215,7 +215,7 @@ class RecoveryFixtureExecutionTests(unittest.TestCase):
             self.assertIn("PostCompact", configured_events[1])
             self.assertNotEqual(proofs[0], proofs[1], "Recovery probes must have independent proof values")
             for proof in proofs:
-                self.assertNotIn(proof, json.dumps(evidence), "Opaque proof leaked into persisted evidence")
+                self.assertNotIn(proof, json.dumps(evidence, default=str), "Opaque proof leaked into persisted evidence")
 
 
 if __name__ == "__main__":

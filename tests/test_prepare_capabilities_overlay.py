@@ -44,13 +44,14 @@ class CapabilityMaterializerOverlayTests(unittest.TestCase):
             self.assertIn("agent_type", readme)
             self.assertIn("fixture_agent", readme)
             self.assertIn(
-                "live_codex_qualification_harness_v6.py",
+                "live_codex_qualification_harness_v7.py",
                 (c13 / "run-command.txt").read_text(encoding="utf-8"),
             )
             config = (c13 / "config" / "README.md").read_text(encoding="utf-8")
-            self.assertIn("home-scoped", config)
+            self.assertIn("No home-scoped synthetic agent or hook substitutes", config)
             self.assertIn("project-scoped", config)
-            self.assertIn("fixture_agent.toml", config)
+            self.assertIn("[agents.fixture_agent]", config)
+            self.assertIn('config_file = "./agents/fixture_agent.toml"', config)
             self.assertIn("agent_type=fixture_agent", config)
             prompt = (c13 / "prompt.txt").read_text(encoding="utf-8")
             self.assertIn("agent_type` exactly `fixture_agent", prompt)
@@ -66,6 +67,27 @@ class CapabilityMaterializerOverlayTests(unittest.TestCase):
             )
             index = json.loads((target / "capabilities" / "index.json").read_text(encoding="utf-8"))
             self.assertEqual(index["baseline_version"], "2.3")
+            self.assertEqual(validate_capabilities.validate_all(target), [])
+
+    def test_recovery_overlays_do_not_change_expected_assertions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            prepare_capabilities.materialize(ROOT, target, force=True)
+            expected = {
+                "C09": ["Valid checkpoint allows compaction.",
+                        "Recovery reconciles canonical files/Git after compaction.",
+                        "A second valid compaction path is not permanently blocked."],
+                "C10": ["Recovery hook injects a pointer/context, not hidden mutable state.",
+                        "Session continuation can reconstruct from canonical files and Git."],
+            }
+            for cid, assertions in expected.items():
+                directory = target / "capabilities" / cid
+                package = json.loads((directory / "expected.json").read_text(encoding="utf-8"))
+                self.assertEqual(package["assertions"], assertions)
+                self.assertIn("live_codex_qualification_recovery.py",
+                              (directory / "run-command.txt").read_text(encoding="utf-8"))
+            self.assertIn("BEFORE", (target / "capabilities/C10/fixture/README.md").read_text(encoding="utf-8"))
+            self.assertIn("timeout", (target / "capabilities/C09/fixture/README.md").read_text(encoding="utf-8"))
             self.assertEqual(validate_capabilities.validate_all(target), [])
 
     def test_overlays_do_not_remove_other_capabilities(self) -> None:
