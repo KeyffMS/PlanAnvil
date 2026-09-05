@@ -79,6 +79,7 @@ max_concurrent_threads_per_session = 2
                                     "command": (
                                         'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/'
                                         'qualification-c13-hook-proxy.py"'
+                                        ' SubagentStart subagent-start-fixture.py'
                                     ),
                                     "timeout": 30,
                                 }
