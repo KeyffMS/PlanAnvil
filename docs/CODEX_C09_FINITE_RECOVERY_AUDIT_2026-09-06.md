@@ -41,4 +41,23 @@ Executable offline tests run actual installer/start/checkpoint/Git/hooks and the
 
 A separate hosted conformance job downloads the exact official CLI release and verifies asset hashes. It runs the real CLI, real sandbox, tools and product hooks against a loopback Responses simulator, with no credentials or external model requests. The simulator selects responses and usage; passing demonstrates CLI integration, not autonomous live-model behavior. The normal offline suite does not require downloads or Codex.
 
-Existing cross-platform product/harness suites, packaging, C10/C13 regression tests, evidence validation and release checks remain mandatory. The full model-backed C01-C16 workflow is the final qualification, not an outcome inferred from CI. No sandbox, approvals, auth ownership, product hook output, C13 fallback or release requirement is weakened.
+Existing cross-platform product/harness suites, packaging, C10/C13 regression tests, evidence validation and release checks remain mandatory. The full model-backed C01-C16 workflow is the final qualification, not an outcome inferred from CI. No Codex sandbox, approvals, auth ownership, product hook output, C13 fallback or release requirement is weakened.
+
+## Completed real CLI verification in PR #33
+
+[CI #115](https://github.com/KeyffMS/PlanAnvil/actions/runs/34054161715), head `0f9bf00423f2895efde517b8c860832b8c4dfc42`, passed the complete eight-job hosted matrix, including the real CLI conformance job. That job ran four tests without skips and emitted:
+
+```text
+CODEX_01534_OFFLINE_CONFORMANCE_OK: 3 real tools, 2 compactions, 2 compact recovery contexts, 1 completed turn
+```
+
+The downloaded CLI asset was verified against official release metadata: `codex-x86_64-unknown-linux-musl.tar.gz`, SHA-256 `f479424eca092484dc40d87ae28c44f4cc40234a60045d6131e493800d814a30`.
+
+The conformance work caught and corrected two independent test-environment problems before merge:
+
+1. Responses Lite can omit `tools` on ordinary requests. The simulator now distinguishes normal turns from compaction using canonical `client_metadata.x-codex-turn-metadata.request_kind`, consistent with [pinned responses_metadata.rs](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/responses_metadata.rs). Missing/conflicting metadata is rejected by executable tests. Recovery checks require the actual product context phrase, not just a token already present in the initial prompt.
+2. The hosted Ubuntu VM denied bubblewrap network-namespace setup (`RTM_NEWADDR: Operation not permitted`). The separate conformance job now follows [pinned upstream setup-ci](https://github.com/openai/codex/blob/rust-v0.153.4/.github/actions/setup-ci/action.yml): enable unprivileged user namespaces and temporarily remove the host AppArmor restriction on their creation. It saves and restores the original sysctl values with an always-run cleanup step. Distro bubblewrap is installed and both user/network namespace creation are tested before Codex starts. Codex runs as the ordinary runner user with its read-only sandbox, approval never and model-tool network disabled. The self-hosted live runner and its policy are not changed.
+
+The original publication bundle was replayed into the exact candidate tree before these conformance corrections. Temporary publication files and workflow are absent from the final PR tree. No local/offline result is promoted into committed live capability evidence.
+
+After final PR and post-merge CI pass, the new main commit is ready for the requested full C01-C16 model-backed qualification. That run, not this deterministic loopback peer, decides whether the live model completes the repaired scenario. The full gate and the 900-second C09 deadline remain unchanged.
