@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from plan_anvil_checkpoint import validate_checkpoint_for_run
 from plan_anvil_hooklib import (
     active_run_for_event,
@@ -9,11 +11,24 @@ from plan_anvil_hooklib import (
 )
 
 
+def emit_recovery(event_name: str, message: str) -> None:
+    if event_name == "PostCompact":
+        # Codex 0.153.4 PostCompact accepts universal output, not additionalContext.
+        # Keep this advisory free of recovery targets; SessionStart(source=compact)
+        # is the model-context delivery boundary, before the continuation request.
+        print(json.dumps({
+            "continue": True,
+            "systemMessage": message,
+        }, sort_keys=True))
+    else:
+        context(event_name, message)
+
+
 def main() -> int:
     event = read_event()
     event_name = str(event.get("hook_event_name") or "SessionStart")
     if event_has_ambiguous_active_runs(event):
-        context(
+        emit_recovery(
             event_name,
             "Multiple active PlanAnvil runs match this worktree. Set PLANANVIL_RUN_ID to the intended run before recovery or write-capable work.",
         )
@@ -36,7 +51,14 @@ def main() -> int:
         f"next action is {next_action.get('type')} targeting {next_action.get('target')}. "
         f"{checkpoint_text}"
     )
-    context(event_name, message)
+    if event_name == "PostCompact":
+        readiness = "valid" if checkpoint.ok else "invalid; repair required before continuing"
+        message = (
+            f"PlanAnvil checkpoint is {readiness}. "
+            "SessionStart(source=compact) supplies the recovery pointer; "
+            "canonical files and Git remain authoritative."
+        )
+    emit_recovery(event_name, message)
     return 0
 
 

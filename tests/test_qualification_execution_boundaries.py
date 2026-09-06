@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import live_codex_qualification_c10 as c10
 import live_codex_qualification_harness_v4 as v4
 import live_codex_qualification_harness_v7 as v7
+import qualification_process as process_observation
 
 base = v4.base
 
@@ -174,7 +175,7 @@ class RecoveryFixtureExecutionTests(unittest.TestCase):
                             parsed = json.loads(completed.stdout) if completed.stdout.strip() else {}
                             self.assertIsNot(parsed.get("continue"), False, parsed)
                             context = parsed.get("hookSpecificOutput", {}).get("additionalContext")
-                            if context:
+                            if context and event_name == "SessionStart":
                                 contexts.append(context)
                 matches = re.findall(r"evidence/c10-recovery-([0-9a-f]{32})\.json", "\n".join(contexts))
                 self.assertTrue(matches, "The real product hook did not return the fixture recovery pointer")
@@ -197,7 +198,16 @@ class RecoveryFixtureExecutionTests(unittest.TestCase):
                 events.append({"type": "turn.completed"})
                 return subprocess.CompletedProcess(args, 0, "\n".join(map(json.dumps, events)), "")
 
-            with mock.patch.object(base, "run", side_effect=driver), mock.patch.object(
+            def observed_driver(args, *, cwd, timeout):
+                completed = driver(args, cwd=cwd, timeout=timeout)
+                collector = process_observation.StructuralEvents()
+                for line in completed.stdout.splitlines():
+                    collector.accept(line.encode("utf-8"))
+                events = collector.summary()
+                events.update({"process_cleanup_ok": True, "timeout": False})
+                return process_observation.ProcessResult(completed.returncode, False, events)
+
+            with mock.patch.object(process_observation, "run_observed", side_effect=observed_driver), mock.patch.object(
                 v4, "_write_result", side_effect=lambda **kw: (kw["result"], True)
             ) as writer:
                 result, _required = c10.run_c10(
@@ -210,7 +220,12 @@ class RecoveryFixtureExecutionTests(unittest.TestCase):
             self.assertEqual(len(roots), 2)
             self.assertNotEqual(roots[0], roots[1], "A second invocation must not reuse the first source checkout")
             self.assertIn("SessionStart", configured_events[0])
-            self.assertNotIn("SessionStart", configured_events[1])
+            self.assertIn("SessionStart", configured_events[1])
+            compact_groups = base.load_json(roots[1] / ".codex/hooks.json")["hooks"]["SessionStart"]
+            self.assertTrue(all(g["matcher"] == "^compact$" for g in compact_groups))
+            flow = evidence["trials"][1]["value_flow"]
+            self.assertTrue(flow["hook_emitted_expected_target"])
+            self.assertTrue(all(h["source"] == "compact" for h in flow["hook_observations"]))
             self.assertIn("PreCompact", configured_events[1])
             self.assertIn("PostCompact", configured_events[1])
             self.assertNotEqual(proofs[0], proofs[1], "Recovery probes must have independent proof values")

@@ -526,11 +526,14 @@ After compaction:
 
 ```text
 POST_COMPACT_EVENT
+→ SESSION_START(source=compact)
 → RECOVERY_POINTER
 → READ_MANIFEST_STATE_LOCAL_STATE_CHECKPOINT_PROFILES
 → RECONCILE_WITH_GIT
 → CONTINUE_OR_STOP
 ```
+
+For Codex CLI 0.153.4, `PostCompact` is a stateless notification/control event; it MUST NOT be relied upon to inject `additionalContext`. The product's `SessionStart` handler matching `source=compact` supplies the recovery pointer to the immediate continuation. Startup/resume recovery uses the same handler with the corresponding source. PostCompact may emit a universal advisory `systemMessage`, without embedding canonical state or the next-action target.
 
 Conversation and hook context are never the source of truth.
 

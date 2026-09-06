@@ -63,7 +63,7 @@ Do not commit session transcripts, credentials, private paths, unrelated Git dat
 | C07 | The Git guard rejects the configured unsafe-command corpus | CONTRACT_DEFINED | BLOCKED | Git postconditions remain mandatory |
 | C08 | `PreCompact` can stop compaction | DOCUMENTED | BLOCKED | Delay only until a valid checkpoint exists |
 | C09 | Compaction is allowed after checkpoint creation without a permanent stop loop | CONTRACT_DEFINED | BLOCKED | Checkpoint, allow, recover and reconcile |
-| C10 | `PostCompact` and `SessionStart` can provide recovery context | DOCUMENTED | BLOCKED | Inject only a recovery pointer |
+| C10 | `SessionStart` supplies recovery context at startup/resume and after compaction (`source=compact`); `PostCompact` remains advisory | DOCUMENTED | BLOCKED | Inject only a recovery pointer through the supported context event |
 | C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | BLOCKED | Explicitly map affected instructions |
 | C12 | `project_doc_max_bytes` can truncate automatic instruction loading | DOCUMENTED | BLOCKED | Read, size and hash complete files explicitly |
 | C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context/audit only; qualify ephemeral-first with a controlled project-scoped non-ephemeral fallback when the recognized ephemeral parent-thread blocker occurs |

@@ -82,6 +82,22 @@ PlanAnvil performs a safe reversible probe for refs, branches, linked worktrees,
 
 A commit check cannot be skipped while returning `GIT_READY`. Signing and hook failures have explicit blocker results.
 
+### 2.6 Recovery delivery correction — verified 2026-09-05
+
+This scoped review targets Codex CLI `0.153.4`; it does not re-date the entire older compliance review above or claim new live capability evidence.
+
+The [official hooks documentation](https://developers.openai.com/codex/hooks/) specifies that `PostCompact` accepts common output fields, not model-visible `additionalContext`. `SessionStart` matches `source`, including `compact`, and supplies additional developer context before the next model request after compaction, including automatic compaction inside a turn.
+
+Pinned source confirmation:
+
+- [hooks/events/compact.rs](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/hooks/src/events/compact.rs): `StatelessHookOutcome` and the compact output parser expose control/events, not additional contexts.
+- [core/hook_runtime.rs](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/core/src/hook_runtime.rs): `run_post_compact_hooks` emits events without recording additional context; `run_pending_session_start_hooks` records the supported context.
+- [config/loader/mod.rs](https://github.com/openai/codex/blob/rust-v0.153.4/codex-rs/config/src/loader/mod.rs): linked-worktree hook declarations are resolved from the corresponding primary checkout.
+
+PlanAnvil now emits a universal readiness advisory for PostCompact and supplies the actual pointer/next-action context from SessionStart. The after-compaction qualification narrows SessionStart to `^compact$` in an independent fixture, excluding ordinary startup as a source of the opaque proof. It retains exact echo, checkpoint, source-immutability and tool restrictions. The two C10 acceptance assertion strings remain unchanged; the earlier description claiming two context-injection events was incorrect and is superseded.
+
+See `CODEX_RECOVERY_DELIVERY_AUDIT_2026-09-05.md` for the implementation and regression coverage. Offline tests are not live evidence.
+
 ## 3. Current architecture decisions
 
 ### 3.1 Generator and executor separation

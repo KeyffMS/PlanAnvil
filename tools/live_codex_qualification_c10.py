@@ -8,6 +8,7 @@ from typing import Any, Callable, ContextManager
 
 import live_codex_qualification_codex0152 as compat
 import live_codex_qualification_harness_v4 as v4
+from qualification_c10_observation import echo_diagnostics, proxy_source
 
 base = v4.base
 v1 = v4.v1
@@ -63,27 +64,24 @@ def _set_compaction_trigger(repo: Path) -> None:
     )
 
 
-def _disable_session_start_for_postcompact(repo: Path) -> bool:
-    """Modify the root-checkout hook source, not a linked-worktree override."""
-
-    hooks_path = repo / ".codex" / "hooks.json"
-    hooks = base.load_json(hooks_path)
-    configured = hooks.get("hooks") if isinstance(hooks, dict) else None
-    if not isinstance(configured, dict):
+def _isolate_compact_session_start(repo: Path) -> bool:
+    """Exclude startup context without disabling the documented recovery channel."""
+    path = repo / ".codex" / "hooks.json"
+    hooks = base.load_json(path)
+    configured = hooks.get("hooks", {})
+    groups = configured.get("SessionStart", [])
+    if not groups or not configured.get("PreCompact") or not configured.get("PostCompact"):
         return False
-    configured.pop("SessionStart", None)
-    base.json_dump(hooks_path, hooks)
-    return (
-        "SessionStart" not in configured
-        and bool(configured.get("PreCompact"))
-        and bool(configured.get("PostCompact"))
-    )
+    for group in groups:
+        group["matcher"] = "^compact$"
+    base.json_dump(path, hooks)
+    return True
 
 
 def _prepare_postcompact_repo(repo: Path) -> None:
     # Codex rust-v0.153.4 loads linked-worktree hook declarations from the
     # corresponding root checkout. This runs BEFORE commit/start/checkpoint.
-    if not _disable_session_start_for_postcompact(repo):
+    if not _isolate_compact_session_start(repo):
         raise base.QualificationError("C10 could not isolate the root-checkout hook source")
     _set_compaction_trigger(repo)
 
@@ -94,7 +92,8 @@ def _postcompact_hooks_isolated(repo: Path, planning: Path) -> bool:
     hooks = base.load_json(source).get("hooks", {})
     return (
         source.read_bytes() == local.read_bytes()
-        and "SessionStart" not in hooks
+        and bool(hooks.get("SessionStart"))
+        and all(group.get("matcher") == "^compact$" for group in hooks["SessionStart"])
         and bool(hooks.get("PreCompact"))
         and bool(hooks.get("PostCompact"))
     )
@@ -125,12 +124,12 @@ return outcome FAIL. Never invent or guess the opaque value.
 
 
 def _postcompact_prompt() -> str:
-    return f"""Exercise the real C10 automatic PostCompact recovery-context path.
+    return f"""Exercise C10 recovery through SessionStart(source=compact) after genuine automatic compaction.
 
 Run exactly one shell-tool command: `cat qualification-payload/segment-01.txt`. Do not combine it
 with another command and do not make any other tool call before or after it. Continue normally if
 automatic compaction occurs. After that command and any compaction lifecycle, use only context
-already supplied by lifecycle hooks. If it contains a PlanAnvil next-action target matching
+already supplied by the SessionStart hook for source=compact (not by ordinary startup). If it contains a PlanAnvil next-action target matching
 `{C10_TARGET_PREFIX}<opaque>{C10_TARGET_SUFFIX}`, copy only the opaque portion into one observation
 exactly as `{C10_ECHO_PREFIX}<opaque>` and return capability_id C10, trial
 `postcompact_recovery_context`, outcome PASS. Otherwise return outcome FAIL. Never read `.pursue`,
@@ -219,6 +218,7 @@ def run_c10(
                 create_checkpoint=False,
                 segments=1,
                 segment_bytes=C10_SEGMENT_BYTES,
+                hook_proxy_source=proxy_source(proof),
             )
             fixture_commit = base.git(repo, "rev-parse", "HEAD")
             _inject_recovery_probe_state(planning, run_root, proof)
@@ -241,6 +241,8 @@ def run_c10(
                     position=1,
                     sandbox="read-only",
                     timeout=600,
+                    observe_process=True,
+                    inspect_payload=lambda value: echo_diagnostics(value, proof),
                 )
                 after_session = base.git_snapshot(planning)
                 source_session_unchanged = source_before_session == base.git_snapshot(repo)
@@ -263,6 +265,7 @@ def run_c10(
                     segments=1,
                     segment_bytes=C10_SEGMENT_BYTES,
                     prepare_repo=_prepare_postcompact_repo,
+                    hook_proxy_source=proxy_source(compact_proof),
                 )
                 compact_fixture_commit = base.git(compact_repo, "rev-parse", "HEAD")
                 postcompact_isolated = _postcompact_hooks_isolated(compact_repo, compact_planning)
@@ -286,6 +289,8 @@ def run_c10(
                     compact_limit=C10_COMPACT_LIMIT,
                     compact_scope=v4.COMPACT_SCOPE,
                     timeout=900,
+                    observe_process=True,
+                    inspect_payload=lambda value: echo_diagnostics(value, compact_proof),
                 )
                 after_compact = base.git_snapshot(compact_planning)
                 source_compact_unchanged = source_before_compact == base.git_snapshot(compact_repo)
@@ -297,7 +302,15 @@ def run_c10(
     session_start = v4._event_records(session_records, "SessionStart")
     session_context = [item for item in session_start if item.get("additional_context")]
     session_echo = _exact_echo(session_payload, proof)
-    session_no_tools = int(session_events.get("completed_command_items") or 0) == 0
+    session_value_verified = any(
+        item.get("returncode") == 0 and item.get("recovery_target_matches_expected") is True
+        and item.get("output_event_matches_input") is True for item in session_context
+    )
+    session_no_tools = (
+        int(session_events.get("completed_command_items") or 0) == 0
+        and not any(session_events.get("item_types", {}).get(kind, 0)
+                    for kind in ("file_change", "mcp_tool_call", "web_search", "collab_tool_call", "other"))
+    )
     session_unchanged = bool(before_session) and before_session == after_session and source_session_unchanged
     session_checkpoint_ok = (
         bool(checkpoint_before.get("ok")) and bool(checkpoint_after_session.get("ok"))
@@ -307,6 +320,7 @@ def run_c10(
         and session_error is None
         and session_payload.get("outcome") == "PASS"
         and bool(session_context)
+        and session_value_verified
         and session_echo
         and session_no_tools
         and session_unchanged
@@ -316,25 +330,53 @@ def run_c10(
     precompact = v4._event_records(compact_records, "PreCompact")
     postcompact = v4._event_records(compact_records, "PostCompact")
     compact_session_start = v4._event_records(compact_records, "SessionStart")
-    post_context = [item for item in postcompact if item.get("additional_context")]
+    compact_startup = [item for item in compact_session_start if item.get("source") != "compact"]
+    post_context = [item for item in compact_session_start
+                    if item.get("source") == "compact" and item.get("additional_context")]
+    compact_context_ordered = any(
+        item in post_context and any(prior_item.get("event") == "PostCompact"
+                                    for prior_item in compact_records[:position])
+        for position, item in enumerate(compact_records)
+    )
+    postcompact_output_supported = bool(postcompact) and all(
+        item.get("returncode") == 0 and not item.get("additional_context")
+        and item.get("product_stdout_is_json") is True
+        and item.get("system_message_present") is True
+        and item.get("continue") is True
+        for item in postcompact
+    )
     compact_stops = [item for item in precompact if item.get("continue") is False]
     compact_echo = _exact_echo(compact_payload, compact_proof)
-    compact_one_command = int(compact_events.get("completed_command_items") or 0) == 1
+    compact_value_verified = any(
+        item.get("returncode") == 0 and item.get("recovery_target_matches_expected") is True
+        and item.get("output_event_matches_input") is True for item in post_context
+    )
+    compact_one_command = (
+        int(compact_events.get("completed_command_items") or 0) == 1
+        and compact_events.get("command_counts") == {"segment_01": 1}
+        and not any(compact_events.get("item_types", {}).get(kind, 0)
+                    for kind in ("file_change", "mcp_tool_call", "web_search", "collab_tool_call", "other"))
+    )
     compact_unchanged = bool(before_compact) and before_compact == after_compact and source_compact_unchanged
     compact_checkpoint_ok = (
         bool(checkpoint_before_compact.get("ok"))
         and bool(checkpoint_after_compact.get("ok"))
     )
     compact_lifecycle = bool(precompact) and bool(postcompact)
+    compact_processes_ok = all(item.get("returncode") == 0 for item in precompact + postcompact)
     compact_ok = (
         setup_error is None
         and compact_error is None
         and compact_payload.get("outcome") == "PASS"
         and postcompact_isolated
-        and not compact_session_start
+        and not compact_startup
+        and compact_context_ordered
+        and postcompact_output_supported
         and compact_lifecycle
+        and compact_processes_ok
         and not compact_stops
         and bool(post_context)
+        and compact_value_verified
         and compact_echo
         and compact_one_command
         and compact_unchanged
@@ -357,8 +399,8 @@ def run_c10(
             },
             {
                 "name": "session_start_supplies_recovery_context",
-                "status": "PASS" if session_context else ("BLOCKED" if session_error else "FAIL"),
-                "evidence": f"session_start={len(session_start)}; context_records={len(session_context)}",
+                "status": "PASS" if session_value_verified else ("BLOCKED" if session_error else "FAIL"),
+                "evidence": f"session_start={len(session_start)}; context_records={len(session_context)}; expected_target={session_value_verified}",
             },
             {
                 "name": "model_receives_opaque_session_recovery_target_without_tools",
@@ -388,6 +430,13 @@ def run_c10(
         "checkpoint_before": checkpoint_before,
         "checkpoint_after": checkpoint_after_session,
         "model_payload_summary": _payload_summary(session_payload),
+        "value_flow": {
+            "hook_emitted_expected_target": session_value_verified,
+            "hook_observations": session_context,
+            "raw_model": session_events.get("raw_payload_checks", {}),
+            "sanitized_model": echo_diagnostics(session_payload, proof),
+            "runtime_delivery_proven": session_value_verified and session_echo,
+        },
     }
 
     compact_trial = {
@@ -397,11 +446,11 @@ def run_c10(
         "outcome": "PASS" if compact_ok else ("BLOCKED" if compact_error or setup_error or not compact_lifecycle else "FAIL"),
         "assertions": [
             {
-                "name": "postcompact_trial_isolated_from_session_start_context",
-                "status": "PASS" if postcompact_isolated and not compact_session_start else "FAIL",
+                "name": "after_compaction_trial_excludes_ordinary_startup_context",
+                "status": "PASS" if postcompact_isolated and not compact_startup else "FAIL",
                 "evidence": (
-                    f"session_start_removed={str(postcompact_isolated).lower()}; "
-                    f"session_start_records={len(compact_session_start)}"
+                    f"compact_only_matcher={str(postcompact_isolated).lower()}; "
+                    f"ordinary_startup_records={len(compact_startup)}"
                 ),
             },
             {
@@ -413,12 +462,12 @@ def run_c10(
                 ),
             },
             {
-                "name": "postcompact_supplies_recovery_context",
-                "status": "PASS" if post_context else ("BLOCKED" if not compact_lifecycle else "FAIL"),
-                "evidence": f"postcompact_context_records={len(post_context)}",
+                "name": "session_start_compact_supplies_recovery_context",
+                "status": "PASS" if compact_value_verified else ("BLOCKED" if not compact_lifecycle else "FAIL"),
+                "evidence": f"session_start_compact_context_records={len(post_context)}; expected_target={compact_value_verified}",
             },
             {
-                "name": "model_receives_opaque_postcompact_target",
+                "name": "model_receives_opaque_after_compaction_target",
                 "status": "PASS" if compact_echo and compact_one_command else "FAIL",
                 "evidence": (
                     f"opaque_echo={str(compact_echo).lower()}; "
@@ -440,10 +489,12 @@ def run_c10(
             },
         ],
         "observations": [
-            f"session_start_records={len(compact_session_start)}",
+            f"session_start_compact_records={len(compact_session_start)}",
+            f"ordinary_startup_records={len(compact_startup)}",
+            f"context_after_postcompact={str(compact_context_ordered).lower()}",
             f"precompact_count={len(precompact)}",
             f"postcompact_count={len(postcompact)}",
-            f"postcompact_context_count={len(post_context)}",
+            f"compact_session_context_count={len(post_context)}",
             f"continue_false_count={len(compact_stops)}",
             f"opaque_echo_observed={str(compact_echo).lower()}",
             f"command_items={int(compact_events.get('completed_command_items') or 0)}",
@@ -456,15 +507,27 @@ def run_c10(
         "checkpoint_before": checkpoint_before_compact,
         "checkpoint_after": checkpoint_after_compact,
         "model_payload_summary": _payload_summary(compact_payload),
+        "value_flow": {
+            "hook_emitted_expected_target": compact_value_verified,
+            "hook_observations": post_context,
+            "raw_model": compact_events.get("raw_payload_checks", {}),
+            "sanitized_model": echo_diagnostics(compact_payload, compact_proof),
+            "runtime_delivery_proven": compact_value_verified and compact_echo,
+        },
         "fixture_commit": compact_fixture_commit,
         "config_evidence": {
             "model_auto_compact_token_limit": C10_COMPACT_LIMIT,
             "model_auto_compact_token_limit_scope": v4.COMPACT_SCOPE,
             "token_budget_disabled_in_isolated_fixture": True,
-            "session_start_removed_only_for_postcompact_isolation": True,
+            "startup_context_excluded_with_compact_only_matcher": True,
             "hook_source": "disposable_root_checkout",
+            "model_context_event": "SessionStart",
+            "model_context_source": "compact",
+            "postcompact_output_supported": postcompact_output_supported,
+            "compact_hook_processes_ok": compact_processes_ok,
             "configured_before_bootstrap": True,
             "independent_recovery_proof": True,
+            "project_trust_method": "persisted_user_config",
         },
     }
 
@@ -482,7 +545,12 @@ def run_c10(
         blocker = compact_error or "Deterministic automatic compaction did not reach both PreCompact and PostCompact."
     elif not compact_ok:
         result, met = "FAILED", False
-        blocker = "Real PostCompact did not independently provide coherent PlanAnvil recovery context to the model."
+        if not compact_value_verified:
+            blocker = "SessionStart(source=compact) did not emit the expected recovery target; inspect value_flow."
+        elif not compact_echo:
+            blocker = "SessionStart(source=compact) emitted the expected target, but the exact model echo was not observed; delivery is unproven."
+        else:
+            blocker = "PostCompact probe did not satisfy isolation, tool-use or state-integrity requirements."
     else:
         result, met, blocker = "REPRODUCED", True, None
 
@@ -501,7 +569,7 @@ def run_c10(
         ],
         blocker=_redact_proofs(blocker, (proof, compact_proof)),
         summary=(
-            "C10 reproduced with independent outer-harness-created PlanAnvil runs and product-validated checkpoints; real SessionStart and isolated real PostCompact each supplied recovery context to the model."
+            "C10 reproduced with independent outer-harness-created PlanAnvil runs and product-validated checkpoints; real startup and compact-source SessionStart each supplied recovery context to the model; PostCompact remained advisory."
             if met
             else "C10 deterministic recovery qualification did not completely reproduce both lifecycle context paths."
         ),

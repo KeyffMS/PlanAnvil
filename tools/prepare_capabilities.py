@@ -137,7 +137,7 @@ The outer harness installs the actual product, creates the planning worktree and
 
 Two real compaction cycles, coherent checkpoint/Git state, and subsequent real tool use remain required. They are not sufficient when Codex times out or fails to return a completed positive structured C09 result. Partial event counts cannot turn an incomplete invocation into REPRODUCED.
 
-The deliberately low fixture threshold is not a product default. This correction does not silently retune it or weaken C08's intentional negative stop trial. Record a remaining timeout as BLOCKED.
+The deliberately low fixture threshold is not a product default. This correction does not silently retune it or weaken C08's intentional negative stop trial. Record a remaining timeout as BLOCKED. Retain bounded content-free event and hook sequences, command labels/counts, error categories, and process completion/owned-tree cleanup status. Never persist raw stdout/stderr or use partial progress as proof of successful completion.
 ''',
     'run-command.txt': '''# Existing controlled workflow: main -> recovery for C09/C10/C13.
 # The recovery driver selects the same v7 capability runtime used by full.
@@ -147,24 +147,43 @@ python3 tools/live_codex_qualification_recovery.py --root <QUALIFICATION_REPO> -
 }
 
 C10_ISOLATION_OVERLAY = {
-    'fixture/README.md': '''# C10 independent recovery fixtures
+    'README.md': """# C10 — Recovery context through SessionStart
 
-Prepare each fixture deterministically through the actual installer, product start command, checkpoint creator and checkpoint validator. The model must not construct its own prerequisites.
+- Source: `DOCUMENTED_AND_SOURCE_VERIFIED`
+- Release-gating: `yes`
+- Current result: `BLOCKED`
+- Qualification package state: `READY_FOR_LIVE_RUN`
+- Target runtime: Codex CLI `0.153.4`; record the executed version
 
-SessionStart and PostCompact use independent source repositories, planning worktrees and opaque next-action targets. For PostCompact, remove SessionStart from the root checkout's hook declarations BEFORE the fixture commit and bootstrap. Codex 0.153.4 redirects linked-worktree hook declarations to the root checkout; changing only planning/.codex/hooks.json is not isolation.
+Verify file/Git-based recovery at startup and immediately after genuine automatic compaction. The model-visible channel is SessionStart(source=compact), not PostCompact.additionalContext. PostCompact reports readiness using universal output fields. Canonical files/Git remain authoritative.
 
-The live runtime must observe the actual product recovery hook and an exact opaque echo without unauthorized file/tool reads. Keep both source and planning state unchanged and redact proof values from persisted evidence. Offline command/lifecycle-driver tests verify setup, not live capability reproduction.
-''',
-    'config/README.md': '''# C10 configuration provenance
+The two acceptance assertions remain unchanged. Exact opaque echo, actual lifecycle execution, no unauthorized tool reads, valid checkpoints, and source/planning immutability are mandatory. A declared model PASS without exact echo is not evidence of delivery.
+""",
+    'prompt.txt': """Exercise the installed PlanAnvil recovery handler at ordinary SessionStart and, independently, SessionStart(source=compact) after automatic compaction. PostCompact is a stateless advisory, not a context channel.
 
-Use the same v7 runner live-auth/persisted-trust context as C08/C09. Do not copy or restore authentication tokens. The runner config.toml is restored byte-for-byte after the probe.
+Use deterministic outer-harness fixtures and independent opaque targets. Never manually invoke a hook, read the target from files, invent it, or accept a model-declared PASS without an exact externally checked echo. Preserve source/planning state and checkpoint validity.
+""",
+    'fixture/README.md': """# C10 independent recovery fixtures
 
-The SessionStart fixture retains the product startup hook. The independent PostCompact fixture retains PreCompact and PostCompact, excludes SessionStart at the primary hook source, and checks that the linked checkout has identical declarations. Source configuration is prepared before product snapshots/checkpoints, not mutated afterwards.
+Prepare each fixture through the actual installer, product start command, checkpoint creator and checkpoint validator. The model must not construct its own prerequisites.
 
-Sandbox remains read-only, approval remains never, model-tool network access remains disabled. A low auto-compaction threshold and token_budget=false apply only to the disposable compaction fixture, not product defaults.
-''',
+Startup and after-compaction probes use independent source repositories, planning worktrees and opaque next-action targets. Narrow SessionStart to ^compact$ in the second root checkout BEFORE the fixture commit and bootstrap. Do not remove this supported recovery channel. Codex 0.153.4 redirects linked-worktree hook declarations to the root checkout; changing only planning/.codex/hooks.json is not isolation.
+
+Require PreCompact -> PostCompact -> SessionStart(source=compact), no ordinary startup record, a matching target actually emitted by the product, and an exact model echo without unauthorized file/tool reads. PostCompact emits a universal readiness advisory and no next-action target.
+
+Keep source and planning state unchanged. Persist only boolean/hash-comparison results and bounded structural observations, never the opaque values. Offline drivers model only documented SessionStart context delivery; they do not constitute live capability evidence.
+""",
+    'config/README.md': """# C10 configuration provenance
+
+Use the v7 runner live-auth/persisted-trust context. Do not copy or restore authentication tokens; restore runner config.toml byte-for-byte after the probe.
+
+The startup fixture retains the product SessionStart hook. The independent after-compaction fixture retains PreCompact and PostCompact and narrows SessionStart to ^compact$ at the primary hook source. Check that the linked checkout has identical declarations. Prepare this BEFORE product snapshots/checkpoints. Model context comes only from SessionStart(source=compact), whose handler output is checked before examining the model echo.
+
+Sandbox remains read-only, approval never, and model-tool network disabled. Low auto-compaction threshold and token_budget=false apply only to disposable fixtures, not product defaults. Preserve the process's bounded structural progress on timeout and kill its owned process group/tree before continuing the harness.
+""",
     'run-command.txt': C09_COMPLETION_OVERLAY['run-command.txt'],
 }
+
 
 
 def _safe_member(name: str) -> PurePosixPath:
@@ -230,6 +249,11 @@ def materialize(source_root: Path, target_root: Path, *, force: bool = False) ->
     written.extend(_apply_overlay(target_root, 'C06', C06_CODEX0152_OVERLAY))
     written.extend(_apply_overlay(target_root, 'C09', C09_COMPLETION_OVERLAY))
     written.extend(_apply_overlay(target_root, 'C10', C10_ISOLATION_OVERLAY))
+    c10_expected_path = target_root / 'capabilities/C10/expected.json'
+    c10_expected = json.loads(c10_expected_path.read_text(encoding='utf-8'))
+    c10_expected['title'] = 'Recovery context via SessionStart at startup and after compaction'
+    c10_expected_path.write_text(json.dumps(c10_expected, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    _rehash_capability(c10_expected_path.parent)
     written.extend(_apply_overlay(target_root, 'C13', C13_BASELINE23_OVERLAY))
 
     # The index and package guide are tracked outside the archive and are needed

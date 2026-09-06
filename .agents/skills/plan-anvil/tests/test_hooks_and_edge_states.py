@@ -198,6 +198,35 @@ class HookAndEdgeStateTests(unittest.TestCase):
             self.assertIn("Validated checkpoint", message)
             self.assertIn(str(checkpoint_path.resolve()), message)
 
+    def test_compact_recovery_uses_session_start_not_postcompact_context(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._active_repo(Path(directory), mode="PLAN_EXECUTION")
+            self._write_valid_checkpoint(repo)
+            target = "evidence/instruction-map.json"
+            before = (repo / ".pursue/runs/run/state.json").read_bytes()
+            advisory = self._hook("plan-anvil-recovery.py", repo,
+                {"cwd": str(repo), "hook_event_name": "PostCompact", "trigger": "auto"})
+            self.assertEqual(set(advisory), {"continue", "systemMessage"})
+            self.assertTrue(advisory["continue"])
+            self.assertNotIn(target, json.dumps(advisory))
+            self.assertIn("SessionStart(source=compact)", advisory["systemMessage"])
+            recovery = self._hook("plan-anvil-recovery.py", repo,
+                {"cwd": str(repo), "hook_event_name": "SessionStart", "source": "compact"})
+            output = recovery["hookSpecificOutput"]
+            self.assertEqual(output["hookEventName"], "SessionStart")
+            self.assertIn(target, output["additionalContext"])
+            self.assertIn("Validated checkpoint", output["additionalContext"])
+            self.assertEqual((repo / ".pursue/runs/run/state.json").read_bytes(), before)
+
+    def test_postcompact_reports_invalid_checkpoint_without_unsupported_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._active_repo(Path(directory))
+            output = self._hook("plan-anvil-recovery.py", repo,
+                {"cwd": str(repo), "hook_event_name": "PostCompact", "trigger": "auto"})
+            self.assertEqual(set(output), {"continue", "systemMessage"})
+            self.assertIn("invalid", output["systemMessage"])
+            self.assertNotIn("hookSpecificOutput", output)
+
     def test_detached_head_with_multiple_containing_branches_is_ambiguous(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = init_repo(Path(directory) / "repo")
