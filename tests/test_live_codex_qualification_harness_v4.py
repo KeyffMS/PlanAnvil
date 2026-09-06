@@ -36,7 +36,7 @@ class LiveCodexHarnessV4Tests(unittest.TestCase):
         self.assertIn("_create_checkpoint(planning=planning, run_root=run_root)", self.source)
 
     def test_c09_requires_two_real_compactions_and_continuation(self) -> None:
-        self.assertIn("C09_COMPACT_LIMIT = 1000", self.source)
+        self.assertIn("C09_COMPACT_LIMIT = c09.COMPACT_LIMIT", self.source)
         self.assertIn("len(pre) >= 2 and len(post) >= 2", self.source)
         self.assertIn("_continued_after_second_postcompact", self.source)
         self.assertIn("tool_use_after_second_postcompact", self.source)

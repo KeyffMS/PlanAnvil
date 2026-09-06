@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
+import qualification_c09 as c09
+
 import live_codex_qualification_harness as v1
 import live_codex_qualification_harness_v2 as v2
 import live_codex_qualification_harness_v3 as prior
@@ -19,7 +21,7 @@ TARGET_CAPABILITIES = {"C06", "C08", "C09"}
 _ORIGINAL_CAPABILITY_RUNTIME = prior.capability_runtime
 
 C08_COMPACT_LIMIT = 200
-C09_COMPACT_LIMIT = 1000
+C09_COMPACT_LIMIT = c09.COMPACT_LIMIT
 COMPACT_SCOPE = "body_after_prefix"
 HOOK_LOG_RELATIVE = ".pursue/qualification-hook-events.jsonl"
 
@@ -833,20 +835,23 @@ def _c09_runtime(
             worktrees=worktrees,
             version=version,
             compact_limit=C09_COMPACT_LIMIT,
-            create_checkpoint=True,
-            segments=4,
-            segment_bytes=32768,
+            create_checkpoint=False,
+            segments=0,
+            segment_bytes=0,
+            prepare_repo=c09.prepare_repo,
+            hook_proxy_source=c09.proxy_source(_hook_proxy_source()),
         )
+        c09.seed_state(planning, _run_root)
+        _create_checkpoint(planning=planning, run_root=_run_root)
         fixture_commit = base.git(repo, "rev-parse", "HEAD")
         checkpoint_before = _checkpoint_validation(planning)
         _clear_hook_log(planning)
+        source_before = base.git_snapshot(repo)
+        files_before = (c09.file_fingerprint(repo), c09.file_fingerprint(planning))
         before = base.git_snapshot(planning)
         payload, events, error = _run_codex_probe(
             cwd=planning,
-            prompt=_compact_probe_prompt(
-                capability_id,
-                ["segment-01.txt", "segment-02.txt", "segment-03.txt", "segment-04.txt"],
-            ),
+            prompt=c09.prompt(),
             schemas=schemas,
             results_dir=results_dir,
             position=1,
@@ -857,12 +862,18 @@ def _c09_runtime(
             observe_process=True,
         )
         after = base.git_snapshot(planning)
+        source_after = base.git_snapshot(repo)
+        files_after = (c09.file_fingerprint(repo), c09.file_fingerprint(planning))
         records = _read_hook_records(planning)
         pre = _event_records(records, "PreCompact")
         post = _event_records(records, "PostCompact")
         stops = [item for item in pre if item.get("continue") is False]
         checkpoint_after = _checkpoint_validation(planning)
 
+    checks = c09.protocol_checks(events, records)
+    checks["source_and_planning_unchanged"] = (source_before == source_after and before == after
+                                               and files_before == files_after)
+    protocol_ok = all(checks.values())
     two_compactions = len(pre) >= 2 and len(post) >= 2
     continued_after_second = _continued_after_second_postcompact(records)
     checkpoint_coherent = bool(checkpoint_before.get("ok")) and bool(checkpoint_after.get("ok"))
@@ -872,6 +883,8 @@ def _c09_runtime(
         and not events.get("timeout")
         and payload.get("capability_id") == capability_id
         and payload.get("outcome") == "PASS"
+        and payload.get("trial") == c09.TRIAL
+        and "C09_FINISHED" in payload.get("observations", [])
     )
     completion_blocker = error or (
         None if invocation_completed else "C09 did not return a completed positive structured result."
@@ -883,9 +896,10 @@ def _c09_runtime(
         "trial_name": "checkpoint_auto_compact_recover_recompact",
         "outcome": (
             "BLOCKED"
-            if not invocation_completed or not two_compactions
+            if not invocation_completed or not two_compactions or not protocol_ok
             else ("PASS" if checkpoint_coherent and no_stop_loop else "FAIL")
         ),
+        "protocol_checks": checks,
         "assertions": [
             {
                 "name": "codex_invocation_completed_without_timeout",
@@ -925,10 +939,10 @@ def _c09_runtime(
             f"invocation_error={error or 'none'}",
             f"invocation_completed={str(invocation_completed).lower()}",
         ],
-        "blocker": completion_blocker,
+        "blocker": completion_blocker or (None if protocol_ok else "C09 finite protocol checks incomplete"),
         "event_summary": events,
         "hook_timeline": [
-            {key: item[key] for key in ("event", "returncode", "continue", "additional_context")
+            {key: item[key] for key in ("event", "returncode", "continue", "additional_context", "source", "trigger", "c09_phase")
              if key in item}
             for item in records[-128:]
             if item.get("event") in {"PreToolUse", "SessionStart", "PreCompact", "PostCompact"}
@@ -945,6 +959,9 @@ def _c09_runtime(
             "runtime_cli_override": True,
             "project_trust_method": "persisted_user_config",
             "process_observation": "bounded_structural_jsonl",
+            "finite_phases": list(c09.PHASES),
+            "tool_max_output_tokens": c09.OUTPUT_TOKENS,
+            "canonical_action": "C09_FINITE_RECOVERY",
         },
     }
 
@@ -953,6 +970,10 @@ def _c09_runtime(
         expected_met = False
         blocker = "The deterministic C09 fixture did not begin with a valid checkpoint."
         summary = "C09 blocked during deterministic fixture preparation."
+    elif not checks["source_and_planning_unchanged"]:
+        result, expected_met = "FAILED", False
+        blocker = "C09 changed source or planning repository state."
+        summary = "C09 failed repository immutability."
     elif not invocation_completed:
         result = "BLOCKED"
         expected_met = False
@@ -978,6 +999,10 @@ def _c09_runtime(
         expected_met = False
         blocker = "Two compactions completed, but no subsequent real tool call demonstrated continuation after the second compaction."
         summary = "C09 blocked because freedom from a permanent stop loop was not fully exercised."
+    elif not protocol_ok:
+        result, expected_met = "BLOCKED", False
+        blocker = "C09 finite protocol was not verified: " + ", ".join(k for k, ok in checks.items() if not ok)
+        summary = "C09 lacks a completed ordered two-cycle recovery proof."
     else:
         result = "REPRODUCED"
         expected_met = True

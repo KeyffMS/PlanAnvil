@@ -82,3 +82,45 @@ jobs:
         run: python tools/build_release.py --output "$RUNNER_TEMP/plananvil-dist"
       - name: Check patch whitespace
         run: git diff --check
+
+  codex-conformance:
+    name: Codex 0.153.4 loopback conformance (no model service)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+      - name: Enable sandbox namespaces in this disposable hosted VM
+        # Matches openai/codex rust-v0.153.4 .github/actions/setup-ci/action.yml.
+        # This is a host prerequisite, not a Codex sandbox override. The
+        # self-hosted live runner and its security policy are not modified.
+        run: |
+          sysctl kernel.unprivileged_userns_clone > "$RUNNER_TEMP/codex-userns-restore.conf"
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sysctl kernel.apparmor_restrict_unprivileged_userns >> "$RUNNER_TEMP/codex-userns-restore.conf"
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+      - name: Install and verify the operating-system sandbox prerequisite
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bubblewrap
+          /usr/bin/bwrap --version
+          /usr/bin/bwrap --unshare-user --unshare-net --ro-bind / / /bin/true
+      - name: Install pinned official CLI into runner temp
+        run: |
+          python tools/install_ci_codex.py "$RUNNER_TEMP/codex-conformance-bin"
+          echo "$RUNNER_TEMP/codex-conformance-bin" >> "$GITHUB_PATH"
+          echo "PLANANVIL_TEST_CODEX_BIN=$RUNNER_TEMP/codex-conformance-bin/codex" >> "$GITHUB_ENV"
+      - name: Verify real CLI lifecycle against deterministic loopback responses
+        run: python -m unittest discover -s tests -p test_qualification_c09_cli.py -v
+      - name: Restore hosted VM namespace policy
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/codex-userns-restore.conf" ]; then
+            sudo sysctl -p "$RUNNER_TEMP/codex-userns-restore.conf"
+          fi
