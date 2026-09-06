@@ -65,7 +65,7 @@ class C09RealCLIConformance(unittest.TestCase):
         binary = os.environ["PLANANVIL_TEST_CODEX_BIN"]
         version = subprocess.check_output([binary, "--version"], text=True).strip()
         self.assertEqual(version, "codex-cli 0.153.4")
-        state = {"regular": 0, "compact": 0, "context_seen": [], "requests": 0, "request_kinds": []}
+        state = {"regular": 0, "compact": 0, "context_seen": [], "requests": 0, "request_kinds": [], "tool_results": {}}
 
         class Server(BaseHTTPRequestHandler):
             def log_message(self, *args):
@@ -89,6 +89,20 @@ class C09RealCLIConformance(unittest.TestCase):
                     self.send_error(400, "Missing or conflicting Codex request metadata")
                     return
                 state["request_kinds"].append(kind)
+                for entry in body.get("input", []):
+                    if not isinstance(entry, dict) or entry.get("type") != "function_call_output":
+                        continue
+                    phase = str(entry.get("call_id", "")).removeprefix("call-")
+                    if phase not in c09.PHASES:
+                        continue
+                    output = entry.get("output", "")
+                    text = output if isinstance(output, str) else json.dumps(output)
+                    success = '"git_reconciled": true' in text and '"checkpoint_ok": true' in text
+                    state["tool_results"][phase] = {"receipt_seen": success}
+                    if not success:
+                        # Loopback-only failures; no credentials or model service.
+                        # Do not retain successful canonical output or padding.
+                        state["tool_results"][phase]["diagnostic"] = v7.base.sanitize_text(text[:1200])
                 compact = kind == "compaction"
                 if compact:
                     state["compact"] += 1
@@ -98,7 +112,9 @@ class C09RealCLIConformance(unittest.TestCase):
                 else:
                     index = state["regular"]
                     state["regular"] += 1
-                    state["context_seen"].append("C09_FINITE_RECOVERY" in json.dumps(body.get("input")))
+                    context = json.dumps(body.get("input"))
+                    state["context_seen"].append("Recover PlanAnvil from files:" in context
+                                                 and "C09_FINITE_RECOVERY" in context)
                     if index < 3:
                         phase = c09.PHASES[index]
                         item = {"type": "function_call", "id": "fc-" + phase, "call_id": "call-" + phase,
