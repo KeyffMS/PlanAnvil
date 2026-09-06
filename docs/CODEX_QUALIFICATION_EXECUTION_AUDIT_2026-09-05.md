@@ -27,6 +27,8 @@ Regression: enter the real compatibility context, seed the same declared project
 
 ### C10 configuration provenance
 
+**Superseded assumption:** this historical audit correctly identified root-checkout declaration precedence, but incorrectly assumed that PostCompact itself could deliver model context. The subsequent source review in `CODEX_RECOVERY_DELIVERY_AUDIT_2026-09-05.md` establishes SessionStart(source=compact) as the supported recovery channel. The current fixture narrows that matcher instead of removing SessionStart. The following paragraphs describe the earlier patch, not the active delivery contract.
+
 The previous PostCompact probe removed SessionStart only from a linked planning worktree. Codex still loaded the primary checkout's declarations. The same proof could reach the model through SessionStart, invalidating attribution to PostCompact.
 
 Repair: independent source repositories, planning worktrees and random proofs for the two trials. Prepare the second root checkout's hook selection before the fixture commit, product bootstrap and checkpoint. Verify root/local declarations agree and preserve both source and planning state during the probe. Keep the actual product recovery and compaction scripts; never synthesize a live hook event in the qualification runtime.

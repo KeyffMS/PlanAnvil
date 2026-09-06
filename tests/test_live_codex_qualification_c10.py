@@ -39,9 +39,9 @@ class LiveCodexC10Tests(unittest.TestCase):
             hooks = {"hooks": {name: [{"hooks": [{"type": "command", "command": "fixture"}]}]
                                for name in ("SessionStart", "PreCompact", "PostCompact")}}
             c10.base.json_dump(repo / ".codex/hooks.json", hooks)
-            self.assertTrue(c10._disable_session_start_for_postcompact(repo))
+            self.assertTrue(c10._isolate_compact_session_start(repo))
             remaining = c10.base.load_json(repo / ".codex/hooks.json")["hooks"]
-            self.assertNotIn("SessionStart", remaining)
+            self.assertEqual(remaining["SessionStart"][0]["matcher"], "^compact$")
             self.assertEqual(remaining["PreCompact"], hooks["hooks"]["PreCompact"])
             self.assertEqual(remaining["PostCompact"], hooks["hooks"]["PostCompact"])
 
@@ -49,7 +49,7 @@ class LiveCodexC10Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             c10.base.json_dump(repo / ".codex/hooks.json", {"hooks": {"SessionStart": []}})
-            self.assertFalse(c10._disable_session_start_for_postcompact(repo))
+            self.assertFalse(c10._isolate_compact_session_start(repo))
 
     def test_compaction_trigger_is_qualification_only(self) -> None:
         source = C10_SOURCE.read_text(encoding="utf-8")

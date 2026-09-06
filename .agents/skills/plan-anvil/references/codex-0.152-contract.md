@@ -30,3 +30,9 @@ For Codex 0.152, `SubagentStart` may inject `additionalContext`, but `continue: 
 ## Fail-closed rule
 
 When the active Codex runtime cannot provide a lifecycle behavior required by the PlanAnvil contract, preserve deterministic evidence and stop with a runtime prerequisite blocker. Do not weaken path, source-immutability, approval, or recovery guarantees to make the run pass.
+
+## Recovery delivery — source-verified Codex CLI 0.153.4
+
+The [official hooks contract](https://developers.openai.com/codex/hooks/) distinguishes stateless compaction events from context-delivery events. `PostCompact` may emit universal control/advisory fields, but its output is not model-visible additional context. PlanAnvil must supply recovery pointers through `SessionStart` matching `source=compact` after compaction; the existing startup/resume/clear matchers remain supported.
+
+This is a product rule, not a test-only substitution. The PostCompact recovery command reports readiness without embedding the next-action target. The SessionStart command supplies the pointer and asks the model to read canonical files and reconcile Git before continuing. Hooks never substitute for those checks. The pinned `rust-v0.153.4` sources are `codex-rs/hooks/src/events/compact.rs` and `codex-rs/core/src/hook_runtime.rs`.

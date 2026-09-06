@@ -90,6 +90,21 @@ class CapabilityMaterializerOverlayTests(unittest.TestCase):
             self.assertIn("timeout", (target / "capabilities/C09/fixture/README.md").read_text(encoding="utf-8"))
             self.assertEqual(validate_capabilities.validate_all(target), [])
 
+    def test_c10_documents_supported_context_channel_without_weakening_assertions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            prepare_capabilities.materialize(ROOT, target, force=True)
+            readme = (target / "capabilities/C10/README.md").read_text(encoding="utf-8")
+            self.assertIn("SessionStart(source=compact)", readme)
+            self.assertIn("not PostCompact.additionalContext", readme)
+            fixture = (target / "capabilities/C10/fixture/README.md").read_text(encoding="utf-8")
+            self.assertIn("^compact$", fixture)
+            expected = json.loads((target / "capabilities/C10/expected.json").read_text(encoding="utf-8"))
+            self.assertEqual(expected["assertions"], [
+                "Recovery hook injects a pointer/context, not hidden mutable state.",
+                "Session continuation can reconstruct from canonical files and Git.",
+            ])
+
     def test_overlays_do_not_remove_other_capabilities(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "materialized"

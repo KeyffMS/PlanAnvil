@@ -346,12 +346,23 @@ jobs:
           echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
           exit 0
 
+      - name: Pack and verify complete sanitized evidence
+        id: package_evidence
+        if: always() && env.QUALIFICATION_ARTIFACT != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${QUALIFICATION_REPO}"
+          python3 tools/qualification_artifact.py \
+            --root "${QUALIFICATION_ARTIFACT}" \
+            --output "${QUALIFICATION_ARTIFACT}.zip"
+
       - name: Upload sanitized capability evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: plananvil-codex-evidence-${{ github.run_id }}
-          path: ${{ env.QUALIFICATION_ARTIFACT }}
+          path: ${{ env.QUALIFICATION_ARTIFACT }}.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -361,3 +372,4 @@ jobs:
         run: |
           set -euo pipefail
           test "${{ steps.qualify.outputs.exit_code }}" = "0"
+          test "${{ steps.package_evidence.outcome }}" = "success"

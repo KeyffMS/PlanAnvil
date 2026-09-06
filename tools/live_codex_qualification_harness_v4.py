@@ -120,6 +120,7 @@ def _instrument_hooks(
     event_to_script: dict[str, str],
     compact_limit: int | None = None,
     compact_scope: str | None = None,
+    proxy_source: str | None = None,
 ) -> None:
     hooks_path = repo / ".codex" / "hooks.json"
     hooks = json.loads(hooks_path.read_text(encoding="utf-8"))
@@ -132,7 +133,8 @@ def _instrument_hooks(
                     f'qualification-hook-proxy-v4.py" {event_name} {script_name}'
                 )
     _write(hooks_path, json.dumps(hooks, indent=2, sort_keys=True) + "\n")
-    _write(repo / ".codex" / "hooks" / "qualification-hook-proxy-v4.py", _hook_proxy_source())
+    _write(repo / ".codex" / "hooks" / "qualification-hook-proxy-v4.py",
+           _hook_proxy_source() if proxy_source is None else proxy_source)
     if compact_limit is not None:
         _set_compact_config(
             repo,
@@ -187,6 +189,8 @@ def _run_codex_probe(
     compact_scope: str | None = None,
     add_dir: Path | None = None,
     timeout: int = 600,
+    observe_process: bool = False,
+    inspect_payload: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     output = results_dir / f"trial-{position:02d}.json"
     output.unlink(missing_ok=True)
@@ -207,17 +211,27 @@ def _run_codex_probe(
             f'model_auto_compact_token_limit_scope="{compact_scope or COMPACT_SCOPE}"',
         ]
     args.append(prompt)
-    try:
-        completed = base.run(args, cwd=cwd, check=False, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return {}, {"timeout": True}, "Codex invocation timed out"
-    events = base.event_summary(completed.stdout)
-    if completed.returncode != 0:
-        return (
-            {},
-            events,
-            f"Codex exited {completed.returncode}: {base.sanitize_text(completed.stderr[-2500:])}",
-        )
+    if observe_process:
+        from qualification_process import run_observed
+        completed = run_observed(args, cwd=cwd, timeout=timeout)
+        events = completed.events
+        if not events.get("process_cleanup_ok") or events.get("reader_failed"):
+            return {}, events, "Codex process cleanup or diagnostic reader failed"
+        if completed.timed_out:
+            return {}, events, "Codex invocation timed out"
+        if completed.returncode != 0:
+            return {}, events, f"Codex exited {completed.returncode}; see structural error_categories"
+    else:
+        # Preserve the established C06/C08 invocation contract, including C08's
+        # intentional negative compaction-stop trial. C13 has its own runner.
+        try:
+            completed = base.run(args, cwd=cwd, check=False, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return {}, {"timeout": True}, "Codex invocation timed out"
+        events = base.event_summary(completed.stdout)
+        if completed.returncode != 0:
+            return ({}, events,
+                    f"Codex exited {completed.returncode}: {base.sanitize_text(completed.stderr[-2500:])}")
     if not output.is_file():
         return {}, events, "Codex did not produce the structured output file"
     try:
@@ -226,6 +240,10 @@ def _run_codex_probe(
         return {}, events, f"Codex produced invalid structured output: {exc}"
     if not isinstance(payload, dict):
         return {}, events, "Codex structured output was not a JSON object"
+    if inspect_payload is not None:
+        # Compare in memory before redaction; the callback returns only structural
+        # diagnostics. Raw model content is never included in event evidence.
+        events["raw_payload_checks"] = inspect_payload(payload)
     return base.sanitize(payload), events, None
 
 
@@ -450,6 +468,7 @@ def _start_active_run(
     segments: int,
     segment_bytes: int,
     prepare_repo: Callable[[Path], None] | None = None,
+    hook_proxy_source: str | None = None,
 ) -> tuple[Path, str]:
     v1._install_plananvil_release(root, repo)
     _instrument_hooks(
@@ -462,6 +481,7 @@ def _start_active_run(
         },
         compact_limit=compact_limit,
         compact_scope=COMPACT_SCOPE,
+        proxy_source=hook_proxy_source,
     )
     _write(repo / "README.md", "Deterministic PlanAnvil compaction qualification fixture.\n")
     payload_dir = repo / "qualification-payload"
@@ -834,6 +854,7 @@ def _c09_runtime(
             compact_limit=C09_COMPACT_LIMIT,
             compact_scope=COMPACT_SCOPE,
             timeout=900,
+            observe_process=True,
         )
         after = base.git_snapshot(planning)
         records = _read_hook_records(planning)
@@ -906,6 +927,13 @@ def _c09_runtime(
         ],
         "blocker": completion_blocker,
         "event_summary": events,
+        "hook_timeline": [
+            {key: item[key] for key in ("event", "returncode", "continue", "additional_context")
+             if key in item}
+            for item in records[-128:]
+            if item.get("event") in {"PreToolUse", "SessionStart", "PreCompact", "PostCompact"}
+        ],
+        "hook_timeline_truncated": len(records) > 128,
         "git_before": before,
         "git_after": after,
         "checkpoint_before": checkpoint_before,
@@ -915,6 +943,8 @@ def _c09_runtime(
             "model_auto_compact_token_limit": C09_COMPACT_LIMIT,
             "model_auto_compact_token_limit_scope": COMPACT_SCOPE,
             "runtime_cli_override": True,
+            "project_trust_method": "persisted_user_config",
+            "process_observation": "bounded_structural_jsonl",
         },
     }
 
