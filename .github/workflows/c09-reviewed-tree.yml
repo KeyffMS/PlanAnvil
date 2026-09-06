@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 2
+          fetch-depth: 3
           persist-credentials: false
       - name: Reconstruct exact reviewed candidate without executing it
         shell: bash
@@ -26,7 +26,7 @@ jobs:
           from pathlib import Path
           def git(*args):
               return subprocess.check_output(['git', *args], text=True).strip()
-          assert git('rev-parse', 'HEAD^') == '44f95258079d6b3ab5b79c178815bbc085edbe02'
+          assert git('rev-parse', 'HEAD~2') == '44f95258079d6b3ab5b79c178815bbc085edbe02'
           patch = b''.join(Path('.c09-publication/part-' + str(i) + '.patch').read_bytes() for i in range(1, 6))
           assert hashlib.sha256(patch).hexdigest() == '2cdb37a41d13bde3d1165a4ab7bcadca93258a049dc45a55653aa3e2d8174180'
           temp = Path(os.environ['RUNNER_TEMP'])
@@ -36,24 +36,28 @@ jobs:
           subprocess.run(['git', 'apply', '--index', str(patch_path)], check=True)
           names = git('diff', '--cached', '--name-only').splitlines()
           assert len(names) == 13
-          entries = [{'path': n, 'mode': '100644', 'type': 'blob', 'content': Path(n).read_text(encoding='utf-8')} for n in names]
+          entries = [{'path': n, 'sha': git('hash-object', n), 'content': Path(n).read_text(encoding='utf-8')} for n in names]
           subprocess.run(['git', 'rm', '-r', '.c09-publication', '.github/workflows/c09-reviewed-tree.yml'], check=True)
           subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
           assert git('write-tree') == '682a9239c32f356c8f9d7510139bf341a5947487'
-          (temp / 'c09-tree.json').write_text(json.dumps({'base_tree': '678b85380318f57e3458a4870e3daaae1753f208', 'tree': entries}), encoding='utf-8')
+          (temp / 'c09-blobs.json').write_text(json.dumps(entries), encoding='utf-8')
           print('Reviewed 13-file candidate reconstructed exactly; temporary staging files excluded.')
           PY
-      - name: Store verified Git tree object only; do not update any branch
+      - name: Store verified content objects only; no tree, commit, ref or workflow changes
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api --method POST repos/KeyffMS/PlanAnvil/git/trees --input "$RUNNER_TEMP/c09-tree.json" > "$RUNNER_TEMP/c09-tree-result.json"
           python3 - <<'PY'
-          import json, os
+          import json, os, subprocess
           from pathlib import Path
-          result = json.loads((Path(os.environ['RUNNER_TEMP']) / 'c09-tree-result.json').read_text())
-          assert result['sha'] == '682a9239c32f356c8f9d7510139bf341a5947487'
-          print('VERIFIED_C09_TREE=' + result['sha'])
+          entries = json.loads((Path(os.environ['RUNNER_TEMP']) / 'c09-blobs.json').read_text())
+          for entry in entries:
+              payload = json.dumps({'content': entry['content'], 'encoding': 'utf-8'})
+              result = subprocess.run(['gh', 'api', '--method', 'POST', 'repos/KeyffMS/PlanAnvil/git/blobs', '--input', '-'], input=payload, text=True, capture_output=True, check=True)
+              actual = json.loads(result.stdout)['sha']
+              assert actual == entry['sha']
+              print(entry['path'] + ' ' + actual)
+          print('VERIFIED_C09_BLOBS=13; no branches changed')
           PY
