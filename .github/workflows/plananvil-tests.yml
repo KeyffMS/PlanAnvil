@@ -94,6 +94,12 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.11"
+      - name: Install and verify the operating-system sandbox prerequisite
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bubblewrap
+          /usr/bin/bwrap --version
+          /usr/bin/bwrap --unshare-user --unshare-net --ro-bind / / /bin/true
       - name: Install pinned official CLI into runner temp
         run: |
           python tools/install_ci_codex.py "$RUNNER_TEMP/codex-conformance-bin"

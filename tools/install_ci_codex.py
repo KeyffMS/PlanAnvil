@@ -14,7 +14,7 @@ import tarfile
 from urllib.request import Request, urlopen
 
 TAG = "rust-v0.153.4"
-ASSETS = ("codex-x86_64-unknown-linux-musl.tar.gz", "bwrap-x86_64-unknown-linux-musl.tar.gz")
+ASSETS = ("codex-x86_64-unknown-linux-musl.tar.gz",)
 
 
 def fetch(url):
