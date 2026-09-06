@@ -25,13 +25,47 @@ import qualification_process as process
 from test_qualification_c09 import completed_payload
 
 
+def request_kind(body):
+    """Use pinned Codex request metadata, never the optional tools field.
+
+    Source: rust-v0.153.4/core/src/responses_metadata.rs. Responses Lite may
+    omit tools on ordinary turns; absence of tools is not a compaction signal.
+    """
+    metadata = body.get("client_metadata") or {}
+    encoded = metadata.get("x-codex-turn-metadata")
+    canonical = json.loads(encoded) if isinstance(encoded, str) else {}
+    kind = canonical.get("request_kind", metadata.get("request_kind"))
+    if kind not in {"turn", "compaction"}:
+        raise ValueError("Missing or unexpected Codex request kind")
+    if metadata.get("request_kind", kind) != kind:
+        raise ValueError("Conflicting Codex request kind metadata")
+    return kind
+
+
+class RequestKindTests(unittest.TestCase):
+    def test_turn_without_tools_is_not_compaction(self):
+        body = {"client_metadata": {"x-codex-turn-metadata": json.dumps({"request_kind": "turn"})}}
+        self.assertEqual(request_kind(body), "turn")
+        body["tools"] = []
+        self.assertEqual(request_kind(body), "turn")
+
+    def test_compaction_is_identified_from_canonical_metadata(self):
+        self.assertEqual(request_kind({"client_metadata": {"request_kind": "compaction"}}), "compaction")
+
+    def test_missing_or_conflicting_metadata_is_rejected(self):
+        for body in ({"tools": []}, {"client_metadata": {"request_kind": "turn",
+                      "x-codex-turn-metadata": json.dumps({"request_kind": "compaction"})}}):
+            with self.assertRaises(ValueError):
+                request_kind(body)
+
+
 @unittest.skipUnless(os.environ.get("PLANANVIL_TEST_CODEX_BIN"), "pinned CLI conformance job only")
 class C09RealCLIConformance(unittest.TestCase):
     def test_actual_cli_finishes_two_compactions_and_recovery_in_one_turn(self):
         binary = os.environ["PLANANVIL_TEST_CODEX_BIN"]
         version = subprocess.check_output([binary, "--version"], text=True).strip()
         self.assertEqual(version, "codex-cli 0.153.4")
-        state = {"regular": 0, "compact": 0, "context_seen": [], "requests": 0}
+        state = {"regular": 0, "compact": 0, "context_seen": [], "requests": 0, "request_kinds": []}
 
         class Server(BaseHTTPRequestHandler):
             def log_message(self, *args):
@@ -48,7 +82,14 @@ class C09RealCLIConformance(unittest.TestCase):
                 if state["requests"] > 10:
                     self.send_error(400, "Finite fixture request limit exceeded")
                     return
-                compact = not body.get("tools")
+                try:
+                    kind = request_kind(body)
+                except ValueError:
+                    state["metadata_error"] = True
+                    self.send_error(400, "Missing or conflicting Codex request metadata")
+                    return
+                state["request_kinds"].append(kind)
+                compact = kind == "compaction"
                 if compact:
                     state["compact"] += 1
                     item = {"type": "message", "role": "assistant", "id": "summary-" + str(state["compact"]),
@@ -115,9 +156,11 @@ class C09RealCLIConformance(unittest.TestCase):
                     result, _ = v7.run_c09(root=ROOT, runtime_root=rt, schemas=base.write_schemas(rt / "schemas"),
                         version=version, os_name="offline-cli", source_commit="b" * 40, date="2026-09-06")
                 details = writer.call_args.kwargs
-                self.assertEqual(result, "REPRODUCED", details)
+                self.assertEqual(result, "REPRODUCED", {"peer": state, "evaluation": details})
                 self.assertEqual(state["compact"], 2, state)
                 self.assertEqual(state["regular"], 4, state)
+                self.assertEqual(state["request_kinds"],
+                                 ["turn", "compaction", "turn", "compaction", "turn", "turn"])
                 self.assertTrue(all(state["context_seen"]), state)
                 print("CODEX_01534_OFFLINE_CONFORMANCE_OK: 3 real tools, 2 compactions, 2 compact recovery contexts, 1 completed turn")
             finally:
