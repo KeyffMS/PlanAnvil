@@ -93,7 +93,7 @@ class StructuralEvents:
                 return
             try:
                 event = json.loads(raw)
-            except (ValueError, UnicodeError):
+            except (ValueError, UnicodeError, RecursionError):
                 self.invalid_lines += 1
                 return
             if not isinstance(event, dict):
@@ -147,7 +147,9 @@ class StructuralEvents:
                         raw = pipe.readline(MAX_LINE_BYTES + 1)
                     continue
                 self.accept(raw, stderr=stderr)
-        except (OSError, ValueError):
+        except Exception:
+            # A diagnostic failure must never disappear in a daemon reader.
+            # Persist only this flag; the caller blocks qualification.
             with self._lock:
                 self.reader_failed = True
         finally:

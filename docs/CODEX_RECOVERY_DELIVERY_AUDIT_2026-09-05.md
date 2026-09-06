@@ -21,7 +21,7 @@ Pinned Codex source at `rust-v0.153.4`:
 
 Product behavior: PostCompact reports checkpoint readiness through universal `systemMessage`, with `continue=true`, without including the next-action target. SessionStart supplies the existing pointer/context. This does not change canonical state, checkpoint validation, source ownership or the generator/executor separation.
 
-C10 tests startup and after-compaction recovery in independent real product fixtures with different opaque targets. The second fixture narrows SessionStart to `^compact$` in the primary checkout BEFORE commit/bootstrap. It must observe PreCompact, PostCompact and subsequently SessionStart(source=compact), with no ordinary startup record. PostCompact output must contain no additional context. A matching product-emitted target, exact model echo, allowed tool usage, checkpoint validity and source/planning immutability are all required. The existing two acceptance assertion strings are unchanged.
+C10 tests startup and after-compaction recovery in independent real product fixtures with different opaque targets. The second fixture narrows SessionStart to `^compact$` in the primary checkout BEFORE commit/start/checkpoint. It must observe PreCompact, PostCompact and subsequently SessionStart(source=compact), with no ordinary startup record. PostCompact output must contain no additional context. A matching product-emitted target, exact model echo, allowed tool usage, checkpoint validity and source/planning immutability are all required. The existing two acceptance assertion strings are unchanged.
 
 ## C09/C10 observation and timeout boundary
 
@@ -44,3 +44,9 @@ Only the verified archive is uploaded, not the runner workspace or an unrestrict
 Executable tests cover real product hook output at PostCompact and SessionStart(source=compact), the installer/Git/start/checkpoint path, root-source matcher isolation, exact echo acceptance, proof-safe diagnostic comparison, actual process timeout/descendant cleanup, partial event retention, malformed/oversized streams and strict archive verification. Existing product and qualification suites remain mandatory. The offline lifecycle driver only treats documented SessionStart output as model context; it does not pretend that arbitrary PostCompact JSON is injectable.
 
 The existing hosted OS/Python matrix runs `test_qualification_*.py` in addition to core product tests. Qualification results remain BLOCKED until new live evidence is produced. Use the existing workflow on main with `mode=recovery`; that selects C09/C10/C13 through the same runtimes as full and cannot claim a C01-C16 release pass. Do not rerun full until the targeted results are understood.
+
+## Completion review — 2026-09-06
+
+The interrupted upload was recovered and reviewed in PR #32. Unexpected diagnostic reader failures now set a fail-closed flag rather than disappearing in a daemon thread; deeply nested JSON is counted as malformed input without losing later events. Executable tests verify both reader and cleanup failures reject otherwise positive output. The temporary source-snapshot workflow is removed before merge. No live Codex workflow was started during this completion review.
+
+The Actions artifact now contains an inner verified evidence ZIP. Extract that ZIP before reading qualification-summary.json and the C01-C16 evidence directories. The required hidden fixture files are inside the verified ZIP; unrelated runner dotfiles are never uploaded.
