@@ -9,6 +9,8 @@ import shutil
 import tarfile
 from pathlib import Path, PurePosixPath
 
+import qualification_c09 as c09
+
 PART_GLOB = 'templates.part*'
 
 C06_CODEX0152_OVERLAY = {
@@ -131,20 +133,27 @@ python3 tools/live_codex_qualification_harness_v7.py \\
 }
 
 C09_COMPLETION_OVERLAY = {
-    'fixture/README.md': '''# C09 fixture and completion requirements
+    'fixture/README.md': """# C09 finite recovery fixture
 
-The outer harness installs the actual product, creates the planning worktree and a valid checkpoint, and then exercises genuine automatic compaction.
+The outer harness installs the unmodified product, prepares this fixture BEFORE bootstrap, replaces the bootstrap MAP_INSTRUCTIONS action with the hashed C09_FINITE_RECOVERY scenario, then creates and validates a real product checkpoint.
 
-Two real compaction cycles, coherent checkpoint/Git state, and subsequent real tool use remain required. They are not sufficient when Codex times out or fails to return a completed positive structured C09 result. Partial event counts cannot turn an incomplete invocation into REPRODUCED.
+One Codex turn executes exactly three read-only commands: first, second, finish. Every command uses the actual installed checkpoint/Git validator and reads canonical recovery inputs. Only first and second emit bounded inert compaction stimuli. Finish emits a small receipt and ends the workload. No manual hook calls, synthetic live events, canonical writes during the turn, permission changes or repeated initial reads are permitted.
 
-The deliberately low fixture threshold is not a product default. This correction does not silently retune it or weaken C08's intentional negative stop trial. Record a remaining timeout as BLOCKED. Retain bounded content-free event and hook sequences, command labels/counts, error categories, and process completion/owned-tree cleanup status. Never persist raw stdout/stderr or use partial progress as proof of successful completion.
-''',
-    'run-command.txt': '''# Existing controlled workflow: main -> recovery for C09/C10/C13.
-# The recovery driver selects the same v7 capability runtime used by full.
+The trigger is 8192 body-after-prefix tokens; requested tool output budget is 65536 tokens for each stimulus. These are disposable fixture settings, not product defaults. The active compatibility layer must not replace this trigger with the old 200-token value. TokenBudget is disabled only in the existing isolated qualification configuration.
+
+Require two ordered automatic PreCompact -> PostCompact -> SessionStart(source=compact) cycles, three successful canonical/Git reconciliations, real tool use after the second cycle, exact command order, valid checkpoints, unchanged source/planning files and Git, and one completed positive C09 turn. Timeout (still 900 seconds), extra/failed/repeated tools, missing recovery, failed hooks, reader/cleanup failures or incomplete evidence cannot be REPRODUCED. No raw output or private canonical state is persisted.
+
+The fixed scenario resolves proven conflicting fixture instructions and removes an over-aggressive trigger. Historical #23 labels do not identify its exact commands, so the historical timeout's complete causal chain is not claimed as observed. Live success must still be established by the actual model-backed run.
+""",
+    'fixture/c09_probe.py': c09.PROBE_SOURCE,
+    'prompt.txt': c09.prompt(),
+    'run-command.txt': """# Existing controlled workflow: main -> recovery for C09/C10/C13, or full for C01-C16.
+# Both select the identical C09 runtime; only full can satisfy the release gate.
 python3 tools/live_codex_qualification_recovery.py --root <QUALIFICATION_REPO> --source-commit <FULL_MAIN_SHA> --run-id <RUN_ID> --output <SANITIZED_ARTIFACT_DIR> --allow-c13-non-ephemeral-fallback
-# A targeted pass is not a full C01-C16 release pass.
-''',
+# A loopback CLI conformance pass is offline and cannot count as live capability evidence.
+""",
 }
+
 
 C10_ISOLATION_OVERLAY = {
     'README.md': """# C10 — Recovery context through SessionStart

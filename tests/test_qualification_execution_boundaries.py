@@ -78,19 +78,18 @@ class SubagentProcessContractTests(unittest.TestCase):
 
 class CompactionCompletionTests(unittest.TestCase):
     def evaluate(self, payload, events, error, records=None):
+        from test_qualification_c09 import valid_records
         with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
             root = Path(tmp)
             if records is None:
-                records = [
-                    {"event": "PreCompact"}, {"event": "PostCompact"},
-                    {"event": "PreCompact"}, {"event": "PostCompact"},
-                    {"event": "PreToolUse"},
-                ]
+                records = valid_records()
             stack.enter_context(mock.patch.object(v4, "_runtime_paths", return_value=(root,) * 7))
             stack.enter_context(mock.patch.object(base, "ensure_git_repo"))
             stack.enter_context(mock.patch.object(base, "git", return_value="a" * 40))
             stack.enter_context(mock.patch.object(base, "git_snapshot", return_value={"head": "a" * 40}))
             stack.enter_context(mock.patch.object(v4, "_start_active_run", return_value=(root, ".pursue/runs/test")))
+            stack.enter_context(mock.patch.object(v4.c09, "seed_state"))
+            stack.enter_context(mock.patch.object(v4, "_create_checkpoint"))
             stack.enter_context(mock.patch.object(v4, "_checkpoint_validation", return_value={"ok": True}))
             stack.enter_context(mock.patch.object(v4, "_clear_hook_log"))
             stack.enter_context(mock.patch.object(v4, "_read_hook_records", return_value=records))
@@ -111,17 +110,20 @@ class CompactionCompletionTests(unittest.TestCase):
         self.assertEqual(result["result"], "BLOCKED")
 
     def test_completed_positive_trial_still_passes(self) -> None:
-        result = self.evaluate({"capability_id": "C09", "outcome": "PASS"}, {}, None)
+        from test_qualification_c09 import completed_payload, valid_events
+        result = self.evaluate(completed_payload(), valid_events(), None)
         self.assertEqual(result["result"], "REPRODUCED")
         self.assertTrue(result["expected_met"])
 
     def test_second_compaction_still_requires_subsequent_tool_use(self) -> None:
-        result = self.evaluate({"capability_id": "C09", "outcome": "PASS"}, {}, None,
+        from test_qualification_c09 import completed_payload, valid_events
+        result = self.evaluate(completed_payload(), valid_events(), None,
                                [{"event": "PreCompact"}, {"event": "PostCompact"}] * 2)
         self.assertNotEqual(result["result"], "REPRODUCED")
 
     def test_observed_stop_with_valid_checkpoint_still_fails(self) -> None:
-        result = self.evaluate({"capability_id": "C09", "outcome": "PASS"}, {}, None,
+        from test_qualification_c09 import completed_payload, valid_events
+        result = self.evaluate(completed_payload(), valid_events(), None,
                                [{"event": "PreCompact", "continue": False},
                                 {"event": "PostCompact"}] * 2 + [{"event": "PreToolUse"}])
         self.assertEqual(result["result"], "FAILED")
