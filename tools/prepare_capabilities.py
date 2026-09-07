@@ -10,6 +10,7 @@ import tarfile
 from pathlib import Path, PurePosixPath
 
 import qualification_c09 as c09
+import qualification_c08 as c08
 
 PART_GLOB = 'templates.part*'
 
@@ -155,6 +156,32 @@ python3 tools/live_codex_qualification_recovery.py --root <QUALIFICATION_REPO> -
 }
 
 
+C08_FINITE_OVERLAY = {
+    'fixture/README.md': """# Finite C08 stop/repair qualification
+
+Use the real product in one canonical planning run. Prepare the C08_FINITE_RECOVERY
+state before checkpoint creation. The negative invocation executes pressure once
+and must terminate at the real PreCompact stop with a missing checkpoint.
+The outer harness then creates a real valid checkpoint; the repaired invocation
+executes pressure -> automatic compaction -> SessionStart(compact) -> finish and
+must terminate with positive structured output, without timeout or extra tools.
+Startup recovery is excluded at the primary root-checkout hook source before
+bootstrap; the actual compact recovery handler remains installed. No product
+hook is bypassed, manually invoked by the live model, or replaced with a mock.
+Require ordered receipts, real product validation, complete process diagnostics,
+checkpoint validity before/after, and source/planning Git and file-byte immutability.
+The 8192 token trigger and 65536 output allowance belong only to this fixture.
+Both original C08 assertions remain mandatory. The 600-second limit is unchanged.
+""",
+    'fixture/c08_probe.py': c08.PROBE_SOURCE,
+    'prompt.txt': 'NEGATIVE PROBE\n' + c08.prompt(repaired=False) + '\nREPAIRED PROBE\n' + c08.prompt(repaired=True),
+    'run-command.txt': '# Existing trusted self-hosted workflow: main -> c08 (targeted) or full.\n'
+        'python3 tools/live_codex_qualification_recovery.py --only C08 --root <QUALIFICATION_REPO> '
+        '--source-commit <FULL_MAIN_SHA> --run-id <RUN_ID> --output <SANITIZED_ARTIFACT_DIR> '
+        '--allow-c13-non-ephemeral-fallback\n',
+}
+
+
 C10_ISOLATION_OVERLAY = {
     'README.md': """# C10 — Recovery context through SessionStart
 
@@ -231,6 +258,7 @@ def _apply_overlay(target_root: Path, capability_id: str, overlay: dict[str, str
 def materialize(source_root: Path, target_root: Path, *, force: bool = False) -> list[str]:
     source_root = source_root.resolve()
     target_root = target_root.resolve()
+    fresh_index = json.loads((source_root / 'capabilities/index.json').read_text(encoding='utf-8'))
     part_dir = source_root / 'capabilities'
     parts = sorted(part_dir.glob(PART_GLOB))
     if not parts:
@@ -256,6 +284,7 @@ def materialize(source_root: Path, target_root: Path, *, force: bool = False) ->
     # Keep documentation synchronized without changing expected assertions or
     # synthesizing live results. Recompute hashes before package validation.
     written.extend(_apply_overlay(target_root, 'C06', C06_CODEX0152_OVERLAY))
+    written.extend(_apply_overlay(target_root, 'C08', C08_FINITE_OVERLAY))
     written.extend(_apply_overlay(target_root, 'C09', C09_COMPLETION_OVERLAY))
     written.extend(_apply_overlay(target_root, 'C10', C10_ISOLATION_OVERLAY))
     c10_expected_path = target_root / 'capabilities/C10/expected.json'
@@ -265,15 +294,23 @@ def materialize(source_root: Path, target_root: Path, *, force: bool = False) ->
     _rehash_capability(c10_expected_path.parent)
     written.extend(_apply_overlay(target_root, 'C13', C13_BASELINE23_OVERLAY))
 
-    # The index and package guide are tracked outside the archive and are needed
-    # when materializing into a disposable validation/sandbox root.
-    for rel in (Path('capabilities/index.json'), Path('capabilities/README.md')):
-        source = source_root / rel
-        target = target_root / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if source.resolve() != target.resolve():
-            shutil.copyfile(source, target)
-            written.append(rel.as_posix())
+    # Fresh templates never inherit historical REPRODUCED labels or run identity.
+    for item in fresh_index['capabilities']:
+        actual = json.loads((target_root / item['evidence_directory'] / 'actual.sanitized.json').read_text(encoding='utf-8'))
+        item['result'] = actual['result']
+        if item['result'] not in {'BLOCKED', 'NOT_RUN'}:
+            raise ValueError('Template archive unexpectedly contains executed evidence')
+    for key in ('qualification_attempt', 'qualification', 'source_commit', 'github_actions_run', 'release_gate_passed'):
+        fresh_index.pop(key, None)
+    fresh_index['evidence_package_state'] = 'TEMPLATE_ARCHIVE_READY'
+    fresh_index['qualification_attempt'] = {'live_codex_result': 'NOT_RUN', 'blocker': 'Fresh templates have not been executed.'}
+    (target_root / 'capabilities/index.json').write_text(json.dumps(fresh_index, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    written.append('capabilities/index.json')
+    source = source_root / 'capabilities/README.md'
+    target = target_root / 'capabilities/README.md'
+    if source.resolve() != target.resolve():
+        shutil.copyfile(source, target)
+        written.append('capabilities/README.md')
     return sorted(set(written))
 
 

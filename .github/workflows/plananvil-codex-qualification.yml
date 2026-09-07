@@ -11,6 +11,7 @@ on:
         options:
           - smoke
           - c13
+          - c08
           - diagnostics
           - precision
           - recovery
@@ -248,7 +249,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      (inputs.mode == 'full' || inputs.mode == 'c13' || inputs.mode == 'recovery')
+      (inputs.mode == 'full' || inputs.mode == 'c13' || inputs.mode == 'recovery' || inputs.mode == 'c08')
     environment: plananvil-codex
     runs-on:
       - self-hosted
@@ -326,7 +327,10 @@ jobs:
             qualification_args+=(--only C13)
           fi
           set +e
-          if [ "${{ inputs.mode }}" = "recovery" ]; then
+          if [ "${{ inputs.mode }}" = "c08" ]; then
+            qualification_args+=(--only C08)
+          fi
+          if [ "${{ inputs.mode }}" = "recovery" ] || [ "${{ inputs.mode }}" = "c08" ]; then
             python3 tools/live_codex_qualification_recovery.py \
               --root "${QUALIFICATION_REPO}" \
               --source-commit "${GITHUB_SHA}" \

@@ -29,7 +29,7 @@ class QualificationRegressionAuditTests(unittest.TestCase):
         self.assertNotIn('qualification-hook-events.jsonl"\nlog.parent.mkdir', self.source)
 
     def test_compaction_repairs_use_low_redundant_triggers(self) -> None:
-        self.assertIn("v4.C08_COMPACT_LIMIT = 40", self.source)
+        self.assertNotIn("v4.C08_COMPACT_LIMIT = 40", self.source)
         self.assertNotIn("v4.C09_COMPACT_LIMIT = 200", self.source)
         self.assertIn("expanded = [name for name in names for _ in range(2)]", self.source)
         self.assertIn("return v4._c08_runtime(**kwargs)", self.source)

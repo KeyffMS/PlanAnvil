@@ -1,6 +1,6 @@
 # Codex sandbox qualification runbook
 
-This is the remaining live-runtime step after deterministic/release hardening is complete.
+Full run #25 is archived and passed baseline 2.3 on Codex CLI 0.153.4. The next remaining publication check is the finite C08 stop/repair follow-up. `QUALIFICATION_STATUS.md` is the current status; this runbook describes both full requalification and targeted checks.
 
 ## Sandbox prerequisites
 
@@ -27,11 +27,13 @@ If the probe fails with `setting up uid map: Operation not permitted`, fix the P
 
 The preferred qualification path is `.github/workflows/plananvil-codex-qualification.yml`. The workflow is intentionally `workflow_dispatch`-only, accepts execution only from `main`, uses Environment `plananvil-codex`, and targets `[self-hosted, linux, x64, plananvil, codex]`.
 
-Use `mode=full` for the release-gating C01-C16 sequence. `mode=c13` remains available as a shorter C13-only probe, but it is not a substitute for the full release gate.
+Use `mode=full` for the release-gating C01-C16 sequence. Use `mode=c08` now to verify the finite stop/repair replacement without rerunning already-qualified paths. `mode=recovery` retains C09/C10/C13; `mode=c13` selects C13 only. `mode=smoke` verifies basic runtime/authentication. The precision/variant matrices are diagnostics, not release evidence. All targeted modes keep `release_gate_passed=false`, even when their selected checks pass.
+
+For the C08 follow-up choose **PlanAnvil Codex qualification → Run workflow → main → c08**. Start a new run, not a rerun of a historical SHA. It uses the same active v7 C08 runtime as full, with real live model inference. The outer harness deliberately starts without a checkpoint, observes the actual PreCompact stop and termination, creates/validates a real checkpoint, then requires one pressure → compaction → SessionStart(compact) → finish sequence and a completed positive result. The disposable fixture excludes ordinary startup recovery only; product files and C10 startup coverage remain unchanged.
 
 The controlled runner must provide `plananvil-qualification-workspace`. The workflow creates a disposable workspace with that helper, fetches only the exact dispatched `main` SHA, materializes the C01-C16 evidence templates, and runs `tools/live_codex_qualification_harness_v7.py`. Model `gpt-5.6-sol` is pinned, approval policy remains `never`, model-tool network access is disabled, and `workspace-write` is granted only to disposable fixture roots when a trial requires it. Vetted project hooks may bypass only the interactive hook-trust prompt; approval and filesystem sandboxing remain enabled.
 
-For C08/C09, Codex 0.152 project trust remains a persisted user-config setting, but long full runs must use the runner's real `CODEX_HOME` so the CLI can refresh live authentication normally. The harness temporarily appends only the disposable fixture trust entry to the runner's `config.toml`, removes the invalid CLI trust path, and restores `config.toml` byte-for-byte after the capability. Authentication/session files are not copied or replaced by this trust bridge.
+For C08/C09, Codex 0.153.4 project trust remains a persisted user-config setting, but long full runs must use the runner's real `CODEX_HOME` so the CLI can refresh live authentication normally. The harness temporarily appends only the disposable fixture trust entry to the runner's `config.toml`, removes the invalid CLI trust path, and restores `config.toml` byte-for-byte after the capability. Authentication/session files are not copied or replaced by this trust bridge.
 
 All normal agent tasks remain ephemeral. Baseline 2.3 introduces exactly one transport exception for C13: the harness may retry C13 non-ephemerally only when the first real ephemeral attempt matches the recognized `collab spawn failed: no thread with id` parent-thread registration error. Any other ephemeral blocker remains `BLOCKED` and does not activate the exception.
 
@@ -73,7 +75,7 @@ The validator rejects obvious token/private-path patterns in `actual.sanitized.j
 
 ## Manual fallback
 
-For an equivalent manual run in a dedicated sandbox:
+For an equivalent manual run in a **fresh disposable checkout**, not the checkout preserving reviewed evidence:
 
 ```text
 codex --version
@@ -113,7 +115,9 @@ C04 is informational/non-gating in baseline 2.3 but should still be observed if 
 
 ## Final gate
 
-When all required capabilities are `REPRODUCED`:
+Full capability qualification and publication closure are separate. Preserve the original full run, then commit the finite C08 follow-up archive/provenance as described in `RELEASE.md`. Never replace the full-run index with a partial-mode index. Production checks require the same qualified product inputs and real, complete C08 protocol evidence, not only a status label.
+
+When all required capabilities are `REPRODUCED` and the supplementary completion evidence is committed:
 
 ```text
 python tools/validate_capabilities.py

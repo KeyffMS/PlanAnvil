@@ -10,12 +10,13 @@ It **generates and validates a plan but never executes it**. Product implementat
 
 The deterministic generator core, schemas, templates, tests, optional planning agents, defense-in-depth hooks, repository installer/upgrader/uninstaller, release tooling, and a deterministic C01-C16 live-qualification template archive/materializer are implemented.
 
-Release status is **candidate**, not production-ready. Deterministic CI is green, but production publication remains gated on two external steps:
+**Full baseline 2.3 qualification passed:** run [#25](https://github.com/KeyffMS/PlanAnvil/actions/runs/34060321283) reproduced C01–C16 on source commit `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`, with Codex CLI `0.153.4`, model `gpt-5.6-sol`, and Debian 13. C04 is informational; the other fifteen capabilities gate qualification. The complete sanitized evidence is committed under `capabilities/` and preserved unchanged under `qualifications/34060321283/`.
 
-1. protect `main` with required PR/CI checks (tracked by issue #6);
-2. execute the prepared C01-C16 packages in an authenticated current Codex sandbox and commit required `REPRODUCED` evidence (tracked by issue #7).
+**Release status remains candidate.** The old C08 positive trial proved its narrow unblock assertion but later timed out. Its finite replacement must finish in a new live `mode=c08` run and its evidence must be committed before production publication. C13 was reproduced through the explicit known-error-gated non-ephemeral fallback, not by proving ephemeral spawning works.
 
-The capability contract is defined in `docs/CODEX_CAPABILITY_BASELINE.md`. Deterministic tests and prepared fixtures do not substitute for live Codex evidence.
+See [current qualification and release status](https://github.com/KeyffMS/PlanAnvil/blob/main/docs/QUALIFICATION_STATUS.md) for the precise evidence boundary and next step. Deterministic CI and loopback CLI conformance are regression checks, not substitutes for live model evidence. Production publication also retains protected-main, clean-tree and verified signed annotated-tag requirements.
+
+The capability contract is defined in `docs/CODEX_CAPABILITY_BASELINE.md`.
 
 ## Install into another repository
 
@@ -108,7 +109,7 @@ python tools/release_check.py --candidate
 ## Release and live qualification
 
 - `docs/RELEASE.md` — deterministic gates, tag workflow and publication contract
-- `docs/CODEX_SANDBOX_RUNBOOK.md` — exact remaining C01-C16 sandbox sequence
+- `docs/CODEX_SANDBOX_RUNBOOK.md` — current full and targeted sandbox procedures
 - `capabilities/templates.part*` + `tools/prepare_capabilities.py` — deterministic prepared C01-C16 fixtures/prompts/config/assertions/results/hashes
 
 A production tag is rejected by `.github/workflows/release.yml` until every required capability is `REPRODUCED`.
@@ -121,11 +122,11 @@ A production tag is rejected by `.github/workflows/release.yml` until every requ
 - `docs/RECOVERY_AND_VALIDATION.md` — crash recovery, checkpoint, schema and path-safety guarantees
 - `docs/OPENAI_COMPLIANCE.md` — Codex compatibility decisions
 - `docs/CODEX_CAPABILITY_BASELINE.md` — reproducible capability release gate
-- `docs/CODEX_CAPABILITY_QUALIFICATION_2026-08-28.md` — latest qualification audit
+- `docs/QUALIFICATION_STATUS.md` — current qualification status and historical audit index
 - `docs/INSTALLATION.md` — install/upgrade/uninstall contract
 - `docs/TROUBLESHOOTING.md` — operational recovery guidance
 - `docs/RELEASE.md` — release workflow
-- `docs/CODEX_SANDBOX_RUNBOOK.md` — remaining live qualification procedure
+- `docs/CODEX_SANDBOX_RUNBOOK.md` — live qualification procedure
 
 ## Author
 

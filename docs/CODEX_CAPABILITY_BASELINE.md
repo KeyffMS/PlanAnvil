@@ -1,8 +1,8 @@
 # PlanAnvil — Codex Capability Baseline
 
-> **Baseline version:** 2.3  
-> **Review date:** 2026-09-02  
-> **Purpose:** define current expected Codex behavior and reproducible release tests.  
+> **Baseline version:** 2.3
+> **Baseline review date:** 2026-09-02; evidence recorded 2026-09-06
+> **Purpose:** define current expected Codex behavior and reproducible release tests.
 > **Authority:** current official OpenAI documentation has precedence.
 
 ## 1. Evidence model
@@ -50,26 +50,31 @@ The README records the test objective, date, Codex version, model, operating sys
 
 Do not commit session transcripts, credentials, private paths, unrelated Git databases or user data.
 
-## 3. Current capability matrix
+## 3. Recorded capability matrix — full run #25
+
+The evidence column records the exact source-scoped result of run `34060321283`, commit `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`, Codex `0.153.4`, `gpt-5.6-sol`, Debian 13. It does not label newly materialized fixtures as executed. Original evidence and provenance are retained in `qualifications/34060321283/`.
+
+C08 met its historical stop/unblock assertions, but its repaired trial subsequently timed out. Production closure additionally requires the new finite C08 stop/repair protocol to complete in committed live evidence. This does not rewrite the historical result or remove either original assertion. C13's result is scoped to the permitted non-ephemeral fallback. See `QUALIFICATION_STATUS.md`.
+
 
 | ID | Expected behavior | Source | Evidence | Contract decision |
 |---|---|---|---|---|
-| C01 | Repository skills are discovered from `.agents/skills` | DOCUMENTED | BLOCKED | Use `.agents/skills/plan-anvil` |
-| C02 | `allow_implicit_invocation: false` disables implicit invocation while explicit `$skill` invocation remains available | DOCUMENTED | BLOCKED | Require explicit `$plan-anvil` activation |
-| C03 | Generated execution contracts require an explicit flat direct-child topology and do not rely on a Codex nesting-depth setting | CONTRACT_DEFINED | BLOCKED | Enforce flat topology deterministically in `PLAN.md` validation |
-| C04 | Codex subagent workflows are controlled by current `[agents]` enablement/concurrency settings; PlanAnvil does not require nested descendants | DOCUMENTED | BLOCKED | Keep generated execution deliberately flat |
-| C05 | Required reviewer handoffs use explicit immutable files and hashes | CONTRACT_DEFINED | BLOCKED | Reject missing, stale or out-of-root review inputs |
-| C06 | `PreToolUse` covers supported local function-tool paths but not every equivalent path | DOCUMENTED | BLOCKED | Hooks plus mandatory postcondition validation |
-| C07 | The Git guard rejects the configured unsafe-command corpus | CONTRACT_DEFINED | BLOCKED | Git postconditions remain mandatory |
-| C08 | `PreCompact` can stop compaction | DOCUMENTED | BLOCKED | Delay only until a valid checkpoint exists |
-| C09 | Compaction is allowed after checkpoint creation without a permanent stop loop | CONTRACT_DEFINED | BLOCKED | Checkpoint, allow, recover and reconcile |
-| C10 | `SessionStart` supplies recovery context at startup/resume and after compaction (`source=compact`); `PostCompact` remains advisory | DOCUMENTED | BLOCKED | Inject only a recovery pointer through the supported context event |
-| C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | BLOCKED | Explicitly map affected instructions |
-| C12 | `project_doc_max_bytes` can truncate automatic instruction loading | DOCUMENTED | BLOCKED | Read, size and hash complete files explicitly |
-| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | BLOCKED | Context/audit only; qualify ephemeral-first with a controlled project-scoped non-ephemeral fallback when the recognized ephemeral parent-thread blocker occurs |
-| C14 | Planning isolation preserves the source branch, SHA, index and files | CONTRACT_DEFINED | BLOCKED | Planning worktree isolation is mandatory |
-| C15 | Blind review is immutable and detects seeded contract defects | CONTRACT_DEFINED | BLOCKED | Hash review before separate comparison |
-| C16 | The Git probe accurately reports refs, branches, worktrees, index, commits and cleanup | CONTRACT_DEFINED | BLOCKED | No artifact generation before required Git capabilities pass |
+| C01 | Repository skills are discovered from `.agents/skills` | DOCUMENTED | REPRODUCED | Use `.agents/skills/plan-anvil` |
+| C02 | `allow_implicit_invocation: false` disables implicit invocation while explicit `$skill` invocation remains available | DOCUMENTED | REPRODUCED | Require explicit `$plan-anvil` activation |
+| C03 | Generated execution contracts require an explicit flat direct-child topology and do not rely on a Codex nesting-depth setting | CONTRACT_DEFINED | REPRODUCED | Enforce flat topology deterministically in `PLAN.md` validation |
+| C04 | Codex subagent workflows are controlled by current `[agents]` enablement/concurrency settings; PlanAnvil does not require nested descendants | DOCUMENTED | REPRODUCED | Keep generated execution deliberately flat |
+| C05 | Required reviewer handoffs use explicit immutable files and hashes | CONTRACT_DEFINED | REPRODUCED | Reject missing, stale or out-of-root review inputs |
+| C06 | `PreToolUse` covers supported local function-tool paths but not every equivalent path | DOCUMENTED | REPRODUCED | Hooks plus mandatory postcondition validation |
+| C07 | The Git guard rejects the configured unsafe-command corpus | CONTRACT_DEFINED | REPRODUCED | Git postconditions remain mandatory |
+| C08 | `PreCompact` can stop compaction | DOCUMENTED | REPRODUCED | Delay only until a valid checkpoint exists |
+| C09 | Compaction is allowed after checkpoint creation without a permanent stop loop | CONTRACT_DEFINED | REPRODUCED | Checkpoint, allow, recover and reconcile |
+| C10 | `SessionStart` supplies recovery context at startup/resume and after compaction (`source=compact`); `PostCompact` remains advisory | DOCUMENTED | REPRODUCED | Inject only a recovery pointer through the supported context event |
+| C11 | Project instructions follow documented directory scope and precedence | DOCUMENTED | REPRODUCED | Explicitly map affected instructions |
+| C12 | `project_doc_max_bytes` can truncate automatic instruction loading | DOCUMENTED | REPRODUCED | Read, size and hash complete files explicitly |
+| C13 | `SubagentStart` can add context but `continue: false` does not stop subagent startup | DOCUMENTED | REPRODUCED | Context/audit only; qualify ephemeral-first with a controlled project-scoped non-ephemeral fallback when the recognized ephemeral parent-thread blocker occurs |
+| C14 | Planning isolation preserves the source branch, SHA, index and files | CONTRACT_DEFINED | REPRODUCED | Planning worktree isolation is mandatory |
+| C15 | Blind review is immutable and detects seeded contract defects | CONTRACT_DEFINED | REPRODUCED | Hash review before separate comparison |
+| C16 | The Git probe accurately reports refs, branches, worktrees, index, commits and cleanup | CONTRACT_DEFINED | REPRODUCED | No artifact generation before required Git capabilities pass |
 
 ## 4. Release gate
 

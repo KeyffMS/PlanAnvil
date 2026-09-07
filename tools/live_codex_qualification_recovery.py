@@ -12,13 +12,13 @@ base = v7.base
 SCOPE = ("C09", "C10", "C13")
 
 
-def selected_summary(results: dict[str, str]) -> dict:
+def selected_summary(results: dict[str, str], scope: tuple[str, ...] = SCOPE) -> dict:
     """A successful targeted run is never a successful full release gate."""
-    missing = [cid for cid in SCOPE if results.get(cid) != "REPRODUCED"]
+    missing = [cid for cid in scope if results.get(cid) != "REPRODUCED"]
     return {
-        "scope": list(SCOPE),
+        "scope": list(scope),
         "diagnostic_only": True,
-        "results": {cid: results.get(cid, "BLOCKED") for cid in SCOPE},
+        "results": {cid: results.get(cid, "BLOCKED") for cid in scope},
         "selected_not_reproduced": missing,
         "selected_gate_passed": not missing,
         "release_gate_passed": False,
@@ -32,7 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-c13-non-ephemeral-fallback", action="store_true", required=True)
+    parser.add_argument("--only", choices=("C08",), help="Run only the finite C08 follow-up")
     args = parser.parse_args(argv)
+    scope = (args.only,) if args.only else SCOPE
     root = args.root.resolve()
     output = args.output.resolve()
     if output == root or output in root.parents or output.is_relative_to(root):
@@ -55,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         schemas = base.write_schemas(runtime_root / "schemas")
         v7._install()
         v7.v6.ALLOW_NON_EPHEMERAL_FALLBACK = args.allow_c13_non_ephemeral_fallback
-        for cid in SCOPE:
+        for cid in scope:
             print(f"=== {cid}: targeted live qualification ===", flush=True)
             try:
                 result, _required = v7.v6.capability_runtime(
@@ -88,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             "schema_version": "1.0", "date": date,
             "source_commit": args.source_commit, "github_actions_run": args.run_id,
             "codex_version": version, "model": base.MODEL, "os": os_name,
-            **selected_summary(results),
+            **selected_summary(results, scope),
         }
         base.stage_artifact(root, output, summary)
         print(json.dumps(summary, indent=2, sort_keys=True), flush=True)

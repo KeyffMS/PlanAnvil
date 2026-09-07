@@ -1,7 +1,7 @@
 # PlanAnvil — OpenAI Codex Compliance Record
 
-> **Verification date:** 2026-07-12  
-> **Scope:** current contract 2.1 for the first production-ready PlanAnvil implementation  
+> **Original contract review:** 2026-07-12; scoped recovery/source review: 2026-09-05; live qualification: 2026-09-06
+> **Scope:** contract 2.1; baseline 2.3 qualification of the 0.2.0 release candidate
 > **Rule:** current official OpenAI documentation is authoritative for Codex behavior.
 
 ## 1. Official sources
@@ -10,7 +10,7 @@
 |---|---|---|
 | Skills | https://developers.openai.com/codex/skills/ | Use `.agents/skills/plan-anvil/`; disable implicit invocation |
 | Hooks | https://developers.openai.com/codex/hooks/ | Project hooks require trusted active configuration and remain optional defense in depth |
-| Subagents | https://developers.openai.com/codex/subagents/ | Project agents live in `.codex/agents/`; depth `1` is the flat-topology setting |
+| Subagents | https://developers.openai.com/codex/subagents/ | Project agents live in `.codex/agents/`; enforce flat direct-child topology in the generated contract, not a runtime depth setting |
 | Project instructions | https://developers.openai.com/codex/guides/agents-md/ | Map overrides, standard files, configured fallbacks, precedence and size limits |
 | Configuration | https://developers.openai.com/codex/config-reference/ | Validate every used key and supported value |
 | Git worktrees | https://developers.openai.com/codex/environments/git-worktrees/ | Worktrees isolate checked-out files while sharing Git metadata |
@@ -52,11 +52,7 @@ For JSON definitions, the Windows override is `commandWindows`. TOML may use `co
 
 Project custom agents live under `.codex/agents/`.
 
-The generated execution contract uses:
-
-```text
-agents.max_depth = 1
-```
+The generated execution contract requires a flat direct-child topology and does not rely on undocumented `agents.max_depth`. Current agent enablement/concurrency settings are distinct from the deterministic topology requirement.
 
 Authorized technical agents are direct children of the executor. Actual agent evidence is checked as an additional correctness control.
 
@@ -194,7 +190,7 @@ A relevant documentation change blocks release until the affected record and tes
 - [x] Hook limitations documented
 - [x] Windows hook override names documented
 - [x] `SubagentStart` treated as context and audit only
-- [x] Flat topology uses current documented depth behavior
+- [x] Flat topology is enforced by the generated contract without assuming a runtime depth setting
 - [x] Instruction precedence and truncation documented
 - [x] Complete Git commit capability is tested rather than assumed
 - [x] Planning worktree defined as durable control root
@@ -203,4 +199,13 @@ A relevant documentation change blocks release until the affected record and tes
 - [x] Local profile and local state are ignored
 - [x] Machine-state formats defined
 - [x] Unsupported behaviors excluded from the active contract
-- [ ] Production implementation and committed release fixtures completed
+- [x] Complete source-scoped live C01–C16 evidence committed for run #25
+- [ ] Finite C08 repaired-path completion verified live and committed for production closure
+
+## 7. Source-scoped qualification and release closure — 2026-09-07
+
+Run `34060321283` reproduced all baseline 2.3 capabilities with Codex CLI `0.153.4`, model `gpt-5.6-sol`, Debian 13, at PlanAnvil `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`. The archived result retains its original source identifier and hashes. Current status and remaining constraints are in `QUALIFICATION_STATUS.md`; earlier audits are historical, not current blockers by default.
+
+C10 delivers recovery through `SessionStart(source=compact)`; `PostCompact` remains advisory. C13's project-native agent and hook pass via the allowed non-ephemeral retry, not an unrestricted home-scoped replacement. C08's historical positive trial timed out after proving unblocking. The stricter finite C08 follow-up has not yet produced live evidence and remains a production-publication prerequisite.
+
+The C08 fixture now isolates the deliberate invalid-checkpoint trigger from ordinary startup recovery by narrowing SessionStart to `^compact$` in the disposable root checkout before bootstrap. It does not change product hook behavior. Repaired recovery still runs through the real compact source. A correct stop is an expected terminal failure of the negative CLI invocation, whereas the positive invocation must complete normally. No timeout is accepted as completed repair.

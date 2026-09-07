@@ -51,3 +51,23 @@ The production `release_check.py` enforces clean-tree state in addition to versi
 ## Repository administration prerequisite
 
 Before production release, protect `main` as tracked in issue #6: PR-only changes, required CI, up-to-date branch, conversation resolution, and no force push/delete.
+
+## Qualification closure (2026-09-07)
+
+The baseline #25 evidence is preserved immutably. `qualifications/index.json`
+identifies the current reviewed full run; its source SHA always remains the
+actually executed commit, never the later evidence-import commit.
+`release_check.py` also validates the original archive digest/manifest, exact
+current capability packages, qualified .agents/.codex bytes, and finite C08
+negative-stop/positive-completion evidence. The old C08 timeout keeps production
+blocked until the new live result is committed. Candidate checks intentionally
+remain usable before that result exists.
+
+The active main ruleset was verified on 2026-09-07: PR-only squash changes,
+seven required status checks, strict up-to-date branch, conversation resolution,
+no deletion or force push, no bypass actors. The protected distribution job now
+also requires real-CLI conformance to succeed. No policy is loosened for closure.
+
+After finite live evidence is imported and CI is green, preparation is complete;
+the signed annotated production tag remains a separate authorized publication.
+No unsigned or lightweight tag may substitute for the required verified signature.
