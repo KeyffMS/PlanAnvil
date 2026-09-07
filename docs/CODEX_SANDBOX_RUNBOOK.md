@@ -1,6 +1,6 @@
 # Codex sandbox qualification runbook
 
-Full run #25 is archived and passed baseline 2.3 on Codex CLI 0.153.4. The next remaining publication check is the finite C08 stop/repair follow-up. `QUALIFICATION_STATUS.md` is the current status; this runbook describes both full requalification and targeted checks.
+Full run #25 is archived and passed baseline 2.3 on Codex CLI 0.153.4. The finite C08 stop/repair replacement is merged. Publication now requires a successful new full run and import of its complete evidence. `QUALIFICATION_STATUS.md` is the current status; this runbook describes both full requalification and targeted checks.
 
 ## Sandbox prerequisites
 
@@ -27,9 +27,11 @@ If the probe fails with `setting up uid map: Operation not permitted`, fix the P
 
 The preferred qualification path is `.github/workflows/plananvil-codex-qualification.yml`. The workflow is intentionally `workflow_dispatch`-only, accepts execution only from `main`, uses Environment `plananvil-codex`, and targets `[self-hosted, linux, x64, plananvil, codex]`.
 
-Use `mode=full` for the release-gating C01-C16 sequence. Use `mode=c08` now to verify the finite stop/repair replacement without rerunning already-qualified paths. `mode=recovery` retains C09/C10/C13; `mode=c13` selects C13 only. `mode=smoke` verifies basic runtime/authentication. The precision/variant matrices are diagnostics, not release evidence. All targeted modes keep `release_gate_passed=false`, even when their selected checks pass.
+Use **mode=full** for the next publication-closing C01-C16 sequence. The production validator requires one complete source-bound full-run archive with the finite C08 result, not a combination of partial archives. `mode=c08` is available to diagnose only the finite stop/repair replacement. `mode=recovery` retains C09/C10/C13; `mode=c13` selects C13 only. `mode=smoke` verifies basic runtime/authentication. The precision/variant matrices are diagnostics, not release evidence. All targeted modes keep `release_gate_passed=false`, even when their selected checks pass.
 
-For the C08 follow-up choose **PlanAnvil Codex qualification → Run workflow → main → c08**. Start a new run, not a rerun of a historical SHA. It uses the same active v7 C08 runtime as full, with real live model inference. The outer harness deliberately starts without a checkpoint, observes the actual PreCompact stop and termination, creates/validates a real checkpoint, then requires one pressure → compaction → SessionStart(compact) → finish sequence and a completed positive result. The disposable fixture excludes ordinary startup recovery only; product files and C10 startup coverage remain unchanged.
+Start a NEW **PlanAnvil Codex qualification -> Run workflow -> main -> full** from an account allowed by the local runner's initiating-actor policy. Automated run #26 (`34109662176`) was rejected by that policy before any Codex trial; do not rerun it or relax the allowlist. The repair is on main, but that rejected launch provides no model-backed result.
+
+Both `full` and `c08` use the same active v7 C08 runtime with real live model inference. The outer harness deliberately starts without a checkpoint, observes the actual PreCompact stop and termination, creates/validates a real checkpoint, then requires one pressure -> compaction -> SessionStart(compact) -> finish sequence and a completed positive result. The disposable fixture excludes ordinary startup recovery only; product files and C10 startup coverage remain unchanged.
 
 The controlled runner must provide `plananvil-qualification-workspace`. The workflow creates a disposable workspace with that helper, fetches only the exact dispatched `main` SHA, materializes the C01-C16 evidence templates, and runs `tools/live_codex_qualification_harness_v7.py`. Model `gpt-5.6-sol` is pinned, approval policy remains `never`, model-tool network access is disabled, and `workspace-write` is granted only to disposable fixture roots when a trial requires it. Vetted project hooks may bypass only the interactive hook-trust prompt; approval and filesystem sandboxing remain enabled.
 
@@ -115,9 +117,9 @@ C04 is informational/non-gating in baseline 2.3 but should still be observed if 
 
 ## Final gate
 
-Full capability qualification and publication closure are separate. Preserve the original full run, then commit the finite C08 follow-up archive/provenance as described in `RELEASE.md`. Never replace the full-run index with a partial-mode index. Production checks require the same qualified product inputs and real, complete C08 protocol evidence, not only a status label.
+Full capability qualification and publication closure are separate. Preserve the original #25 archive unchanged. For publication, review and commit a new successful full-run archive whose C08 has finite completion evidence, along with its exact C01-C16 packages and actual executed source SHA. Update `qualifications/index.json` to that full run as described in `RELEASE.md`. Never replace the full-run index with a partial-mode index or splice a targeted result into an older archive.
 
-When all required capabilities are `REPRODUCED` and the supplementary completion evidence is committed:
+When the complete current full-run evidence is committed:
 
 ```text
 python tools/validate_capabilities.py

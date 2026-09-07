@@ -25,6 +25,8 @@ python tools/build_release.py --output dist
 
 Before a production tag, execute `docs/CODEX_SANDBOX_RUNBOOK.md`. Required entries in `capabilities/index.json` must be changed from `BLOCKED` to `REPRODUCED` only after their complete sanitized evidence package is committed and `python tools/validate_capabilities.py` passes.
 
+For the current C08 closure, use a NEW `mode=full` run on main, initiated by an account allowed by the self-hosted runner. The production validator requires a single complete full-run archive containing the finite C08 proof. A successful `c08` or `recovery` diagnostic is useful but its partial archive cannot replace that full run. See `docs/QUALIFICATION_STATUS.md` for the merged repair and the automated launch rejected before testing.
+
 ## Publish
 
 `VERSION` is the canonical distribution/release version. The deterministic artifact generator version is recorded independently in generated artifacts for compatibility. A production tag must be exactly `v<VERSION>`.
@@ -60,14 +62,23 @@ actually executed commit, never the later evidence-import commit.
 `release_check.py` also validates the original archive digest/manifest, exact
 current capability packages, qualified .agents/.codex bytes, and finite C08
 negative-stop/positive-completion evidence. The old C08 timeout keeps production
-blocked until the new live result is committed. Candidate checks intentionally
-remain usable before that result exists.
+blocked until the new complete full-run result is committed. Candidate checks
+intentionally remain usable before that result exists.
+
+To import a successful new full result, preserve its exact archive, summary and
+verified provenance under `qualifications/<run-id>/`, import its exact C01-C16
+packages, and point `qualifications/index.json.current_run` to that run. Keep the
+original #25 archive and provenance unchanged. Never merge a partial index into
+the full index, edit old actual observations, or label the denied automated launch
+as tested. Validate archive integrity and production readiness on the resulting
+clean tree through a protected PR before any signed publication.
 
 The active main ruleset was verified on 2026-09-07: PR-only squash changes,
 seven required status checks, strict up-to-date branch, conversation resolution,
 no deletion or force push, no bypass actors. The protected distribution job now
 also requires real-CLI conformance to succeed. No policy is loosened for closure.
 
-After finite live evidence is imported and CI is green, preparation is complete;
-the signed annotated production tag remains a separate authorized publication.
-No unsigned or lightweight tag may substitute for the required verified signature.
+After the complete new full-run evidence is imported and CI is green, preparation
+is complete; the signed annotated production tag remains a separate authorized
+publication. No unsigned or lightweight tag may substitute for the required
+verified signature.
