@@ -1,0 +1,119 @@
+name: Stage verified qualification evidence
+on:
+  push:
+    branches: [chore/qualification-closure]
+    paths: [.github/workflows/qualification-evidence-import.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Snapshot source and fetch the exact reviewed evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/closure-source.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/closure-source.sha"
+          gh api repos/KeyffMS/PlanAnvil/actions/artifacts/9997721013/zip > "$RUNNER_TEMP/run25-outer.zip"
+      - name: Verify provenance and store content-addressed evidence tree without changing refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, concurrent.futures, hashlib, json, os, shutil, subprocess, sys, zipfile
+          from pathlib import Path
+          sys.path.insert(0, str(Path('tools').resolve()))
+          from qualification_artifact import verify_archive
+          from validate_capabilities import validate_all
+          temp = Path(os.environ['RUNNER_TEMP'])
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          def api(endpoint, payload=None):
+              args = ['gh', 'api', 'repos/KeyffMS/PlanAnvil/' + endpoint]
+              if payload is not None:
+                  args += ['--method', 'POST', '--input', '-']
+              result = subprocess.run(args, input=json.dumps(payload) if payload is not None else None,
+                                      text=True, capture_output=True, check=True)
+              return json.loads(result.stdout)
+          source = 'd0384f76bc4150d33bb8f51ef5981f3243b3cfb3'
+          outer = temp / 'run25-outer.zip'
+          outer_sha = hashlib.sha256(outer.read_bytes()).hexdigest()
+          assert outer_sha == '9b8854ab0412af0263f156c6dc2e5381db85506e11ca55e64a978fe9498ced25'
+          run = api('actions/runs/34060321283')
+          assert run['head_sha'] == source and run['conclusion'] == 'success'
+          with zipfile.ZipFile(outer) as z:
+              assert z.namelist() == ['evidence-artifact.zip']
+              inner = z.read('evidence-artifact.zip')
+          inner_sha = hashlib.sha256(inner).hexdigest()
+          assert inner_sha == 'de75db98248cd9b466754528c646e2054418e161a5324f3354128ded8cac08bf'
+          inner_path = temp / 'run25-inner.zip'
+          inner_path.write_bytes(inner)
+          verification = verify_archive(inner_path)
+          staged = temp / 'verified-run25'
+          with zipfile.ZipFile(inner_path) as z:
+              for name in z.namelist():
+                  if name == 'archive-manifest.json':
+                      continue
+                  target = staged / name
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(name))
+          assert validate_all(staged) == []
+          summary = json.loads((staged / 'qualification-summary.json').read_text())
+          assert summary['source_commit'] == source and summary['github_actions_run'] == '34060321283'
+          assert summary['release_gate_passed'] is True
+          assert summary['results'] == {f'C{i:02d}': 'REPRODUCED' for i in range(1, 17)}
+          original_index = json.loads(Path('capabilities/index.json').read_text())
+          imported_index = json.loads((staged / 'capabilities/index.json').read_text())
+          for old, new in zip(original_index['capabilities'], imported_index['capabilities'], strict=True):
+              assert all(old[k] == new[k] for k in ('id', 'required', 'expected_behavior'))
+          for i in range(1, 17):
+              dest = Path('capabilities') / f'C{i:02d}'
+              shutil.rmtree(dest)
+              shutil.copytree(staged / dest, dest)
+          for name in ('index.json', 'README.md'):
+              shutil.copyfile(staged / 'capabilities' / name, Path('capabilities') / name)
+          history = Path('qualifications/34060321283')
+          history.mkdir(parents=True)
+          (history / 'evidence-artifact.zip').write_bytes(inner)
+          shutil.copyfile(staged / 'qualification-summary.json', history / 'qualification-summary.json')
+          provenance = {'schema_version': '1.0', 'source_commit': source, 'github_actions_run': '34060321283',
+                        'artifact_id': 9997721013, 'outer_sha256': outer_sha, 'evidence_sha256': inner_sha,
+                        'integrity': verification,
+                        'limitations': ['C08 repair trial timed out after proving the original narrow unblock assertion.',
+                                        'C13 passed through the explicitly permitted non-ephemeral fallback.']}
+          (history / 'provenance.json').write_text(json.dumps(provenance, indent=2, sort_keys=True) + '\n')
+          assert validate_all(Path('.')) == []
+          subprocess.run(['git', 'add', '-A', '--', 'capabilities', 'qualifications'], check=True)
+          paths = git('diff', '--cached', '--name-only', '--diff-filter=AM').splitlines()
+          deleted = git('diff', '--cached', '--name-only', '--diff-filter=D').splitlines()
+          def store(path):
+              data = Path(path).read_bytes()
+              expected = git('hash-object', path)
+              result = api('git/blobs', {'content': base64.b64encode(data).decode(), 'encoding': 'base64'})
+              assert result['sha'] == expected
+              return {'path': path, 'mode': '100644', 'type': 'blob', 'sha': expected}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              entries = list(pool.map(store, paths))
+          entries += [{'path': path, 'mode': '100644', 'type': 'blob', 'sha': None} for path in deleted]
+          result = api('git/trees', {'base_tree': git('rev-parse', 'HEAD^{tree}'), 'tree': entries})
+          assert result['sha'] == git('write-tree')
+          (temp / 'closure-tree.json').write_text(json.dumps({'tree': result['sha'], 'parent': git('rev-parse', 'HEAD'),
+              'changed_files': len(entries), 'source_commit': source, 'integrity': verification}, indent=2))
+          print((temp / 'closure-tree.json').read_text())
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: qualification-closure-stage
+          path: |
+            ${{ runner.temp }}/closure-source.tar.gz
+            ${{ runner.temp }}/closure-source.sha
+            ${{ runner.temp }}/closure-tree.json
+          retention-days: 2
+          if-no-files-found: error
