@@ -1,0 +1,15 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "fc125afb7fcf1c6ac1c4223c7eeb0a1e9877e68d086782987a5c263a29bcfc7f",
+    "actual.sanitized.json": "ce48064b618f973f92ed2c9c4fadc4641ea188d29b0eaf9a760ac358c556af20",
+    "config/README.md": "9e90b31ef6002415db8caa4dfa544b1172a7f52ed04f27e9182c420a8bb6272c",
+    "evaluation.json": "19febe046d2e4aee5a6764d4bb77bc520928fccc1e55fcab87b93aff036eb9b5",
+    "expected.json": "3ac2f1bd7ac5fc1bdf9a4488192d3faa0a57559882c1dcfb589eaef37b198c3a",
+    "fixture/README.md": "e98ce2051c587e80a49122d4edd42fd54d4535444216b24e120dad821d12c49f",
+    "fixture/agent-role.txt": "017d32314423997f9689d587edaca5359bbb9ae82bd5a4629fec7e1367069415",
+    "prompt.txt": "2f8cc8ad2f94635ed09155920f541256485d7109c5cce40e38f108e1a7e52338",
+    "run-command.txt": "3ee216e3f6a32841d5f58c4baff23362437b4d1332092c6c8ac21e24ed33ef3e"
+  },
+  "schema_version": "1.0"
+}

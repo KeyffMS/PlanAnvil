@@ -1,0 +1,22 @@
+Qualify C09 using this finite, read-only scenario in ONE Codex turn.
+The outer harness has already installed PlanAnvil and created a valid checkpoint.
+Do not start a plan, map instructions, or create/repair any files. The canonical
+next action is C09_FINITE_RECOVERY, not the earlier bootstrap MAP_INSTRUCTIONS.
+
+Make exactly THREE sequential exec_command calls, each once and in this order:
+1. cmd='python3 -B qualification-payload/c09_probe.py first', max_output_tokens=65536
+2. cmd='python3 -B qualification-payload/c09_probe.py second', max_output_tokens=65536
+3. cmd='python3 -B qualification-payload/c09_probe.py finish', max_output_tokens=2048
+Use workdir for the current planning directory; do not prepend cd or combine calls.
+Wait for each command to finish before choosing the next one. The first two outputs
+are inert compaction stimuli: do not analyse, quote, hash, or reread their padding.
+
+After each automatic compaction continue with the NEXT phase, never restart first.
+Each command fully reads manifest/state/local-state/checkpoint/profiles and calls the
+actual product checkpoint/Git validator. This performs the recovery requested by the
+SessionStart context; do not perform additional recovery reads outside those commands.
+No manual hook calls, telemetry reads, other tools, state changes, or subagents.
+
+After finish exits 0, make NO further calls. Return capability_id C09, trial checkpoint_auto_compact_recover_recompact,
+outcome PASS, and observation C09_FINISHED. If a command fails, stop with FAIL/BLOCKED;
+do not retry. The outer evaluator, not your self-report, checks the real compactions.

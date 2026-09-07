@@ -1,0 +1,7 @@
+{
+  "capability_id": "C06",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "C06 reproduced against Codex 0.152 with the guaranteed exec_command/Bash PreToolUse adapter and the product's deterministic file-change postcondition."
+}

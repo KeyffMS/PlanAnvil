@@ -1,0 +1,7 @@
+{
+  "capability_id": "C03",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "C03 reproduced with explicit writable Git bootstrap and deterministic flat direct-child contract validation."
+}

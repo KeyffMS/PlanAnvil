@@ -1,0 +1,5 @@
+Capability qualification C04: Informational nested-subagent observation.
+
+Observe current Codex nested-subagent behavior without making it a PlanAnvil release gate.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

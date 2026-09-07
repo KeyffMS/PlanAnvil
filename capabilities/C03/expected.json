@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Profiler/reviewer agents, if started, are direct children of the controller.",
+    "No PlanAnvil-generated execution contract relies on agents.max_depth for safety."
+  ],
+  "capability_id": "C03",
+  "schema_version": "1.0",
+  "title": "Flat direct-child PlanAnvil topology"
+}

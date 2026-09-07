@@ -1,0 +1,5 @@
+{
+  "id": "CHECKPOINT-01-VERIFIED",
+  "result": "PASS",
+  "note": "Replace hashes/Git metadata during live fixture setup."
+}

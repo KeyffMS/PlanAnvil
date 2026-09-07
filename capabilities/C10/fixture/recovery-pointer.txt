@@ -1,0 +1,1 @@
+Use only canonical state/checkpoint paths and Git identity; no conversation transcript.

@@ -1,0 +1,7 @@
+{
+  "capability_id": "C12",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "C12 reproduced: automatic project instructions respected the 1024-byte budget while PlanAnvil explicitly read and hashed the complete 4320-byte fixture."
+}

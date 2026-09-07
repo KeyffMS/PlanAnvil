@@ -1,0 +1,5 @@
+Capability qualification C02: Explicit-only skill activation.
+
+Verify allow_implicit_invocation=false prevents implicit activation while explicit $fixture-capability activation remains available.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

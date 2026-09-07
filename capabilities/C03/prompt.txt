@@ -1,0 +1,5 @@
+Capability qualification C03: Flat direct-child PlanAnvil topology.
+
+Run the PlanAnvil agent workflow and record the subagent event tree; verify PlanAnvil uses direct children only and does not rely on a max_depth setting.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

@@ -1,0 +1,16 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "170f980e84506d659dee2c722826937a60cad4332d96d4031588d9f76b059e04",
+    "actual.sanitized.json": "21106b6cbd5e62e0a5bcea6b525d28399542fd4e31a1f0b4fc892a62a2df8dce",
+    "config/README.md": "af665c6549f9f126f30a50b9b522363e9d51bc535afac28f0a5d1dd14db1ea62",
+    "evaluation.json": "c8869d4db670db69f3b65b32cd83b551f2f95c963d3552defa7cef0c213a303e",
+    "expected.json": "4c439c4a37de0e0cdf003b05d628017437914693c679f5c6ad7ed1485f92c811",
+    "fixture/AGENTS.md": "a295ac144f56aa555fd1d180273d0a203cf629c5352419dd9e4a4d33cc9e7bed",
+    "fixture/README.md": "e16506860854e5c8522038a616a2b5235fa2529a38f8b53361aa6df8d3d4fd24",
+    "fixture/src/file.txt": "e80b71cd14d3cbd65f4173abcbfcf01a545dbca32a72d575108b553a648cc96f",
+    "prompt.txt": "4ba01c7961ff3b9d4315e287d441fd2bbda12ce0f678fa489b2e2ad407c27c5e",
+    "run-command.txt": "0683eb1cb9ff624f8923fce722ffdd05ea4c592509cf2d25c0879b43e8fb56af"
+  },
+  "schema_version": "1.0"
+}

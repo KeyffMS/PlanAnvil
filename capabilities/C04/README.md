@@ -1,11 +1,30 @@
-# C04 — Capability evidence
+# C04 — Informational nested-subagent observation
 
-- Expected behavior: Codex subagent workflows use current agent enablement/concurrency settings; PlanAnvil does not require nested descendants.
 - Source: `DOCUMENTED`
-- Release-gating: `no` for baseline 2.2
-- Current result: `BLOCKED`
-- Qualification attempt: `2026-08-28`
-- Documentation check: `PASS`; current docs expose `agents.enabled` and `agents.max_concurrent_threads_per_session`, not a nesting-depth knob.
-- Live blocker: no authenticated Codex runtime is available for subagent spawning evidence.
+- Release-gating: `no`
+- Current result: `REPRODUCED`
+- Qualification package state: `READY_FOR_LIVE_RUN`
+- Prepared: `2026-08-28`
 
-This capability is informational for PlanAnvil 2.2 because generated execution deliberately requires a flat direct-child topology.
+## Objective
+
+Observe current Codex nested-subagent behavior without making it a PlanAnvil release gate.
+
+## Live metadata to record
+
+Before changing this result to `REPRODUCED`, record the exact Codex version, model slug, OS, permission mode, project trust, fixture commit, setup/cleanup, sanitized observations, evaluation, and hashes. Do not commit transcripts, credentials, private paths, or unrelated repository data.
+
+## Execution
+
+Use `fixture/`, `config/README.md`, `prompt.txt`, and `run-command.txt`. Replace the current BLOCKED `actual.sanitized.json`/`evaluation.json` with the live result, update `capabilities/index.json`, then run `python tools/rehash_capability.py C04` and `python tools/validate_capabilities.py`.
+
+## Live qualification
+
+- Date: `2026-09-06`
+- Codex: `codex-cli 0.153.4`
+- Model: `gpt-5.6-sol`
+- OS: `Debian GNU/Linux 13 (trixie)`
+- Permission mode: `approval=never; sandbox=per-trial; model-tool network disabled`
+- Project trust: `trusted via CLI override for disposable fixture repositories`
+- Source commit: `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`
+- Result: `REPRODUCED`

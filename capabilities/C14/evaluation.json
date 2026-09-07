@@ -1,0 +1,7 @@
+{
+  "capability_id": "C14",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "The sanitized trial evidence demonstrates source immutability and confines planning changes to the isolated planning worktree and branch."
+}

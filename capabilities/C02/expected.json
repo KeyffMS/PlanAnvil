@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "A semantically matching prompt without the skill name does not activate the fixture skill.",
+    "An explicit $fixture-capability prompt activates the fixture skill."
+  ],
+  "capability_id": "C02",
+  "schema_version": "1.0",
+  "title": "Explicit-only skill activation"
+}

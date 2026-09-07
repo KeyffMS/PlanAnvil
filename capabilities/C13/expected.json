@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "SubagentStart can add context for the starting agent.",
+    "continue=false does not become a relied-upon startup blocker."
+  ],
+  "capability_id": "C13",
+  "schema_version": "1.0",
+  "title": "SubagentStart context semantics"
+}

@@ -1,0 +1,2 @@
+Synthetic agent role: fixture_agent.
+The real spawn request must set agent_type exactly to fixture_agent. Both transports declare the role in the project and keep SubagentStart project-scoped. The child echoes only context it actually received; the opaque value is absent from its own instructions and from the root prompt.

@@ -1,0 +1,5 @@
+Capability qualification C16: Git capability probe matrix.
+
+Execute the reversible Git capability probe across supported Codex permission modes and record refs/branches/worktrees/index/commit/hook/cleanup outcomes.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

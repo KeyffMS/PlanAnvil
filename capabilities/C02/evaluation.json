@@ -1,0 +1,7 @@
+{
+  "capability_id": "C02",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "Sanitized trial evidence demonstrates that the fixture skill remains inactive for an unnamed semantic match and activates when explicitly named."
+}

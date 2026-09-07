@@ -1,0 +1,167 @@
+{
+  "capability_id": "C02",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "Implicit-activation trial completed and passed: a semantically matching prompt without the skill name produced no skill-specific activation token.",
+    "Explicit-activation trial completed and passed: the explicit $fixture-capability prompt supplied the expected FIXTURE_SKILL_ACTIVE token.",
+    "Both material assertions in the expected specification were directly exercised; neither trial reported a blocker or runtime error."
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "The semantic match did not place any skill-specific activation token in the active instructions.",
+          "name": "A semantically matching prompt without the skill name does not activate the fixture skill.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C02",
+      "event_summary": {
+        "completed_command_items": 2,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 6,
+          "item.started": 2,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 4,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "No skill-specific activation token was present."
+      ],
+      "outcome": "PASS",
+      "outer_skill_policy": {
+        "allow_implicit_invocation": false,
+        "policy_file": ".agents/skills/fixture-capability/agents/openai.yaml",
+        "policy_sha256": "b8bf36d2b14a2e89919ac57df17c94d48855b94919acd9cbcf227336dc8c7554"
+      },
+      "sandbox": "read-only",
+      "trial": "implicit_activation_disabled",
+      "trial_name": "implicit_activation_disabled"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "Activated skill context required and supplied `FIXTURE_SKILL_ACTIVE`.",
+          "name": "An explicit $fixture-capability prompt activates the fixture skill.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C02",
+      "event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 5,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "FIXTURE_SKILL_ACTIVE"
+      ],
+      "outcome": "PASS",
+      "outer_skill_policy": {
+        "allow_implicit_invocation": false,
+        "policy_file": ".agents/skills/fixture-capability/agents/openai.yaml",
+        "policy_sha256": "b8bf36d2b14a2e89919ac57df17c94d48855b94919acd9cbcf227336dc8c7554"
+      },
+      "sandbox": "read-only",
+      "trial": "explicit_activation_available",
+      "trial_name": "explicit_activation_available"
+    },
+    {
+      "evaluator_event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 3,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2
+        }
+      }
+    }
+  ]
+}

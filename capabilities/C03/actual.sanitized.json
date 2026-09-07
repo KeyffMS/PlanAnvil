@@ -1,0 +1,112 @@
+{
+  "capability_id": "C03",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "368b6459d9c801e9ab70d931c2af313814051424",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "bootstrap_git_probe_completed=true",
+    "source_branch_head_index_files_preserved=true",
+    "agents_config_current_and_no_max_depth=true",
+    "plananvil_contract_flat_direct_child_and_no_max_depth=true",
+    "current_golden_plan_passes_topology_validator=true",
+    "live_codex_auxiliary_source_probe=true"
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "true",
+          "name": "bootstrap_git_probe_completed",
+          "status": "PASS"
+        },
+        {
+          "evidence": "true",
+          "name": "source_branch_head_index_files_preserved",
+          "status": "PASS"
+        },
+        {
+          "evidence": "true",
+          "name": "agents_config_current_and_no_max_depth",
+          "status": "PASS"
+        },
+        {
+          "evidence": "true",
+          "name": "plananvil_contract_flat_direct_child_and_no_max_depth",
+          "status": "PASS"
+        },
+        {
+          "evidence": "true",
+          "name": "current_golden_plan_passes_topology_validator",
+          "status": "PASS"
+        },
+        {
+          "evidence": "true",
+          "name": "live_codex_auxiliary_source_probe",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C03",
+      "contract_sha256": "d331fda0caca9fd3dab169dd04c4174c9b603c5b75458b60e599224e0f2b927a",
+      "event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 5,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2,
+          "error": 2
+        }
+      },
+      "golden_plan_sha256": "25b3900bf0cead052dccf76008da471d0cf2af0bfc9df2f95132f816bf6c98ac",
+      "model_payload": {
+        "assertions": [
+          {
+            "evidence": "Exact command exited 0; `git status --porcelain=v1` produced no output.",
+            "name": "Auxiliary C03 source is reachable and clean",
+            "status": "PASS"
+          },
+          {
+            "evidence": "`git rev-parse HEAD` returned `368b6459d9c801e9ab70d931c2af313814051424`.",
+            "name": "HEAD is resolvable",
+            "status": "PASS"
+          }
+        ],
+        "blocker": null,
+        "capability_id": "C03",
+        "observations": [
+          "Working tree status is clean.",
+          "HEAD: 368b6459d9c801e9ab70d931c2af313814051424"
+        ],
+        "outcome": "PASS",
+        "trial": "explicit_plananvil_topology"
+      },
+      "observations": [
+        "bootstrap_git_probe_completed=true",
+        "source_branch_head_index_files_preserved=true",
+        "agents_config_current_and_no_max_depth=true",
+        "plananvil_contract_flat_direct_child_and_no_max_depth=true",
+        "current_golden_plan_passes_topology_validator=true",
+        "live_codex_auxiliary_source_probe=true"
+      ],
+      "outcome": "PASS",
+      "trial": "explicit_plananvil_topology",
+      "trial_name": "explicit_plananvil_topology"
+    }
+  ]
+}

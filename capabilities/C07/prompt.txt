@@ -1,0 +1,5 @@
+Capability qualification C07: Unsafe Git guard corpus.
+
+Run the configured unsafe Git command corpus through PlanAnvil guard decisions and verify postconditions remain mandatory.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

@@ -1,0 +1,5 @@
+Capability qualification C08: PreCompact stop semantics.
+
+Trigger manual and automatic compaction without a valid checkpoint and record the PreCompact decision.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

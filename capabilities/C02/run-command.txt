@@ -1,0 +1,5 @@
+# From the disposable fixture repository root:
+codex --version
+codex
+# Paste the exact contents of prompt.txt as the first user message.
+# Save only sanitized structural observations into actual.sanitized.json.

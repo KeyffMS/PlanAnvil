@@ -1,0 +1,6 @@
+git reset --hard HEAD
+git clean -fdx
+git checkout main -- .
+git push origin main
+git merge main
+git status --short

@@ -1,0 +1,220 @@
+{
+  "capability_id": "C13",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "ephemeral_outcome=BLOCKED",
+    "ephemeral_known_parent_thread_failure=true",
+    "ephemeral_persisted_project_trust=true",
+    "ephemeral_cleanup_verified=true",
+    "ephemeral_auth_metadata_unchanged=true",
+    "non_ephemeral_fallback_enabled=true",
+    "non_ephemeral_fallback_used=true",
+    "non_ephemeral_fallback_available=true",
+    "project_agent_materialized=true",
+    "session_cleanup_verified=true",
+    "auth_metadata_unchanged=true",
+    "transport_resolution=non_ephemeral_project_agent_fallback",
+    "required_spawn_agent_type=fixture_agent"
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "agent_fixture_scope": "project",
+      "agent_role_declared_explicitly": true,
+      "assertions": [
+        {
+          "evidence": "subagent_start_hook_events=0",
+          "name": "real_subagent_start_hook_executes_once",
+          "status": "BLOCKED"
+        },
+        {
+          "evidence": "hook_additional_context=false; child_context_echo_observed=false",
+          "name": "SubagentStart_can_add_context_for_the_starting_agent",
+          "status": "BLOCKED"
+        },
+        {
+          "evidence": "hook_continue_false=false; child_started_with_context=false",
+          "name": "continue_false_does_not_become_a_relied_upon_startup_blocker",
+          "status": "BLOCKED"
+        }
+      ],
+      "auth_metadata_unchanged": true,
+      "blocker": "recognized ephemeral parent-thread registration failure",
+      "capability_id": "C13",
+      "event_summary": {
+        "completed_command_items": 0,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 4,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "526eb1c88f9bc8988e0b97f45d5263bbf03c524e",
+        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "526eb1c88f9bc8988e0b97f45d5263bbf03c524e",
+        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "isolated_codex_home": true,
+      "isolated_home_cleanup_verified": true,
+      "observations": [
+        "known_parent_thread_failure=true",
+        "subagent_start_hook_events=0",
+        "hook_continue_false=false",
+        "hook_additional_context=false",
+        "child_context_echo_observed=false",
+        "child_missing_context_observed=false",
+        "completed_command_items=0",
+        "completed_file_change_items=0",
+        "error_items=2",
+        "repository_unchanged=true",
+        "session_rollouts_created=0",
+        "session_cleanup_verified=true",
+        "auth_metadata_unchanged=true"
+      ],
+      "outcome": "BLOCKED",
+      "outer_hook_contract": {
+        "additional_context_present": true,
+        "matcher": "^fixture_agent$",
+        "project_scoped_hooks": true,
+        "returns_continue_false": true,
+        "secret_value_retained_in_evidence": false
+      },
+      "persisted_project_trust": true,
+      "required_spawn_agent_type": "fixture_agent",
+      "transport": "ephemeral",
+      "trial": "subagent_start_context_and_continue_false",
+      "trial_name": "subagent_start_context_and_continue_false"
+    },
+    {
+      "agent_fixture_scope": "project",
+      "assertions": [
+        {
+          "evidence": "subagent_start_hook_events=1",
+          "name": "real_subagent_start_hook_executes_once",
+          "status": "PASS"
+        },
+        {
+          "evidence": "hook_additional_context=true; child_context_echo_observed=true",
+          "name": "SubagentStart_can_add_context_for_the_starting_agent",
+          "status": "PASS"
+        },
+        {
+          "evidence": "hook_continue_false=true; child_started_with_context=true",
+          "name": "continue_false_does_not_become_a_relied_upon_startup_blocker",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C13",
+      "event_summary": {
+        "completed_command_items": 0,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 6,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 3,
+          "collab_tool_call": 2,
+          "error": 2
+        }
+      },
+      "fallback_fixture_commit": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "home_agent_materialized": false,
+      "observations": [
+        "known_parent_thread_failure=false",
+        "subagent_start_hook_events=1",
+        "hook_continue_false=true",
+        "hook_additional_context=true",
+        "child_context_echo_observed=true",
+        "child_missing_context_observed=false",
+        "completed_command_items=0",
+        "completed_file_change_items=0",
+        "error_items=2",
+        "repository_unchanged=true",
+        "session_rollouts_created=2",
+        "session_cleanup_verified=true",
+        "auth_metadata_unchanged=true"
+      ],
+      "outcome": "PASS",
+      "outer_hook_contract": {
+        "additional_context_present": true,
+        "matcher": "^fixture_agent$",
+        "project_scoped_hooks": true,
+        "returns_continue_false": true,
+        "secret_value_retained_in_evidence": false
+      },
+      "persisted_project_trust": true,
+      "project_agent_declared_explicitly": true,
+      "project_agent_present": true,
+      "project_scoped_subagent_start_hook": true,
+      "required_spawn_agent_type": "fixture_agent",
+      "transport": "non-ephemeral",
+      "trial": "subagent_start_context_and_continue_false",
+      "trial_name": "subagent_start_context_and_continue_false"
+    }
+  ]
+}

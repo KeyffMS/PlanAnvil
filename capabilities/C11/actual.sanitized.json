@@ -1,0 +1,144 @@
+{
+  "capability_id": "C11",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "The completed trial showed both root and nested instruction markers active from the nested working directory.",
+    "The nested override marker was active, the sibling nested instruction marker was absent, and the effective conflict value was nested-wins.",
+    "The recorded precedence matched the supplied documentation baseline: root-to-working-directory merge, one selected instruction file per directory, and closer instructions taking precedence.",
+    "The instruction map selected the expected root and nested override files in order, recorded full reads, and included hashes for both applicable files."
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "Present in active project instructions.",
+          "name": "ROOT_SCOPE_MARKER active",
+          "status": "PASS"
+        },
+        {
+          "evidence": "Present in active project instructions.",
+          "name": "NESTED_OVERRIDE_MARKER active",
+          "status": "PASS"
+        },
+        {
+          "evidence": "Not present in active project instructions.",
+          "name": "NESTED_SHOULD_BE_IGNORED absent",
+          "status": "PASS"
+        },
+        {
+          "evidence": "Active project instructions specify CONFLICT_RULE=nested-wins after the root value.",
+          "name": "Effective conflicting value is nested-wins",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C11",
+      "documentation_baseline": {
+        "retrieved_at": "2026-09-02",
+        "rules": {
+          "closer_instruction_precedence": true,
+          "merge_order": "root-to-current-working-directory",
+          "one_instruction_file_per_directory": true,
+          "per_directory_selection": [
+            "AGENTS.override.md",
+            "AGENTS.md",
+            "project_doc_fallback_filenames"
+          ],
+          "project_scope": "search from project root to current working directory"
+        },
+        "source": "https://learn.chatgpt.com/docs/agent-configuration/agents-md"
+      },
+      "event_summary": {
+        "completed_command_items": 0,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 3,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 1,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
+        "index_tree": "a735a982cc55a9a70bec535494481be40c76eb33",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
+        "index_tree": "a735a982cc55a9a70bec535494481be40c76eb33",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Evaluated runtime-provided active project instructions from the nested working directory without opening AGENTS files or invoking tools."
+      ],
+      "outcome": "PASS",
+      "outer_instruction_map": {
+        "expected_paths": [
+          "AGENTS.md",
+          "nested/AGENTS.override.md"
+        ],
+        "full_reads": true,
+        "hashes": {
+          "AGENTS.md": "c9a1bd478006fed072d5d7a659edc9ccfe2a6f2c91076948219a6a768db1f10b",
+          "nested/AGENTS.override.md": "02c036be69710478c81a7407efb21c55f6402d7472494f8382fe0cff8c6fefe5"
+        },
+        "nested_agents_ignored_when_override_exists": true,
+        "root_to_nested_order_matches": true,
+        "selected_paths": [
+          "AGENTS.md",
+          "nested/AGENTS.override.md"
+        ]
+      },
+      "sandbox": "read-only",
+      "trial": "runtime_scope_precedence_and_mapping",
+      "trial_name": "runtime_scope_precedence_and_mapping"
+    },
+    {
+      "evaluator_event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 3,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2
+        }
+      }
+    }
+  ]
+}

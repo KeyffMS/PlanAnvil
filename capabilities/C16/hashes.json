@@ -1,0 +1,15 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "74b49792d803d57e7fd23cc955041231d27812c5e6af8d51da76f6e17f5abc54",
+    "actual.sanitized.json": "1b2002580aa28fd816e56d47b80cb6afe397803f7101b6571f98b1330b4ccb8c",
+    "config/README.md": "d0666f09608c05e3f0e506d457cebf74e110f3cb7474464b05222992b6d65b34",
+    "evaluation.json": "e3a8788c8fb42aaaa6ea36ab4c721691bdb7e1e1cdbfdb3361c063cb643f7c7e",
+    "expected.json": "8006ed5e85c38ebd01d7786544557a6fc56a5fedb94a4da580f4d44ac7ba6262",
+    "fixture/README.md": "7f522149eceacab3bb36efb7c06d67fe4c362d5f04b3ee63c3f4c7e2817e1cd1",
+    "fixture/git-matrix.md": "1032a148a5c4e7e0bb5637d895e825e558e8f66f6849a4a8342c5841b0caed1e",
+    "prompt.txt": "1b0505a1bc77e1ac22d181a9d58352348d51e163ab59818862621f6de5b8c9d6",
+    "run-command.txt": "0683eb1cb9ff624f8923fce722ffdd05ea4c592509cf2d25c0879b43e8fb56af"
+  },
+  "schema_version": "1.0"
+}

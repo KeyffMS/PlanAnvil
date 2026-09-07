@@ -1,0 +1,5 @@
+Capability qualification C06: Codex 0.152 hook-plus-postcondition boundary.
+
+Exercise the guaranteed `exec_command` -> canonical `Bash` PreToolUse adapter, then separately exercise one direct file-change attempt in a disposable fixture. The file-change attempt must either be blocked by the project hook or be detected by the deterministic Git/filesystem postcondition before any later mutation.
+
+Do not execute hook scripts manually and do not treat missing hook telemetry as proof of safety.

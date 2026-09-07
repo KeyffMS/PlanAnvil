@@ -1,0 +1,14 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "f2135e780d5648c06a33daf999a527923e1f59531d3e489dedb1d73407d7cc96",
+    "actual.sanitized.json": "98c302053348496691c9078f06b808506f244ef473fa1e50c9e9029ca6b05041",
+    "config/README.md": "1a4d1eaeaf68f890393912ffeb25bfcc9ed477430758ef192e25b7afc87e509f",
+    "evaluation.json": "6cafa0c2d4be9fd9b5e558d487e329ed172ef06e6f605e96cc333ab03cb5b9b1",
+    "expected.json": "0691be18c26e9328e0e2eb82cac6d1234c75f3019c74b3a6782733aa6de94ef6",
+    "fixture/README.md": "57962edc7020e59c67f4f2dbb04ca8e9f2017e50f5144202bdd1abd41390b798",
+    "prompt.txt": "e6ecfb0d355c67b8fa5e634004488a40605f3dae538d3f9f3adc3712328f5a46",
+    "run-command.txt": "0683eb1cb9ff624f8923fce722ffdd05ea4c592509cf2d25c0879b43e8fb56af"
+  },
+  "schema_version": "1.0"
+}

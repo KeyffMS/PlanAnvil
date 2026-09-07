@@ -1,0 +1,200 @@
+{
+  "capability_id": "C08",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "7d538b84436cc1a92061a7b655b5a5479924785f",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "invalid_precompact=1",
+    "invalid_stop_records=1",
+    "repaired_postcompact=20",
+    "repaired_checkpoint_valid=true"
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "checkpoint_valid=false; precompact=1; postcompact=0; checkpoint_recovery_stop_records=1",
+          "name": "precompact_stops_or_delays_when_recovery_state_is_invalid",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C08",
+      "checkpoint_validation": {
+        "active_run": true,
+        "ok": false,
+        "reason_count": 1,
+        "reasons": [
+          "state.last_checkpoint is empty"
+        ]
+      },
+      "config_evidence": {
+        "model_auto_compact_token_limit": 40,
+        "model_auto_compact_token_limit_scope": "body_after_prefix",
+        "runtime_cli_override": true
+      },
+      "event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 4,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 1,
+          "command_execution": 2,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "7d538b84436cc1a92061a7b655b5a5479924785f",
+        "index_tree": "49694625ed7917178bac99ade445245f995fc539",
+        "refs": [
+          "refs/heads/master",
+          "refs/heads/pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be"
+        ],
+        "status": [
+          "M .gitignore",
+          "?? .pursue/SYSTEM_PROFILE.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/PLAN.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/compliance.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/git-capability.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/lifecycle.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/original-goal.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/manifest.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/state.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/traceability.json"
+        ],
+        "worktree_count": 2
+      },
+      "git_before": {
+        "branch": "pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "7d538b84436cc1a92061a7b655b5a5479924785f",
+        "index_tree": "49694625ed7917178bac99ade445245f995fc539",
+        "refs": [
+          "refs/heads/master",
+          "refs/heads/pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be"
+        ],
+        "status": [
+          "M .gitignore",
+          "?? .pursue/SYSTEM_PROFILE.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/PLAN.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/compliance.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/git-capability.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/lifecycle.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/original-goal.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/manifest.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/state.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/traceability.json"
+        ],
+        "worktree_count": 2
+      },
+      "model_payload": {},
+      "observations": [
+        "precompact_count=1",
+        "postcompact_count=0",
+        "stop_records=1",
+        "invocation_error=Codex exited 1: Reading additional input from stdin...\n"
+      ],
+      "outcome": "PASS",
+      "trial": "automatic_compaction_without_valid_checkpoint",
+      "trial_name": "automatic_compaction_without_valid_checkpoint"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "checkpoint_valid=true; precompact=21; postcompact=20; continue_false_records=0",
+          "name": "checkpoint_blocker_is_repairable_not_permanent",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C08",
+      "checkpoint_validation": {
+        "active_run": true,
+        "ok": true,
+        "reason_count": 0,
+        "reasons": []
+      },
+      "event_summary": {
+        "timeout": true
+      },
+      "git_after": {
+        "branch": "pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "7d538b84436cc1a92061a7b655b5a5479924785f",
+        "index_tree": "49694625ed7917178bac99ade445245f995fc539",
+        "refs": [
+          "refs/heads/master",
+          "refs/heads/pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be"
+        ],
+        "status": [
+          "M .gitignore",
+          "?? .pursue/SYSTEM_PROFILE.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/PLAN.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/checkpoints/CHECKPOINT-00-GENERATION_R0004.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/compliance.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/git-capability.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/lifecycle.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/original-goal.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/manifest.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/state.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/traceability.json"
+        ],
+        "worktree_count": 2
+      },
+      "git_before": {
+        "branch": "pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "7d538b84436cc1a92061a7b655b5a5479924785f",
+        "index_tree": "49694625ed7917178bac99ade445245f995fc539",
+        "refs": [
+          "refs/heads/master",
+          "refs/heads/pursue/plan/PG-20260906-212343-728B/qualify-deterministic-compaction-and-recovery-be"
+        ],
+        "status": [
+          "M .gitignore",
+          "?? .pursue/SYSTEM_PROFILE.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/PLAN.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/checkpoints/CHECKPOINT-00-GENERATION_R0004.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/compliance.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/git-capability.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/lifecycle.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/evidence/original-goal.md",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/manifest.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/state.json",
+          "?? .pursue/runs/20260906T212344Z_PG-20260906-212343-728B_qualify-deterministic-compaction-and-recovery-be/traceability.json"
+        ],
+        "worktree_count": 2
+      },
+      "model_payload": {},
+      "observations": [
+        "precompact_count=21",
+        "postcompact_count=20",
+        "continue_false_records=0",
+        "invocation_error=Codex invocation timed out"
+      ],
+      "outcome": "PASS",
+      "trial": "automatic_compaction_after_checkpoint_repair",
+      "trial_name": "automatic_compaction_after_checkpoint_repair"
+    }
+  ]
+}

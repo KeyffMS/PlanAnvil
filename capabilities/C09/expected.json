@@ -1,0 +1,10 @@
+{
+  "assertions": [
+    "Valid checkpoint allows compaction.",
+    "Recovery reconciles canonical files/Git after compaction.",
+    "A second valid compaction path is not permanently blocked."
+  ],
+  "capability_id": "C09",
+  "schema_version": "1.0",
+  "title": "Checkpoint then compaction without loop"
+}

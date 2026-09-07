@@ -1,0 +1,5 @@
+Capability qualification C14: Planning isolation source immutability.
+
+Run PlanAnvil bootstrap in a disposable repository and compare source branch/SHA/index/files before and after planning worktree creation.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

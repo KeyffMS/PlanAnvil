@@ -1,0 +1,7 @@
+{
+  "capability_id": "C04",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "The sanitized trial evidence demonstrates nested child-agent startup and completion while preserving PlanAnvil flat-topology safety unchanged."
+}

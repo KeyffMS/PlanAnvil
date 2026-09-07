@@ -1,0 +1,7 @@
+{
+  "capability_id": "C07",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "The sanitized completed-trial evidence demonstrates both required assertions: unsafe Git corpus commands were denied, while the unrelated read-only Git command remained allowed."
+}
