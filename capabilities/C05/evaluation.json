@@ -1,0 +1,7 @@
+{
+  "capability_id": "C05",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "The completed trials demonstrate acceptance of only the verified explicit immutable bundle and rejection of stale, missing, changed, and escaped handoffs."
+}

@@ -27,11 +27,11 @@ class LiveCodexHarnessV4Tests(unittest.TestCase):
         self.assertIn("mutation_origin=outer qualification harness outside Codex hook lifecycle", self.source)
 
     def test_c08_uses_real_auto_compact_stop_and_repair(self) -> None:
-        self.assertIn("C08_COMPACT_LIMIT = 200", self.source)
+        self.assertIn("C08_COMPACT_LIMIT = c08.COMPACT_LIMIT", self.source)
         self.assertIn('COMPACT_SCOPE = "body_after_prefix"', self.source)
         self.assertIn('"PreCompact": "plan-anvil-compaction.py"', self.source)
-        self.assertIn("automatic_compaction_without_valid_checkpoint", self.source)
-        self.assertIn("automatic_compaction_after_checkpoint_repair", self.source)
+        self.assertIn("c08.INVALID_TRIAL", self.source)
+        self.assertIn("c08.REPAIRED_TRIAL", self.source)
         self.assertIn("stop_reason_mentions_checkpoint", self.source)
         self.assertIn("_create_checkpoint(planning=planning, run_root=run_root)", self.source)
 

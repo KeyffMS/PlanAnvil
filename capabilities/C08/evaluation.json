@@ -1,0 +1,7 @@
+{
+  "capability_id": "C08",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "C08 reproduced: invalid recovery state stopped real PreCompact with a checkpoint/recovery reason, and compaction succeeded after checkpoint repair."
+}

@@ -1,0 +1,5 @@
+Capability qualification C15: Immutable blind review with seeded defects.
+
+Submit seeded defective plans to a fresh read-only reviewer and verify immutable review artifacts plus separate comparison.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

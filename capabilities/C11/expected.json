@@ -1,0 +1,10 @@
+{
+  "assertions": [
+    "Root-to-CWD instruction scope is observed.",
+    "Nested overrides/precedence are recorded and agree with current documentation.",
+    "PlanAnvil explicit instruction mapping reads/hashes complete applicable files."
+  ],
+  "capability_id": "C11",
+  "schema_version": "1.0",
+  "title": "Project instruction scope and precedence"
+}

@@ -1,12 +1,30 @@
-# C02 — Capability evidence
+# C02 — Explicit-only skill activation
 
-- Expected behavior: `allow_implicit_invocation: false` disables implicit invocation while explicit `$skill` invocation remains available.
 - Source: `DOCUMENTED`
 - Release-gating: `yes`
-- Current result: `BLOCKED`
-- Qualification attempt: `2026-08-28`
-- Documentation check: `PASS`; repository metadata is configured for explicit-only activation.
-- Deterministic support: `test_skill_metadata_requires_explicit_activation` passed in GitHub Actions run #24.
-- Live blocker: no authenticated Codex runtime is available for implicit-vs-explicit prompt trials.
+- Current result: `REPRODUCED`
+- Qualification package state: `READY_FOR_LIVE_RUN`
+- Prepared: `2026-08-28`
 
-Do not change the result to `REPRODUCED` until the complete sanitized live package exists.
+## Objective
+
+Verify allow_implicit_invocation=false prevents implicit activation while explicit $fixture-capability activation remains available.
+
+## Live metadata to record
+
+Before changing this result to `REPRODUCED`, record the exact Codex version, model slug, OS, permission mode, project trust, fixture commit, setup/cleanup, sanitized observations, evaluation, and hashes. Do not commit transcripts, credentials, private paths, or unrelated repository data.
+
+## Execution
+
+Use `fixture/`, `config/README.md`, `prompt.txt`, and `run-command.txt`. Replace the current BLOCKED `actual.sanitized.json`/`evaluation.json` with the live result, update `capabilities/index.json`, then run `python tools/rehash_capability.py C02` and `python tools/validate_capabilities.py`.
+
+## Live qualification
+
+- Date: `2026-09-06`
+- Codex: `codex-cli 0.153.4`
+- Model: `gpt-5.6-sol`
+- OS: `Debian GNU/Linux 13 (trixie)`
+- Permission mode: `approval=never; sandbox=per-trial; model-tool network disabled`
+- Project trust: `trusted via CLI override for disposable fixture repositories`
+- Source commit: `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`
+- Result: `REPRODUCED`

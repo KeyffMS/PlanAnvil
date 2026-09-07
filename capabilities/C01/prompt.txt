@@ -1,0 +1,5 @@
+Capability qualification C01: Repository skill discovery.
+
+Verify a repository skill under .agents/skills is discovered from the repository and can be explicitly selected.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

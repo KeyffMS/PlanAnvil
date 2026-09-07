@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import qualification_c09 as c09
+import qualification_c08 as c08
 
 import live_codex_qualification_harness as v1
 import live_codex_qualification_harness_v2 as v2
@@ -20,7 +21,7 @@ base = prior.base
 TARGET_CAPABILITIES = {"C06", "C08", "C09"}
 _ORIGINAL_CAPABILITY_RUNTIME = prior.capability_runtime
 
-C08_COMPACT_LIMIT = 200
+C08_COMPACT_LIMIT = c08.COMPACT_LIMIT
 C09_COMPACT_LIMIT = c09.COMPACT_LIMIT
 COMPACT_SCOPE = "body_after_prefix"
 HOOK_LOG_RELATIVE = ".pursue/qualification-hook-events.jsonl"
@@ -599,205 +600,79 @@ Then return capability_id {capability_id}, a concise trial result, and only rela
 """
 
 
-def _c08_runtime(
-    *,
-    root: Path,
-    runtime_root: Path,
-    schemas: dict[str, Path],
-    version: str,
-    os_name: str,
-    source_commit: str,
-    date: str,
-) -> tuple[str, bool]:
+def _c08_runtime(**kwargs: Any) -> tuple[str, bool]:
+    root, runtime_root = kwargs["root"], kwargs["runtime_root"]
     capability_id = "C08"
-    cap_dir, cap_runtime, spec_dir, repo, worktrees, results_dir, evaluator_dir = _runtime_paths(
-        root=root, runtime_root=runtime_root, capability_id=capability_id
-    )
-    del cap_dir, spec_dir, evaluator_dir
-
+    _, cap_runtime, _, repo, worktrees, results_dir, _ = _runtime_paths(
+        root=root, runtime_root=runtime_root, capability_id=capability_id)
+    trials = []
     with v2._python_bytecode_disabled():
         base.ensure_git_repo(repo)
         planning, run_root = _start_active_run(
-            root=root,
-            repo=repo,
-            worktrees=worktrees,
-            version=version,
-            compact_limit=C08_COMPACT_LIMIT,
-            create_checkpoint=False,
-            segments=2,
-            segment_bytes=32768,
-        )
+            root=root, repo=repo, worktrees=worktrees, version=kwargs["version"],
+            compact_limit=C08_COMPACT_LIMIT, create_checkpoint=False,
+            segments=0, segment_bytes=0, prepare_repo=c08.prepare_repo,
+            hook_proxy_source=c08.proxy_source(_hook_proxy_source()))
+        c08.seed_state(planning, run_root)
         fixture_commit = base.git(repo, "rev-parse", "HEAD")
-        invalid_checkpoint = _checkpoint_validation(planning)
-        _clear_hook_log(planning)
-        before_invalid = base.git_snapshot(planning)
-        payload_invalid, events_invalid, error_invalid = _run_codex_probe(
-            cwd=planning,
-            prompt=_compact_probe_prompt(capability_id, ["segment-01.txt"]),
-            schemas=schemas,
-            results_dir=results_dir,
-            position=1,
-            sandbox="read-only",
-            compact_limit=C08_COMPACT_LIMIT,
-            compact_scope=COMPACT_SCOPE,
-            timeout=600,
-        )
-        after_invalid = base.git_snapshot(planning)
-        invalid_records = _read_hook_records(planning)
-        invalid_pre = _event_records(invalid_records, "PreCompact")
-        invalid_post = _event_records(invalid_records, "PostCompact")
-        stop_records = [
-            item
-            for item in invalid_pre
-            if item.get("continue") is False
-            and (item.get("stop_reason_mentions_checkpoint") or item.get("stop_reason_mentions_recovery"))
-        ]
-
-        _create_checkpoint(planning=planning, run_root=run_root)
-        repaired_checkpoint = _checkpoint_validation(planning)
-        _clear_hook_log(planning)
-        before_repaired = base.git_snapshot(planning)
-        payload_repaired, events_repaired, error_repaired = _run_codex_probe(
-            cwd=planning,
-            prompt=_compact_probe_prompt(capability_id, ["segment-02.txt"]),
-            schemas=schemas,
-            results_dir=results_dir,
-            position=2,
-            sandbox="read-only",
-            compact_limit=C08_COMPACT_LIMIT,
-            compact_scope=COMPACT_SCOPE,
-            timeout=600,
-        )
-        after_repaired = base.git_snapshot(planning)
-        repaired_records = _read_hook_records(planning)
-        repaired_pre = _event_records(repaired_records, "PreCompact")
-        repaired_post = _event_records(repaired_records, "PostCompact")
-        repaired_stops = [item for item in repaired_pre if item.get("continue") is False]
-
-    invalid_triggered = bool(invalid_pre)
-    invalid_stopped_for_recovery = bool(stop_records) and not invalid_post
-    repair_triggered = bool(repaired_pre) and bool(repaired_post)
-    repair_allowed = repair_triggered and not repaired_stops and bool(repaired_checkpoint.get("ok"))
-
-    invalid_trial = {
-        "capability_id": capability_id,
-        "trial": "automatic_compaction_without_valid_checkpoint",
-        "trial_name": "automatic_compaction_without_valid_checkpoint",
-        "outcome": (
-            "BLOCKED"
-            if not invalid_triggered
-            else ("PASS" if invalid_stopped_for_recovery else "FAIL")
-        ),
-        "assertions": [
-            {
-                "name": "precompact_stops_or_delays_when_recovery_state_is_invalid",
-                "status": (
-                    "BLOCKED"
-                    if not invalid_triggered
-                    else ("PASS" if invalid_stopped_for_recovery else "FAIL")
-                ),
-                "evidence": (
-                    f"checkpoint_valid={str(bool(invalid_checkpoint.get('ok'))).lower()}; "
-                    f"precompact={len(invalid_pre)}; postcompact={len(invalid_post)}; "
-                    f"checkpoint_recovery_stop_records={len(stop_records)}"
-                ),
-            }
-        ],
-        "observations": [
-            f"precompact_count={len(invalid_pre)}",
-            f"postcompact_count={len(invalid_post)}",
-            f"stop_records={len(stop_records)}",
-            f"invocation_error={error_invalid or 'none'}",
-        ],
-        "blocker": error_invalid if not invalid_triggered else None,
-        "event_summary": events_invalid,
-        "git_before": before_invalid,
-        "git_after": after_invalid,
-        "checkpoint_validation": invalid_checkpoint,
-        "model_payload": payload_invalid,
-        "config_evidence": {
-            "model_auto_compact_token_limit": C08_COMPACT_LIMIT,
-            "model_auto_compact_token_limit_scope": COMPACT_SCOPE,
-            "runtime_cli_override": True,
-        },
-    }
-    repaired_trial = {
-        "capability_id": capability_id,
-        "trial": "automatic_compaction_after_checkpoint_repair",
-        "trial_name": "automatic_compaction_after_checkpoint_repair",
-        "outcome": "PASS" if repair_allowed else ("BLOCKED" if not repair_triggered else "FAIL"),
-        "assertions": [
-            {
-                "name": "checkpoint_blocker_is_repairable_not_permanent",
-                "status": "PASS" if repair_allowed else ("BLOCKED" if not repair_triggered else "FAIL"),
-                "evidence": (
-                    f"checkpoint_valid={str(bool(repaired_checkpoint.get('ok'))).lower()}; "
-                    f"precompact={len(repaired_pre)}; postcompact={len(repaired_post)}; "
-                    f"continue_false_records={len(repaired_stops)}"
-                ),
-            }
-        ],
-        "observations": [
-            f"precompact_count={len(repaired_pre)}",
-            f"postcompact_count={len(repaired_post)}",
-            f"continue_false_records={len(repaired_stops)}",
-            f"invocation_error={error_repaired or 'none'}",
-        ],
-        "blocker": error_repaired if not repair_triggered else None,
-        "event_summary": events_repaired,
-        "git_before": before_repaired,
-        "git_after": after_repaired,
-        "checkpoint_validation": repaired_checkpoint,
-        "model_payload": payload_repaired,
-    }
-
-    if not invalid_triggered:
-        result = "BLOCKED"
-        expected_met = False
-        blocker = error_invalid or "Automatic compaction did not reach the real PreCompact hook with invalid recovery state."
-        summary = "C08 blocked because the deterministic automatic-compaction trigger was not observed."
-    elif not invalid_stopped_for_recovery:
-        result = "FAILED"
-        expected_met = False
-        blocker = "PreCompact was reached without producing the expected checkpoint/recovery stop decision."
-        summary = "C08 failed because invalid recovery state did not produce the documented temporary PreCompact stop."
-    elif not repair_triggered:
-        result = "BLOCKED"
-        expected_met = False
-        blocker = error_repaired or "Automatic compaction was not observed after checkpoint repair."
-        summary = "C08 blocked because the repaired path did not reach a completed compaction."
-    elif not repair_allowed:
-        result = "FAILED"
-        expected_met = False
-        blocker = "A schema-valid repaired checkpoint still caused compaction to stop or fail."
-        summary = "C08 failed because the checkpoint/recovery blocker behaved as a permanent compaction disablement."
-    else:
-        result = "REPRODUCED"
-        expected_met = True
-        blocker = None
-        summary = "C08 reproduced: invalid recovery state stopped real PreCompact with a checkpoint/recovery reason, and compaction succeeded after checkpoint repair."
-
-    return _write_result(
-        root=root,
-        cap_runtime=cap_runtime,
-        capability_id=capability_id,
-        result=result,
-        expected_met=expected_met,
-        observations=[
-            f"invalid_precompact={len(invalid_pre)}",
-            f"invalid_stop_records={len(stop_records)}",
-            f"repaired_postcompact={len(repaired_post)}",
-            f"repaired_checkpoint_valid={str(bool(repaired_checkpoint.get('ok'))).lower()}",
-        ],
-        blocker=blocker,
-        summary=summary,
-        trials=[invalid_trial, repaired_trial],
-        fixture_commit=fixture_commit,
-        version=version,
-        os_name=os_name,
-        source_commit=source_commit,
-        date=date,
-    )
+        for position, repaired in enumerate((False, True), 1):
+            # Repair outside the model, between independent invocations, in the
+            # SAME canonical run. No product code or decision is replaced.
+            if repaired:
+                _create_checkpoint(planning=planning, run_root=run_root)
+            checkpoint_before = _checkpoint_validation(planning)
+            _clear_hook_log(planning)
+            before = base.git_snapshot(planning)
+            source_before = base.git_snapshot(repo)
+            files_before = (c08.file_fingerprint(repo), c08.file_fingerprint(planning))
+            payload, events, error = _run_codex_probe(
+                cwd=planning, prompt=c08.prompt(repaired=repaired), schemas=kwargs["schemas"],
+                results_dir=results_dir, position=position, sandbox="read-only",
+                compact_limit=C08_COMPACT_LIMIT, compact_scope=COMPACT_SCOPE,
+                timeout=600, observe_process=True)
+            after, source_after = base.git_snapshot(planning), base.git_snapshot(repo)
+            files_after = (c08.file_fingerprint(repo), c08.file_fingerprint(planning))
+            checkpoint_after = _checkpoint_validation(planning)
+            records = _read_hook_records(planning)
+            checks = c08.protocol_checks(events, records, repaired=repaired)
+            checks["checkpoint_state"] = (checkpoint_before.get("active_run") is True
+                and checkpoint_after.get("active_run") is True
+                and checkpoint_before.get("ok") is repaired and checkpoint_after.get("ok") is repaired)
+            checks["source_and_planning_unchanged"] = (before == after and source_before == source_after
+                                                      and files_before == files_after)
+            trial = c08.REPAIRED_TRIAL if repaired else c08.INVALID_TRIAL
+            if repaired:
+                checks["completed_positive_output"] = (error is None and payload.get("capability_id") == "C08"
+                    and payload.get("trial") == trial and payload.get("outcome") == "PASS"
+                    and "C08_FINISHED" in payload.get("observations", []))
+            ok = all(checks.values())
+            missing = ", ".join(k for k, value in checks.items() if not value)
+            assertion = ("checkpoint_blocker_is_repairable_not_permanent" if repaired
+                         else "precompact_stops_or_delays_when_recovery_state_is_invalid")
+            trials.append({"capability_id": "C08", "trial": trial, "trial_name": trial,
+                "outcome": "PASS" if ok else "BLOCKED", "protocol_version": "finite-c08-v1",
+                "protocol_checks": checks,
+                "assertions": [{"name": assertion, "status": "PASS" if ok else "BLOCKED",
+                                "evidence": "finite stop/repair protocol verified" if ok else missing}],
+                "observations": ["expected_negative_stop=" + str(not repaired and ok).lower(),
+                                 "invocation_error=" + (error or "none")],
+                "blocker": None if ok else "C08 incomplete proof: " + missing,
+                "event_summary": events, "hook_timeline": records[:80],
+                "hook_timeline_truncated": len(records) > 80,
+                "git_before": before, "git_after": after,
+                "checkpoint_validation": checkpoint_before, "checkpoint_after": checkpoint_after,
+                "model_payload": payload, "config_evidence": {
+                    "model_auto_compact_token_limit": C08_COMPACT_LIMIT,
+                    "model_auto_compact_token_limit_scope": COMPACT_SCOPE,
+                    "startup_context_disabled_at_root_before_bootstrap": True}})
+    ok = all(t["outcome"] == "PASS" for t in trials)
+    return _write_result(root=root, cap_runtime=cap_runtime, capability_id="C08",
+        result="REPRODUCED" if ok else "BLOCKED", expected_met=ok,
+        observations=["finite_c08_stop_and_repair=" + str(ok).lower()],
+        blocker=None if ok else "; ".join(t["blocker"] for t in trials if t["blocker"]),
+        summary="C08 finite negative stop and positive repaired completion verified." if ok else "C08 finite proof incomplete.",
+        trials=trials, fixture_commit=fixture_commit, version=kwargs["version"],
+        os_name=kwargs["os_name"], source_commit=kwargs["source_commit"], date=kwargs["date"])
 
 
 def _continued_after_second_postcompact(records: list[dict[str, Any]]) -> bool:

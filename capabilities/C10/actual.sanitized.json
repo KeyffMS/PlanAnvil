@@ -1,0 +1,429 @@
+{
+  "capability_id": "C10",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "175d5963baeaebe5f90d15a09aeec64c3c7b9781",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "fixture_prepared_by_outer_harness=true",
+    "product_checkpoint_valid=true",
+    "session_start_recovery_context=true",
+    "postcompact_recovery_context=true",
+    "opaque_recovery_value_persisted=false"
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "before=true; after=true",
+          "name": "deterministic_product_checkpoint_exists_before_session",
+          "status": "PASS"
+        },
+        {
+          "evidence": "session_start=1; context_records=1; expected_target=True",
+          "name": "session_start_supplies_recovery_context",
+          "status": "PASS"
+        },
+        {
+          "evidence": "opaque_echo=true; command_items=0",
+          "name": "model_receives_opaque_session_recovery_target_without_tools",
+          "status": "PASS"
+        },
+        {
+          "evidence": "repository_unchanged=true",
+          "name": "session_recovery_probe_preserves_repository_state",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C10",
+      "checkpoint_after": {
+        "active_run": true,
+        "ok": true,
+        "reason_count": 0,
+        "reasons": []
+      },
+      "checkpoint_before": {
+        "active_run": true,
+        "ok": true,
+        "reason_count": 0,
+        "reasons": []
+      },
+      "event_summary": {
+        "command_counts": {},
+        "completed_command_items": 0,
+        "completed_file_change_items": 0,
+        "error_categories": {
+          "hook_error": 2,
+          "stderr_other": 1
+        },
+        "error_events": 0,
+        "event_tail": [
+          {
+            "elapsed_ms": 944,
+            "event": "thread.started"
+          },
+          {
+            "elapsed_ms": 1004,
+            "error_category": "hook_error",
+            "event": "item.completed",
+            "item": "error"
+          },
+          {
+            "elapsed_ms": 1004,
+            "error_category": "hook_error",
+            "event": "item.completed",
+            "item": "error"
+          },
+          {
+            "elapsed_ms": 1004,
+            "event": "turn.started"
+          },
+          {
+            "elapsed_ms": 6597,
+            "event": "item.completed",
+            "item": "agent_message"
+          },
+          {
+            "elapsed_ms": 6619,
+            "event": "turn.completed"
+          }
+        ],
+        "event_tail_truncated": false,
+        "event_types": {
+          "item.completed": 3,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "invalid_json_lines": 0,
+        "item_types": {
+          "agent_message": 1,
+          "error": 2
+        },
+        "oversized_lines": 0,
+        "owned_process_tree_terminated": false,
+        "process_cleanup_ok": true,
+        "process_elapsed_ms": 7912,
+        "process_returncode": 0,
+        "raw_payload_checks": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        },
+        "reader_failed": false,
+        "stderr_lines": 1,
+        "timeout": false
+      },
+      "model_payload_summary": {
+        "assertion_count": 0,
+        "capability_id": "C10",
+        "observation_count": 1,
+        "outcome": "PASS",
+        "trial": "session_start_recovery_context"
+      },
+      "observations": [
+        "session_start_count=1",
+        "session_context_count=1",
+        "opaque_echo_observed=true",
+        "command_items=0",
+        "checkpoint_valid=true",
+        "repository_unchanged=true",
+        "source_worktree_unchanged=true"
+      ],
+      "outcome": "PASS",
+      "trial": "session_start_recovery_context",
+      "trial_name": "session_start_recovery_context",
+      "value_flow": {
+        "hook_emitted_expected_target": true,
+        "hook_observations": [
+          {
+            "additional_context": true,
+            "context_chars": 922,
+            "event": "SessionStart",
+            "output_event_matches_input": true,
+            "product_stderr_present": false,
+            "product_stdout_is_json": true,
+            "recovery_target_count": 1,
+            "recovery_target_matches_expected": true,
+            "returncode": 0,
+            "source": "startup",
+            "system_message_present": false
+          }
+        ],
+        "raw_model": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        },
+        "runtime_delivery_proven": true,
+        "sanitized_model": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        }
+      }
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "compact_only_matcher=true; ordinary_startup_records=0",
+          "name": "after_compaction_trial_excludes_ordinary_startup_context",
+          "status": "PASS"
+        },
+        {
+          "evidence": "precompact=1; postcompact=1; continue_false=0",
+          "name": "real_automatic_compaction_reaches_pre_and_post_hooks",
+          "status": "PASS"
+        },
+        {
+          "evidence": "session_start_compact_context_records=1; expected_target=True",
+          "name": "session_start_compact_supplies_recovery_context",
+          "status": "PASS"
+        },
+        {
+          "evidence": "opaque_echo=true; command_items=1",
+          "name": "model_receives_opaque_after_compaction_target",
+          "status": "PASS"
+        },
+        {
+          "evidence": "before=true; after=true",
+          "name": "checkpoint_remains_coherent_across_compaction",
+          "status": "PASS"
+        },
+        {
+          "evidence": "repository_unchanged=true",
+          "name": "postcompact_probe_preserves_repository_state",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C10",
+      "checkpoint_after": {
+        "active_run": true,
+        "ok": true,
+        "reason_count": 0,
+        "reasons": []
+      },
+      "checkpoint_before": {
+        "active_run": true,
+        "ok": true,
+        "reason_count": 0,
+        "reasons": []
+      },
+      "config_evidence": {
+        "compact_hook_processes_ok": true,
+        "configured_before_bootstrap": true,
+        "hook_source": "disposable_root_checkout",
+        "independent_recovery_proof": true,
+        "model_auto_compact_token_limit": 200,
+        "model_auto_compact_token_limit_scope": "body_after_prefix",
+        "model_context_event": "SessionStart",
+        "model_context_source": "compact",
+        "postcompact_output_supported": true,
+        "project_trust_method": "persisted_user_config",
+        "startup_context_excluded_with_compact_only_matcher": true,
+        "token_budget_disabled_in_isolated_fixture": true
+      },
+      "event_summary": {
+        "command_counts": {
+          "segment_01": 1
+        },
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_categories": {
+          "hook_error": 2,
+          "stderr_other": 1
+        },
+        "error_events": 0,
+        "event_tail": [
+          {
+            "elapsed_ms": 1037,
+            "event": "thread.started"
+          },
+          {
+            "elapsed_ms": 1063,
+            "error_category": "hook_error",
+            "event": "item.completed",
+            "item": "error"
+          },
+          {
+            "elapsed_ms": 1063,
+            "error_category": "hook_error",
+            "event": "item.completed",
+            "item": "error"
+          },
+          {
+            "elapsed_ms": 1063,
+            "event": "turn.started"
+          },
+          {
+            "elapsed_ms": 5260,
+            "event": "item.completed",
+            "item": "agent_message"
+          },
+          {
+            "command": "segment_01",
+            "elapsed_ms": 6931,
+            "event": "item.started",
+            "item": "command_execution",
+            "status": "in_progress"
+          },
+          {
+            "command": "segment_01",
+            "elapsed_ms": 6931,
+            "event": "item.completed",
+            "exit_code": 0,
+            "item": "command_execution",
+            "status": "completed"
+          },
+          {
+            "elapsed_ms": 26019,
+            "event": "item.completed",
+            "item": "agent_message"
+          },
+          {
+            "elapsed_ms": 26069,
+            "event": "turn.completed"
+          }
+        ],
+        "event_tail_truncated": false,
+        "event_types": {
+          "item.completed": 5,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "invalid_json_lines": 0,
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2,
+          "error": 2
+        },
+        "oversized_lines": 0,
+        "owned_process_tree_terminated": false,
+        "process_cleanup_ok": true,
+        "process_elapsed_ms": 28098,
+        "process_returncode": 0,
+        "raw_payload_checks": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        },
+        "reader_failed": false,
+        "stderr_lines": 1,
+        "timeout": false
+      },
+      "fixture_commit": "bef010e03824541ea388d3ef0b8c5e066742f8a8",
+      "model_payload_summary": {
+        "assertion_count": 1,
+        "capability_id": "C10",
+        "observation_count": 1,
+        "outcome": "PASS",
+        "trial": "postcompact_recovery_context"
+      },
+      "observations": [
+        "session_start_compact_records=1",
+        "ordinary_startup_records=0",
+        "context_after_postcompact=true",
+        "precompact_count=1",
+        "postcompact_count=1",
+        "compact_session_context_count=1",
+        "continue_false_count=0",
+        "opaque_echo_observed=true",
+        "command_items=1",
+        "checkpoint_valid=true",
+        "repository_unchanged=true",
+        "source_worktree_unchanged=true"
+      ],
+      "outcome": "PASS",
+      "trial": "postcompact_recovery_context",
+      "trial_name": "postcompact_recovery_context",
+      "value_flow": {
+        "hook_emitted_expected_target": true,
+        "hook_observations": [
+          {
+            "additional_context": true,
+            "context_chars": 958,
+            "event": "SessionStart",
+            "output_event_matches_input": true,
+            "product_stderr_present": false,
+            "product_stdout_is_json": true,
+            "recovery_target_count": 1,
+            "recovery_target_matches_expected": true,
+            "returncode": 0,
+            "source": "compact",
+            "system_message_present": false
+          }
+        ],
+        "raw_model": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        },
+        "runtime_delivery_proven": true,
+        "sanitized_model": {
+          "candidate_count": 1,
+          "candidate_lengths": [
+            32
+          ],
+          "classification": "exact",
+          "echo_prefix_observed": true,
+          "exact_observation": true,
+          "expected_value_elsewhere": false,
+          "expected_value_in_observations": true,
+          "matching_candidate_count": 1,
+          "observations_is_array": true
+        }
+      }
+    }
+  ]
+}

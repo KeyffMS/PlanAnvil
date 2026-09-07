@@ -1,0 +1,10 @@
+{
+  "assertions": [
+    "Seeded critical defects are reported or deterministically block readiness.",
+    "Blind review markdown/sidecar hashes do not change during comparison.",
+    "Reviewer identity is independent from the planner role."
+  ],
+  "capability_id": "C15",
+  "schema_version": "1.0",
+  "title": "Immutable blind review with seeded defects"
+}

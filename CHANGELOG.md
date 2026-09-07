@@ -19,8 +19,8 @@ All notable changes to PlanAnvil are documented here.
 - extend deterministic live qualification for C02, C09, C11, C13, C14, and C16 with explicit-only skill policy, current AGENTS precedence evidence, project-scoped SubagentStart semantics, bytecode-free PlanAnvil bootstrap, and real Git signing/hook failure diagnostics;
 - make C12 a deterministic runtime byte-budget probe with redundant `project_doc_max_bytes` enforcement, secret head/tail markers, zero-tool automatic-loading evidence, and outer PlanAnvil full-file hash verification;
 - make C06, C08, and C09 deterministic live probes using the real PlanAnvil PreToolUse/PreCompact/PostCompact hooks, explicit postcondition evidence, low-limit `body_after_prefix` auto-compaction triggers, checkpoint repair, repeated compaction, and post-second-compaction continuation checks;
-- add a diagnostic-only C13 transport mode that keeps `full` strict-ephemeral, retries non-ephemeral only for the recognized parent-thread registration failure, uses an isolated disposable `CODEX_HOME`, requires cleanup/auth-metadata invariants, and verifies real SubagentStart semantics with an outer-generated context proof before any baseline 2.3 decision;
-- promote C13 qualification to baseline 2.3: full qualification remains ephemeral-first but may use a known-error-gated non-ephemeral retry with a synthetic home-scoped `fixture_agent` in disposable `CODEX_HOME`, while the real `SubagentStart` hook remains project-scoped and cleanup/auth invariants remain fail-closed;
+- retain diagnostic-only historical C13 controllers; the active full controller uses the baseline 2.3 ephemeral-first, known-error-gated fallback described below;
+- promote C13 qualification to baseline 2.3: full qualification remains ephemeral-first but may use a known-error-gated non-ephemeral retry with a project-scoped, explicitly declared `fixture_agent` and project-scoped `SubagentStart` hook; disposable `CODEX_HOME` isolates only trust/auth bridging and persistence and cleanup/auth invariants remain fail-closed;
 - require production releases to use a GitHub-verified signed annotated tag whose target is reachable from `main`;
 - fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
 - document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.
@@ -55,9 +55,18 @@ All notable changes to PlanAnvil are documented here.
 - make the Git-hook probe fixture emit explicit hook diagnostics while preserving fail-closed classification for unrelated commit failures;
 - synchronize golden blind-review fixtures and dependent comparison hashes with the required independent `plan-anvil-reviewer` author role.
 
+### Qualification closure — 2026-09-07
+
+- preserve complete baseline 2.3 live evidence from full run #25, `34060321283`, tested at `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3` with Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13; all C01–C16 were reproduced;
+- retain the exact source-bound archive, hashes and original limitations; C13 passed via the permitted project-native non-ephemeral fallback;
+- replace the old C08 repaired-path workload with a finite pressure/finish scenario and strict termination checks; the old positive timeout remains in historical evidence and the replacement still requires live confirmation;
+- add C08-only qualification and real-CLI loopback conformance without changing C09/C10/C13 runtime behavior, product payload or live runner security;
+- reset newly materialized template indices to unexecuted package results instead of inheriting historical success labels;
+- validate qualification archive integrity and qualified product identity, and require committed finite C08 completion evidence before production publication.
+
 ### Release status
 
-0.2.0 is code-complete as a release candidate. Production publication remains blocked until protected-`main` administration is enabled and required C01-C16 live Codex evidence is committed as `REPRODUCED`.
+0.2.0 remains a release candidate. Full baseline qualification is recorded; production publication awaits the finite C08 live follow-up, strict release validation and a verified signed annotated tag. No tag or release has been published by the qualification-closure change.
 
 ## [0.1.0] - 2026-07-12
 

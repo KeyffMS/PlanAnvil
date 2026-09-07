@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "PreCompact can stop/delay compaction when PlanAnvil recovery state is invalid or missing.",
+    "The blocker identifies checkpoint/recovery state rather than permanently disabling compaction."
+  ],
+  "capability_id": "C08",
+  "schema_version": "1.0",
+  "title": "PreCompact stop semantics"
+}

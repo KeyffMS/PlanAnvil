@@ -1,0 +1,11 @@
+{
+  "assertions": [
+    "Probe accurately reports each Git capability outcome.",
+    "Temporary refs/branches/worktrees/files are cleaned.",
+    "Source repository snapshot is preserved.",
+    "Signing and repository-hook failures are classified from actual diagnostics."
+  ],
+  "capability_id": "C16",
+  "schema_version": "1.0",
+  "title": "Git capability probe matrix"
+}

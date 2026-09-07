@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import shutil
 import sys
 import unittest
 from pathlib import Path
@@ -25,8 +26,14 @@ class ReleaseEngineeringTests(unittest.TestCase):
     def test_candidate_release_metadata_passes_but_live_gate_remains_closed(self) -> None:
         candidate = release_check.release_blockers(ROOT, require_reproduced=False)
         self.assertEqual(candidate, [])
-        strict = release_check.release_blockers(ROOT, require_reproduced=True)
-        self.assertTrue(any('required capability' in item for item in strict), strict)
+        # Test fresh unexecuted templates, not the repository's historical result.
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'repo'
+            shutil.copytree(ROOT, target, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+            prepare_capabilities.materialize(ROOT, target, force=True)
+            with patch.object(release_check, '_git_clean_blocker', return_value=None):
+                strict = release_check.release_blockers(target, require_reproduced=True)
+            self.assertTrue(any('required capability' in item for item in strict), strict)
 
     def test_production_release_rejects_dirty_tree(self) -> None:
         completed = type('Completed', (), {'returncode': 0, 'stdout': ' M README.md\n', 'stderr': ''})()

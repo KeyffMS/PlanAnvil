@@ -10,6 +10,7 @@ from pathlib import Path
 
 from prepare_capabilities import materialize
 from validate_capabilities import validate_all
+from qualification_closure import closure_blockers
 
 SEMVER = re.compile(r'^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')
 
@@ -60,6 +61,7 @@ def release_blockers(root: Path, *, require_reproduced: bool = True, tag: str | 
         if clean_blocker is not None:
             blockers.append(clean_blocker)
         blockers.extend(validate_all(root))
+        blockers.extend(closure_blockers(root))
     else:
         try:
             with tempfile.TemporaryDirectory() as tmp:

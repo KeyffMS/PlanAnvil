@@ -1,0 +1,7 @@
+{
+  "capability_id": "C01",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "Sanitized trial evidence demonstrates repository skill discovery both explicitly and from a nested working directory."
+}

@@ -1,0 +1,107 @@
+{
+  "capability_id": "C04",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "The child agent successfully started a nested child agent, and the nested child completed.",
+    "The trial reports no repository, Git, specification, or PlanAnvil source changes.",
+    "Git state was unchanged before and after the trial, with no cached or working-tree changes.",
+    "Both expected assertions passed and the completed trial reported no blocker."
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "A child agent successfully started one nested child agent, which completed.",
+          "name": "Record whether a child agent can start another agent in the tested runtime/configuration.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "Observation only; no repository, Git, specification, or PlanAnvil source changes were made.",
+          "name": "Do not change PlanAnvil flat-topology safety based on this observation alone.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C04",
+      "event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 8,
+          "item.started": 2,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 4,
+          "collab_tool_call": 2,
+          "command_execution": 2,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
+        "index_tree": "14cb369c4d1705946abdf80c6a0b35e7f621ca70",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
+        "index_tree": "14cb369c4d1705946abdf80c6a0b35e7f621ca70",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Nested subagent spawn: allowed.",
+        "Nested child completion: completed.",
+        "PlanAnvil flat-topology safety: unchanged."
+      ],
+      "outcome": "PASS",
+      "sandbox": "read-only",
+      "trial": "informational-nested-subagent-observation",
+      "trial_name": "informational-nested-subagent-observation"
+    },
+    {
+      "evaluator_event_summary": {
+        "completed_command_items": 1,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 3,
+          "item.started": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 2
+        }
+      }
+    }
+  ]
+}

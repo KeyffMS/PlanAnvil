@@ -1,0 +1,10 @@
+# Targeted validation: existing workflow, branch main, mode=recovery (C09/C10/C13).
+# Full release qualification: the same workflow, mode=full, after targeted validation.
+python3 tools/live_codex_qualification_harness_v7.py \
+  --root <QUALIFICATION_REPO> \
+  --source-commit <FULL_MAIN_SHA> \
+  --run-id <RUN_ID> \
+  --output <SANITIZED_ARTIFACT_DIR> \
+  --allow-c13-non-ephemeral-fallback
+# C13 always runs ephemeral first. Only the recognized parent-thread failure
+# may activate the project-scoped non-ephemeral fallback.

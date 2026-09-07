@@ -1,0 +1,113 @@
+{
+  "capability_id": "C12",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "automatic_outcome=PASS",
+    "head_marker_observed=true",
+    "tail_marker_observed=false",
+    "completed_command_items=0",
+    "plananvil_full_read_ok=true"
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "fixture_bytes=4320; limit_bytes=1024; head_marker_observed=true; tail_marker_observed=false; completed_command_items=0",
+          "name": "automatic_instruction_loading_is_budget_limited",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C12",
+      "config_evidence": {
+        "project_config_path": ".codex/config.toml",
+        "project_config_sha256": "sha256:d076439eab4848e4d0a7521f1655d02aa5fed340c5795bc7fa66ecd46981bbfe",
+        "project_doc_max_bytes": 1024,
+        "runtime_cli_override": "project_doc_max_bytes=1024"
+      },
+      "event_summary": {
+        "completed_command_items": 0,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 1,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 1
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
+        "index_tree": "09e441d25e916ca414a56e81fb918d21b92d4cbf",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
+        "index_tree": "09e441d25e916ca414a56e81fb918d21b92d4cbf",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "project_config_limit=1024",
+        "cli_override_limit=1024",
+        "fixture_bytes=4320",
+        "head_marker_offset_before_limit=true",
+        "tail_marker_offset=3072",
+        "head_marker_observed=true",
+        "tail_marker_observed=false",
+        "completed_command_items=0"
+      ],
+      "outcome": "PASS",
+      "sandbox": "read-only",
+      "trial": "automatic_instruction_budget",
+      "trial_name": "automatic_instruction_budget"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "bytes=4320; full_read=True; truncation_risk=True; hash_matches=true",
+          "name": "plananvil_explicit_read_hash_covers_complete_fixture",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C12",
+      "execution": "outer deterministic PlanAnvil map_instructions",
+      "observations": [
+        "fixture_bytes=4320",
+        "expected_sha256=sha256:e4915518d8e2e19cd371a38d72cd508976b2df05463513c3de4645a8cbb0b7ff",
+        "map_error=none",
+        "{\"automatic_byte_limit\": 1024, \"bytes\": 4320, \"full_read\": true, \"path\": \"AGENTS.md\", \"sha256\": \"sha256:e4915518d8e2e19cd371a38d72cd508976b2df05463513c3de4645a8cbb0b7ff\", \"truncation_risk\": true}"
+      ],
+      "outcome": "PASS",
+      "trial": "plananvil_explicit_full_file_hash",
+      "trial_name": "plananvil_explicit_full_file_hash"
+    }
+  ]
+}

@@ -1,20 +1,31 @@
-# C06 — Capability evidence
+# C06 — PreToolUse plus deterministic mutation postcondition
 
-- Expected behavior: `PreToolUse` covers Codex-supported local hook adapters, while deterministic postconditions cover file-change transports that are not guaranteed to produce a project `PreToolUse` event.
 - Source: `DOCUMENTED_AND_SOURCE_VERIFIED`
 - Release-gating: `yes`
-- Current result: `BLOCKED`
-- Qualification target: Codex CLI `0.152.x`
+- Current result: `REPRODUCED`
+- Qualification package state: `READY_FOR_LIVE_RUN`
+- Target runtime: Codex CLI `0.152.x`
 
-## Codex 0.152 contract
+## Objective
 
-Codex 0.152 maps function-call `exec_command` into the canonical `Bash` `PreToolUse` payload. Its native `apply_patch` hook adapter is attached to the freeform/custom apply-patch handler. PlanAnvil therefore treats a hook as an early guard, not a complete mutation ledger.
+Verify the product boundary that Codex 0.152 actually exposes. A supported function-call `exec_command` must produce the canonical `Bash` `PreToolUse` event. File-changing transports that are not guaranteed to appear in the project hook stream remain fail-closed through PlanAnvil's deterministic Git/filesystem postcondition.
 
-A release-gating live qualification must establish both boundaries:
+## Required live evidence
 
-1. a real supported `exec_command` call produces a project `PreToolUse` observation with canonical tool name `Bash`;
-2. a real direct file-change attempt is either blocked by the hook boundary or is detected immediately by the deterministic Git/filesystem postcondition before another modifying action.
+`REPRODUCED` requires both:
 
-The second assertion is a product safety requirement. Missing `PreToolUse` telemetry never makes a completed mutation implicitly safe.
+1. one real supported shell/`exec_command` call, at least one `PreToolUse` event with canonical tool name `Bash`, and no repository mutation;
+2. one real direct file-change attempt that is either blocked by the hook boundary or detected immediately by the deterministic changed-path postcondition.
 
-Do not change the result to `REPRODUCED` until the complete sanitized live package establishes the hook-plus-postcondition boundary on the target Codex runtime.
+A missing `apply_patch` hook event is never evidence that a completed mutation is safe. Do not commit transcripts, credentials, private paths, or unrelated repository data.
+
+## Live qualification
+
+- Date: `2026-09-06`
+- Codex: `codex-cli 0.153.4`
+- Model: `gpt-5.6-sol`
+- OS: `Debian GNU/Linux 13 (trixie)`
+- Permission mode: `approval=never; sandbox=per-trial; model-tool network disabled`
+- Project trust: `trusted via CLI override for disposable fixture repositories`
+- Source commit: `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`
+- Result: `REPRODUCED`

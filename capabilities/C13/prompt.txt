@@ -1,0 +1,7 @@
+Capability qualification C13: real project-scoped SubagentStart context semantics.
+
+Start exactly one configured child through the real Codex `spawn_agent` mechanism with `agent_type` exactly `fixture_agent`. Do not omit agent_type, do not use a default/unnamed child, do not simulate the child, and do not invoke hook scripts manually. The root session must not use command/file mutation tools.
+
+The real project-scoped SubagentStart hook injects an opaque proof that is not present in this prompt and returns `continue=false`. This is a compatibility signal for the event, not a stop control. Wait for the real child and preserve only the minimal structural result needed to establish whether it received and echoed the injected proof.
+
+Do not expose credentials, proof values, usernames, home directories, session/thread IDs, private repository URLs, or full transcripts.

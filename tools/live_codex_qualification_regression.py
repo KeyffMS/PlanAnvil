@@ -169,7 +169,7 @@ def _patched_v4(cap_runtime: Path, capability_id: str) -> Iterator[None]:
     v4._hook_log = hook_log
     v4._run_codex_probe = run_probe
     v4._compact_probe_prompt = _compact_prompt
-    v4.C08_COMPACT_LIMIT = 40
+    # C08 also owns its finite threshold; never replace it with 40 tokens.
     # C09 owns its finite workload and threshold; do not override it here.
     try:
         yield

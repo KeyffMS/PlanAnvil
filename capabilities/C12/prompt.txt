@@ -1,0 +1,5 @@
+Capability qualification C12: project_doc_max_bytes truncation.
+
+Use a deliberately oversized instruction fixture with a small project_doc_max_bytes setting and compare automatic loading with PlanAnvil explicit full-file hashing.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

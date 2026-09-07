@@ -1,0 +1,10 @@
+{
+  "assertions": [
+    "Source branch and HEAD are unchanged.",
+    "Source index/status hashes are unchanged.",
+    "Planning changes exist only in the isolated planning worktree/branch."
+  ],
+  "capability_id": "C14",
+  "schema_version": "1.0",
+  "title": "Planning isolation source immutability"
+}

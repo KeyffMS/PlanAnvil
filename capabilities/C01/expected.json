@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "The fixture skill appears in repository skill discovery.",
+    "Discovery works when Codex starts from a nested working directory inside the same repository."
+  ],
+  "capability_id": "C01",
+  "schema_version": "1.0",
+  "title": "Repository skill discovery"
+}

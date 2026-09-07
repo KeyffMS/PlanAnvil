@@ -1,0 +1,18 @@
+{
+  "artifact_id": 9997721013,
+  "evidence_sha256": "de75db98248cd9b466754528c646e2054418e161a5324f3354128ded8cac08bf",
+  "github_actions_run": "34060321283",
+  "integrity": {
+    "complete": true,
+    "file_count": 165,
+    "manifest_listed_hidden_files": 3,
+    "schema_version": "1.0"
+  },
+  "limitations": [
+    "C08 repair trial timed out after proving the original narrow unblock assertion.",
+    "C13 passed through the explicitly permitted non-ephemeral fallback."
+  ],
+  "outer_sha256": "9b8854ab0412af0263f156c6dc2e5381db85506e11ca55e64a978fe9498ced25",
+  "schema_version": "1.0",
+  "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+}

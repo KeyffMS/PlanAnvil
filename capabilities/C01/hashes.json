@@ -1,0 +1,15 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "README.md": "422e8b7912cf13e186c621d5eeae747575e5389e5b135b157596ee4201819565",
+    "actual.sanitized.json": "9042d7e35a10682bff746c4313193baf4d1947dfd814853ca03f78555825aba9",
+    "config/README.md": "2b6beca33571ad108adcdbac9becc82a7fe658cf672305f01f58f4ea54565b4e",
+    "evaluation.json": "12aeecb91deeaef38f633d67f60451a07ba176539a5430cfc16c82c8bafa7ee5",
+    "expected.json": "c41329fbf6892a65b85cfe1166e86d2a3b59b684a9a81601974fca0c54a0cee7",
+    "fixture/.agents/skills/fixture-capability/SKILL.md": "0c4c7985ed4a06a2fa45d0d6a1887fec0f5a59892ae1d0d88317ac1c82a7a4ff",
+    "fixture/README.md": "a3ac65c07ebf67442b31cf3bc1d28ac5c849bd08fee9cba93b0a31339e7602d8",
+    "prompt.txt": "14542f39efe7d9d60d6993f2da2ce19ff021fb50d499d9a60a2f7d7ea6f2030a",
+    "run-command.txt": "0683eb1cb9ff624f8923fce722ffdd05ea4c592509cf2d25c0879b43e8fb56af"
+  },
+  "schema_version": "1.0"
+}

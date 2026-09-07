@@ -1,0 +1,7 @@
+{
+  "capability_id": "C15",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "The completed sanitized trial demonstrates all three required assertions: seeded critical defects blocked readiness, review artifacts remained immutable during comparison, and reviewer identity was independent of planning."
+}

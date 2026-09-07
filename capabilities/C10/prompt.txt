@@ -1,0 +1,3 @@
+Exercise the installed PlanAnvil recovery handler at ordinary SessionStart and, independently, SessionStart(source=compact) after automatic compaction. PostCompact is a stateless advisory, not a context channel.
+
+Use deterministic outer-harness fixtures and independent opaque targets. Never manually invoke a hook, read the target from files, invent it, or accept a model-declared PASS without an exact externally checked echo. Preserve source/planning state and checkpoint validity.

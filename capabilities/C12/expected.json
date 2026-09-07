@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Automatic instruction loading is truncated/limited according to current runtime behavior.",
+    "PlanAnvil explicit file read/hash still covers the complete fixture."
+  ],
+  "capability_id": "C12",
+  "schema_version": "1.0",
+  "title": "project_doc_max_bytes truncation"
+}

@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Record whether a child agent can start another agent in the tested runtime/configuration.",
+    "Do not change PlanAnvil flat-topology safety based on this observation alone."
+  ],
+  "capability_id": "C04",
+  "schema_version": "1.0",
+  "title": "Informational nested-subagent observation"
+}

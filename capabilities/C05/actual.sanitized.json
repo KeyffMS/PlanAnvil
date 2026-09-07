@@ -1,0 +1,377 @@
+{
+  "capability_id": "C05",
+  "environment": {
+    "codex_version": "codex-cli 0.153.4",
+    "fixture_commit": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+    "model": "gpt-5.6-sol",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
+    "project_trust": "trusted via CLI override for disposable fixture repositories",
+    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+  },
+  "observations": [
+    "A fresh explicit bundle passed digest verification, named only one safe relative payload path, and the payload hash matched.",
+    "Changing the payload while leaving the bundle valid produced a file-hash mismatch and a STALE rejection.",
+    "Changing the bundle without updating its sidecar caused digest verification to fail before its file list was processed.",
+    "Removing the bundle caused digest verification to fail before any payload list was trusted or read.",
+    "An escaped candidate failed repository containment validation and was rejected without being opened."
+  ],
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "trials": [
+    {
+      "assertions": [
+        {
+          "evidence": "review-bundle.sha256 matched review-bundle.json: 70ea11387dfb83e737f773b5162995fffc23568c65a6bc22aac6a6fa7df25169.",
+          "name": "Reviewer receives only the explicit immutable bundle.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "The verified bundle named only PLAN.md; its safe relative path was accepted and its SHA-256 matched 8890f7b98b2d70b87ab0b855104125faee2646938d2f7979a420f0c1343aed6b. Verification gates reject digest, path, existence, or file-hash mismatches.",
+          "name": "A stale, missing, changed, or escaped bundle is rejected.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C05",
+      "event_summary": {
+        "completed_command_items": 4,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 8,
+          "item.started": 4,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 8,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Verified the bundle digest before reading its manifest.",
+        "Read only the explicitly named fixture file after validating its recorded hash.",
+        "Accepted the immutable explicit handoff."
+      ],
+      "outcome": "PASS",
+      "sandbox": "read-only",
+      "trial": "fresh_explicit_bundle",
+      "trial_name": "fresh_explicit_bundle"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "Processed only explicit review-bundle.json; its recorded digest verified OK.",
+          "name": "Reviewer receives only the explicit immutable bundle.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "After only PLAN.md changed, recorded hash 8890f7b9\u2026 differed from actual dad1b8fe\u2026; handoff was rejected as STALE.",
+          "name": "A stale, missing, changed, or escaped bundle is rejected.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C05",
+      "event_summary": {
+        "completed_command_items": 3,
+        "completed_file_change_items": 1,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 9,
+          "item.started": 4,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 3,
+          "command_execution": 6,
+          "error": 2,
+          "file_change": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [
+          "M PLAN.md"
+        ],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Only PLAN.md was modified.",
+        "Bundle digest remained valid.",
+        "Recorded PLAN.md hash mismatch was detected and classified STALE."
+      ],
+      "outcome": "PASS",
+      "sandbox": "workspace-write",
+      "trial": "stale_bundle_rejected",
+      "trial_name": "stale_bundle_rejected"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "Explicit handoff verification used review-bundle.sha256 for review-bundle.json and stopped at digest validation.",
+          "name": "Reviewer receives only the explicit immutable bundle.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "After review-bundle.json was modified without changing its sidecar, sha256sum reported FAILED and exited 1; the bundle file list was not processed.",
+          "name": "A stale, missing, changed, or escaped bundle is rejected.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C05",
+      "event_summary": {
+        "completed_command_items": 4,
+        "completed_file_change_items": 1,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 10,
+          "item.started": 5,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 3,
+          "command_execution": 8,
+          "error": 2,
+          "file_change": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [
+          "M review-bundle.json"
+        ],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Only review-bundle.json was modified; review-bundle.sha256 remained unchanged.",
+        "Digest verification rejected the changed bundle before its file list was trusted."
+      ],
+      "outcome": "PASS",
+      "sandbox": "workspace-write",
+      "trial": "changed_bundle_rejected",
+      "trial_name": "changed_bundle_rejected"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "Handoff attempted only via the recorded explicit path review-bundle.json; payload files were not processed.",
+          "name": "Reviewer receives only the explicit immutable bundle.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "After deletion, digest verification reported review-bundle.json missing and exited with status 1, so the handoff was rejected.",
+          "name": "A stale, missing, changed, or escaped bundle is rejected.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C05",
+      "event_summary": {
+        "completed_command_items": 7,
+        "completed_file_change_items": 1,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 13,
+          "item.started": 8,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 3,
+          "command_execution": 14,
+          "error": 2,
+          "file_change": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [
+          "D review-bundle.json"
+        ],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "review-bundle.json was removed.",
+        "Explicit digest verification failed because the bundle could not be opened.",
+        "The handoff was rejected before trusting or reading its file list."
+      ],
+      "outcome": "PASS",
+      "sandbox": "workspace-write",
+      "trial": "missing_bundle_rejected",
+      "trial_name": "missing_bundle_rejected"
+    },
+    {
+      "assertions": [
+        {
+          "evidence": "The explicit candidate was canonicalized against the repository root before use; containment evaluated false and the decision was `reject_escaped`.",
+          "name": "Reviewer receives only the explicit immutable bundle.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "The escaped candidate was rejected without opening or trusting its contents (`candidate_opened: false`).",
+          "name": "A stale, missing, changed, or escaped bundle is rejected.",
+          "status": "PASS"
+        }
+      ],
+      "blocker": null,
+      "capability_id": "C05",
+      "event_summary": {
+        "completed_command_items": 4,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 9,
+          "item.started": 4,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 3,
+          "command_execution": 8,
+          "error": 2
+        }
+      },
+      "git_after": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "git_before": {
+        "branch": "master",
+        "cached_paths": [],
+        "commit_count": 2,
+        "head": "5e166a7bcd80c2ba804b9471d9f95360e26ed82a",
+        "index_tree": "922fdcc70a8d66ce979be583581289abd6073113",
+        "refs": [
+          "refs/heads/master"
+        ],
+        "status": [],
+        "worktree_count": 1
+      },
+      "observations": [
+        "Boundary check completed successfully: `inside_repository: false`, `decision: reject_escaped`."
+      ],
+      "outcome": "PASS",
+      "sandbox": "read-only",
+      "trial": "escaped_bundle_rejected",
+      "trial_name": "escaped_bundle_rejected"
+    },
+    {
+      "evaluator_event_summary": {
+        "completed_command_items": 2,
+        "completed_file_change_items": 0,
+        "error_events": 0,
+        "event_types": {
+          "item.completed": 4,
+          "item.started": 2,
+          "thread.started": 1,
+          "turn.completed": 1,
+          "turn.started": 1
+        },
+        "item_types": {
+          "agent_message": 2,
+          "command_execution": 4
+        }
+      }
+    }
+  ]
+}

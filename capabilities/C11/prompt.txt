@@ -1,0 +1,5 @@
+Capability qualification C11: Project instruction scope and precedence.
+
+Run from nested fixture directories with root and nested AGENTS.md files and record the effective instruction sources/order.
+
+Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.

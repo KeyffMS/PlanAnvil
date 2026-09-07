@@ -1,0 +1,4 @@
+# Existing controlled workflow: main -> recovery for C09/C10/C13, or full for C01-C16.
+# Both select the identical C09 runtime; only full can satisfy the release gate.
+python3 tools/live_codex_qualification_recovery.py --root <QUALIFICATION_REPO> --source-commit <FULL_MAIN_SHA> --run-id <RUN_ID> --output <SANITIZED_ARTIFACT_DIR> --allow-c13-non-ephemeral-fallback
+# A loopback CLI conformance pass is offline and cannot count as live capability evidence.

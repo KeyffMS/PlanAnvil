@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Destructive/reset/clean/base-integration commands in the corpus are denied during an active PlanAnvil run.",
+    "Unrelated safe read-only Git commands remain allowed."
+  ],
+  "capability_id": "C07",
+  "schema_version": "1.0",
+  "title": "Unsafe Git guard corpus"
+}

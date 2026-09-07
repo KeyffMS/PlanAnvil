@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Recovery hook injects a pointer/context, not hidden mutable state.",
+    "Session continuation can reconstruct from canonical files and Git."
+  ],
+  "capability_id": "C10",
+  "schema_version": "1.0",
+  "title": "Recovery context via SessionStart at startup and after compaction"
+}

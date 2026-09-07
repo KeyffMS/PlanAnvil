@@ -29,6 +29,7 @@ ITEM_TYPES = frozenset({
 })
 STATUSES = frozenset({"in_progress", "completed", "failed", "declined", "cancelled"})
 COMMANDS = {
+    **{f"python3 -B qualification-payload/c08_probe.py {p}": f"c08_{p}" for p in ("pressure", "finish")},
     **{f"python3 -B qualification-payload/c09_probe.py {p}": f"c09_{p}" for p in ("first", "second", "finish")},
     **{f"cat qualification-payload/segment-{i:02d}.txt": f"segment_{i:02d}" for i in range(1, 5)},
     "git status --porcelain=v1 --untracked-files=all": "git_status",
@@ -133,6 +134,22 @@ class StructuralEvents:
                                     receipt = candidate
                         row["c09_receipt_ok"] = (receipt.get("c09_phase") == label[4:]
                             and all(receipt.get(k) is True for k in ("checkpoint_ok", "canonical_read", "git_reconciled")))
+                    if label in {"c08_pressure", "c08_finish"} and kind == "item.completed":
+                        receipt = {}
+                        raw_output = item.get("aggregated_output", "")
+                        if isinstance(raw_output, str):
+                            for line in raw_output.splitlines()[-4:]:
+                                try:
+                                    candidate = json.loads(line)
+                                except (ValueError, RecursionError):
+                                    continue
+                                if isinstance(candidate, dict):
+                                    receipt = candidate
+                        valid = receipt.get("checkpoint_ok")
+                        row["c08_checkpoint_ok"] = valid if type(valid) is bool else None
+                        row["c08_receipt_ok"] = (receipt.get("c08_phase") == label[4:]
+                            and receipt.get("canonical_read") is True and type(valid) is bool
+                            and receipt.get("git_reconciled") is valid)
                     if kind == "item.completed":
                         self.completed_commands += 1
                         self.commands[label] += 1

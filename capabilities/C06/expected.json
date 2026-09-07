@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Configured supported tool calls produce PreToolUse observations.",
+    "At least one equivalent path outside hook coverage is handled by mandatory postcondition validation rather than assumed interception."
+  ],
+  "capability_id": "C06",
+  "schema_version": "1.0",
+  "title": "PreToolUse coverage and gaps"
+}

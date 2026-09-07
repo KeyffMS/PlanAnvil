@@ -1,0 +1,9 @@
+{
+  "assertions": [
+    "Reviewer receives only the explicit immutable bundle.",
+    "A stale, missing, changed, or escaped bundle is rejected."
+  ],
+  "capability_id": "C05",
+  "schema_version": "1.0",
+  "title": "Immutable reviewer handoff"
+}

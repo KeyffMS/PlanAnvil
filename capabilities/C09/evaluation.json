@@ -1,0 +1,7 @@
+{
+  "capability_id": "C09",
+  "expected_met": true,
+  "result": "REPRODUCED",
+  "schema_version": "1.0",
+  "summary": "C09 reproduced: two genuine automatic compactions completed from a valid checkpoint, canonical checkpoint/Git state remained coherent, and tool use continued after the second compaction."
+}
