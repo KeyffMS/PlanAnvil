@@ -4,6 +4,14 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
+### Qualification closure — 2026-09-07
+
+- full self-hosted run #27 (`34140846679`) reproduced all C01-C16 on executed source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`, Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13;
+- finite C08 now proves the intended missing-checkpoint stop and completed repaired recovery without timeout; C09/C10 regressions passed;
+- preserve the exact full archive and provenance, update current capability evidence, and retain historical #25 unchanged;
+- C13 retains the documented project-scoped, known-error-gated non-ephemeral fallback; no new transport claim or product/runtime/security change;
+- qualification is recorded; signed production publication remains a separate action.
+
 ### Added
 
 - add a controlled `workflow_dispatch`-only Codex qualification workflow for the trusted `plananvil-codex` self-hosted runner;
@@ -59,14 +67,14 @@ All notable changes to PlanAnvil are documented here.
 
 - preserve complete baseline 2.3 live evidence from full run #25, `34060321283`, tested at `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3` with Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13; all C01–C16 were reproduced;
 - retain the exact source-bound archive, hashes and original limitations; C13 passed via the permitted project-native non-ephemeral fallback;
-- replace the old C08 repaired-path workload with a finite pressure/finish scenario and strict termination checks; the old positive timeout remains in historical evidence and the replacement still requires live confirmation;
+- replace the old C08 repaired-path workload with a finite pressure/finish scenario and strict termination checks; the old positive timeout remains in historical evidence; full run #27 subsequently confirmed the replacement live;
 - add C08-only qualification and real-CLI loopback conformance without changing C09/C10/C13 runtime behavior, product payload or live runner security;
 - reset newly materialized template indices to unexecuted package results instead of inheriting historical success labels;
 - validate qualification archive integrity and qualified product identity, and require committed finite C08 completion evidence before production publication.
 
 ### Release status
 
-0.2.0 remains a release candidate. Full baseline qualification is recorded; production publication awaits the finite C08 live follow-up, strict release validation and a verified signed annotated tag. No tag or release has been published by the qualification-closure change.
+0.2.0 is qualified for the recorded configuration. Full run #27 (`34140846679`) confirmed C01-C16 and finite C08 stop/repair on source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`; its complete source-bound evidence is committed and #25 remains unchanged. Production publication remains a separate verified signed annotated-tag action after strict release validation. No tag or release has been published by this evidence import.
 
 ## [0.1.0] - 2026-07-12
 

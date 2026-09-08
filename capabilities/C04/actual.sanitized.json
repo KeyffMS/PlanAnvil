@@ -2,18 +2,17 @@
   "capability_id": "C04",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
+    "fixture_commit": "265b882eea3430d63025a1d0c70635400606c686",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "The child agent successfully started a nested child agent, and the nested child completed.",
-    "The trial reports no repository, Git, specification, or PlanAnvil source changes.",
-    "Git state was unchanged before and after the trial, with no cached or working-tree changes.",
-    "Both expected assertions passed and the completed trial reported no blocker."
+    "A child agent successfully started a nested child agent, which completed.",
+    "The trial recorded the nested-agent result as informational only.",
+    "Git state was unchanged, with no file, configuration, or release-gate changes observed."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -21,12 +20,12 @@
     {
       "assertions": [
         {
-          "evidence": "A child agent successfully started one nested child agent, which completed.",
+          "evidence": "A child agent successfully started one nested child agent, and the nested child completed.",
           "name": "Record whether a child agent can start another agent in the tested runtime/configuration.",
           "status": "PASS"
         },
         {
-          "evidence": "Observation only; no repository, Git, specification, or PlanAnvil source changes were made.",
+          "evidence": "The observation was informational only; no PlanAnvil files, configuration, or release-gate behavior were changed.",
           "name": "Do not change PlanAnvil flat-topology safety based on this observation alone.",
           "status": "PASS"
         }
@@ -55,8 +54,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
-        "index_tree": "14cb369c4d1705946abdf80c6a0b35e7f621ca70",
+        "head": "265b882eea3430d63025a1d0c70635400606c686",
+        "index_tree": "ed6d0dcc1639cb6097a6d38a6ba7ed1bd4b30320",
         "refs": [
           "refs/heads/master"
         ],
@@ -67,8 +66,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4630aec248648a255faaf8cf10caa1ee8ea162d2",
-        "index_tree": "14cb369c4d1705946abdf80c6a0b35e7f621ca70",
+        "head": "265b882eea3430d63025a1d0c70635400606c686",
+        "index_tree": "ed6d0dcc1639cb6097a6d38a6ba7ed1bd4b30320",
         "refs": [
           "refs/heads/master"
         ],
@@ -76,14 +75,14 @@
         "worktree_count": 1
       },
       "observations": [
-        "Nested subagent spawn: allowed.",
-        "Nested child completion: completed.",
+        "Nested subagent start: accepted.",
+        "Nested subagent completion: observed.",
         "PlanAnvil flat-topology safety: unchanged."
       ],
       "outcome": "PASS",
       "sandbox": "read-only",
-      "trial": "informational-nested-subagent-observation",
-      "trial_name": "informational-nested-subagent-observation"
+      "trial": "observe_nested_subagent_behavior",
+      "trial_name": "observe_nested_subagent_behavior"
     },
     {
       "evaluator_event_summary": {

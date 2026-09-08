@@ -1,5 +1,31 @@
-Capability qualification C08: PreCompact stop semantics.
+NEGATIVE PROBE
+Qualify C08 in ONE finite read-only turn. The checkpoint is intentionally missing. Do not repair it: the real PreCompact hook is expected to stop this negative probe.
+This is a fixture probe, not a request to start a plan or map instructions.
+Make exactly these TWO sequential exec_command calls, each once:
+1. cmd='python3 -B qualification-payload/c08_probe.py pressure', max_output_tokens=65536
+2. cmd='python3 -B qualification-payload/c08_probe.py finish', max_output_tokens=2048
+Use the current planning workdir. Do not prepend cd, combine commands or use other tools.
+The first output is inert compaction pressure; do not analyse or reread the padding.
+If PreCompact stops this turn, stop. Do not retry, repair state or invoke hooks manually.
+Otherwise, after automatic compaction continue with finish, never repeat pressure.
+Finish uses the real product checkpoint/Git validator and reads the canonical recovery files.
+This performs the recovery requested by SessionStart(compact); no extra recovery reads.
+After finish exits zero make NO more calls. Return capability_id C08, trial automatic_compaction_without_valid_checkpoint,
+outcome PASS, and observation C08_FINISHED. Any command failure means FAIL/BLOCKED, not retry.
+Do not change any files, read telemetry, spawn agents or execute a generated plan.
 
-Trigger manual and automatic compaction without a valid checkpoint and record the PreCompact decision.
-
-Record only the minimal structural observations required to evaluate the assertions in expected.json. Do not expose secrets, usernames, home directories, session IDs, private repository URLs, or full conversation transcripts.
+REPAIRED PROBE
+Qualify C08 in ONE finite read-only turn. A valid checkpoint was created by the outer harness.
+This is a fixture probe, not a request to start a plan or map instructions.
+Make exactly these TWO sequential exec_command calls, each once:
+1. cmd='python3 -B qualification-payload/c08_probe.py pressure', max_output_tokens=65536
+2. cmd='python3 -B qualification-payload/c08_probe.py finish', max_output_tokens=2048
+Use the current planning workdir. Do not prepend cd, combine commands or use other tools.
+The first output is inert compaction pressure; do not analyse or reread the padding.
+If PreCompact stops this turn, stop. Do not retry, repair state or invoke hooks manually.
+Otherwise, after automatic compaction continue with finish, never repeat pressure.
+Finish uses the real product checkpoint/Git validator and reads the canonical recovery files.
+This performs the recovery requested by SessionStart(compact); no extra recovery reads.
+After finish exits zero make NO more calls. Return capability_id C08, trial automatic_compaction_after_checkpoint_repair,
+outcome PASS, and observation C08_FINISHED. Any command failure means FAIL/BLOCKED, not retry.
+Do not change any files, read telemetry, spawn agents or execute a generated plan.

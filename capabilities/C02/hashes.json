@@ -1,10 +1,10 @@
 {
   "algorithm": "sha256",
   "files": {
-    "README.md": "d48f15a8b53baa0aa7ee54ee3c1b56ae44747159f9579963461180277f052027",
-    "actual.sanitized.json": "84a176fed4880e6a59bb18f46d9c24962b6f371ad6de8d9458da75deaa488923",
+    "README.md": "0eb2ce77906499f392ee20894bba2939ac41e4b968f25d16caf06dd22af4eeea",
+    "actual.sanitized.json": "66acfd0d0ce95591dd9beddd138d4d9066e597b7a47c5f9f3e9888c2b5a3bcc7",
     "config/README.md": "22255f099cfe99dea718801c9f78b2230d229a560ba02f1f048e35f9ca765780",
-    "evaluation.json": "a1bb7d9496bd9daba9a07f296b1ce42acc133a91d36c9f8c7aa81fb4c329f548",
+    "evaluation.json": "e004a439026664fa6fa715c15603e012ca343f3685091ceb3b7381da9b87c4d7",
     "expected.json": "fe22f0a70480c8c1b932e67af607ca5e3f539512162dd22b903001a3b215d0b8",
     "fixture/.agents/skills/fixture-capability/SKILL.md": "35e41a201965e0a9c83ce9dbcf151275a7ad5718edd63c21976e0def24204cd5",
     "fixture/.agents/skills/fixture-capability/agents/openai.yaml": "5f4b205f412e2e168092f152801b7dc72bc00e7716147305ebc5fa6bfabe0087",

@@ -2,12 +2,12 @@
   "capability_id": "C10",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "175d5963baeaebe5f90d15a09aeec64c3c7b9781",
+    "fixture_commit": "7106efd129b1976c24df5128309622cc5dd0252b",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "fixture_prepared_by_outer_harness=true",
@@ -67,32 +67,32 @@
         "error_events": 0,
         "event_tail": [
           {
-            "elapsed_ms": 944,
+            "elapsed_ms": 1093,
             "event": "thread.started"
           },
           {
-            "elapsed_ms": 1004,
+            "elapsed_ms": 1114,
             "error_category": "hook_error",
             "event": "item.completed",
             "item": "error"
           },
           {
-            "elapsed_ms": 1004,
+            "elapsed_ms": 1114,
             "error_category": "hook_error",
             "event": "item.completed",
             "item": "error"
           },
           {
-            "elapsed_ms": 1004,
+            "elapsed_ms": 1114,
             "event": "turn.started"
           },
           {
-            "elapsed_ms": 6597,
+            "elapsed_ms": 9384,
             "event": "item.completed",
             "item": "agent_message"
           },
           {
-            "elapsed_ms": 6619,
+            "elapsed_ms": 9476,
             "event": "turn.completed"
           }
         ],
@@ -111,7 +111,7 @@
         "oversized_lines": 0,
         "owned_process_tree_terminated": false,
         "process_cleanup_ok": true,
-        "process_elapsed_ms": 7912,
+        "process_elapsed_ms": 11392,
         "process_returncode": 0,
         "raw_payload_checks": {
           "candidate_count": 1,
@@ -131,7 +131,7 @@
         "timeout": false
       },
       "model_payload_summary": {
-        "assertion_count": 0,
+        "assertion_count": 1,
         "capability_id": "C10",
         "observation_count": 1,
         "outcome": "PASS",
@@ -269,52 +269,52 @@
         "error_events": 0,
         "event_tail": [
           {
-            "elapsed_ms": 1037,
+            "elapsed_ms": 1153,
             "event": "thread.started"
           },
           {
-            "elapsed_ms": 1063,
+            "elapsed_ms": 1240,
             "error_category": "hook_error",
             "event": "item.completed",
             "item": "error"
           },
           {
-            "elapsed_ms": 1063,
+            "elapsed_ms": 1240,
             "error_category": "hook_error",
             "event": "item.completed",
             "item": "error"
           },
           {
-            "elapsed_ms": 1063,
+            "elapsed_ms": 1240,
             "event": "turn.started"
           },
           {
-            "elapsed_ms": 5260,
+            "elapsed_ms": 7615,
             "event": "item.completed",
             "item": "agent_message"
           },
           {
             "command": "segment_01",
-            "elapsed_ms": 6931,
+            "elapsed_ms": 10201,
             "event": "item.started",
             "item": "command_execution",
             "status": "in_progress"
           },
           {
             "command": "segment_01",
-            "elapsed_ms": 6931,
+            "elapsed_ms": 10201,
             "event": "item.completed",
             "exit_code": 0,
             "item": "command_execution",
             "status": "completed"
           },
           {
-            "elapsed_ms": 26019,
+            "elapsed_ms": 28774,
             "event": "item.completed",
             "item": "agent_message"
           },
           {
-            "elapsed_ms": 26069,
+            "elapsed_ms": 28801,
             "event": "turn.completed"
           }
         ],
@@ -335,7 +335,7 @@
         "oversized_lines": 0,
         "owned_process_tree_terminated": false,
         "process_cleanup_ok": true,
-        "process_elapsed_ms": 28098,
+        "process_elapsed_ms": 30248,
         "process_returncode": 0,
         "raw_payload_checks": {
           "candidate_count": 1,
@@ -354,7 +354,7 @@
         "stderr_lines": 1,
         "timeout": false
       },
-      "fixture_commit": "bef010e03824541ea388d3ef0b8c5e066742f8a8",
+      "fixture_commit": "053d8cdb268717c5fb66fe3f0d6bbf5a29508907",
       "model_payload_summary": {
         "assertion_count": 1,
         "capability_id": "C10",

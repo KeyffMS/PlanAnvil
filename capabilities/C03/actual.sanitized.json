@@ -2,12 +2,12 @@
   "capability_id": "C03",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "368b6459d9c801e9ab70d931c2af313814051424",
+    "fixture_commit": "e2f97dd2aacb420decf67085a8a27675fcde8bc6",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "bootstrap_git_probe_completed=true",
@@ -77,21 +77,20 @@
       "model_payload": {
         "assertions": [
           {
-            "evidence": "Exact command exited 0; `git status --porcelain=v1` produced no output.",
-            "name": "Auxiliary C03 source is reachable and clean",
+            "evidence": "Exit code 0; `git status --porcelain=v1` produced no output.",
+            "name": "Auxiliary source is clean",
             "status": "PASS"
           },
           {
-            "evidence": "`git rev-parse HEAD` returned `368b6459d9c801e9ab70d931c2af313814051424`.",
-            "name": "HEAD is resolvable",
+            "evidence": "`git rev-parse HEAD` returned `e2f97dd2aacb420decf67085a8a27675fcde8bc6`.",
+            "name": "Auxiliary source is reachable",
             "status": "PASS"
           }
         ],
         "blocker": null,
         "capability_id": "C03",
         "observations": [
-          "Working tree status is clean.",
-          "HEAD: 368b6459d9c801e9ab70d931c2af313814051424"
+          "The exact requested command completed successfully without modifying files."
         ],
         "outcome": "PASS",
         "trial": "explicit_plananvil_topology"

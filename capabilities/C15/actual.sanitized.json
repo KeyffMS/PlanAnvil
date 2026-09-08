@@ -2,17 +2,18 @@
   "capability_id": "C15",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "df27abcf1df0466dc7d35972a6a1a5377e28e144",
+    "fixture_commit": "8f19a7c1b7a00f8caaa27f4df789773ab52cd981",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "Completed trial produced FAIL readiness with one CRITICAL coverage/traceability finding and HIGH rollback/recovery omissions.",
-    "Post-comparison checks report both blind-review Markdown and sidecar hashes unchanged, with their binding still valid.",
-    "The sidecar identifies a reviewer role, and the review was performed by a fresh read-only sub-agent separate from the controller/planner role."
+    "Completed trial produced a FAIL verdict with two CRITICAL findings: missing rollback and an uncovered critical requirement.",
+    "Post-comparison checks confirmed that the blind-review markdown and sidecar hashes were unchanged.",
+    "The review sidecar identified an independent blind-reviewer role distinct from the controller/planner role.",
+    "The trial reported no blocker and an overall PASS outcome."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -20,17 +21,17 @@
     {
       "assertions": [
         {
-          "evidence": "Fresh reviewer returned FAIL with one CRITICAL coverage/traceability finding and HIGH rollback/recovery omissions.",
+          "evidence": "Fresh blind reviewer returned FAIL with two CRITICAL findings: missing rollback and uncovered critical requirement.",
           "name": "Seeded critical defects are reported or deterministically block readiness.",
           "status": "PASS"
         },
         {
-          "evidence": "Post-comparison checks confirmed both review artifact hashes unchanged; Markdown-to-sidecar binding also remained valid.",
+          "evidence": "Post-comparison checks confirmed both recorded review artifact hashes remained unchanged.",
           "name": "Blind review markdown/sidecar hashes do not change during comparison.",
           "status": "PASS"
         },
         {
-          "evidence": "Review sidecar recorded author_role=plan-anvil-reviewer; review was performed by a fresh read-only sub-agent separate from the controller.",
+          "evidence": "Review sidecar records an independently named blind reviewer role distinct from the controller/planner role.",
           "name": "Reviewer identity is independent from the planner role.",
           "status": "PASS"
         }
@@ -38,12 +39,12 @@
       "blocker": null,
       "capability_id": "C15",
       "event_summary": {
-        "completed_command_items": 9,
-        "completed_file_change_items": 3,
+        "completed_command_items": 10,
+        "completed_file_change_items": 4,
         "error_events": 0,
         "event_types": {
-          "item.completed": 19,
-          "item.started": 13,
+          "item.completed": 21,
+          "item.started": 15,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
@@ -51,24 +52,26 @@
         "item_types": {
           "agent_message": 4,
           "collab_tool_call": 2,
-          "command_execution": 18,
+          "command_execution": 20,
           "error": 2,
-          "file_change": 6
+          "file_change": 8
         }
       },
       "git_after": {
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "df27abcf1df0466dc7d35972a6a1a5377e28e144",
-        "index_tree": "f32840c1e4bdc04ae8cdb96860185b675fc0541a",
+        "head": "8f19a7c1b7a00f8caaa27f4df789773ab52cd981",
+        "index_tree": "9adb9b499e76efb78451552983cda34c72c48f85",
         "refs": [
           "refs/heads/master"
         ],
         "status": [
-          "?? reports/plan-review/blind-review.json",
-          "?? reports/plan-review/blind-review.md",
-          "?? reports/plan-review/comparison.json"
+          "?? blind-review.json",
+          "?? blind-review.md",
+          "?? comparison.json",
+          "?? review-bundle.json",
+          "?? review-bundle.sha256"
         ],
         "worktree_count": 1
       },
@@ -76,8 +79,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "df27abcf1df0466dc7d35972a6a1a5377e28e144",
-        "index_tree": "f32840c1e4bdc04ae8cdb96860185b675fc0541a",
+        "head": "8f19a7c1b7a00f8caaa27f4df789773ab52cd981",
+        "index_tree": "9adb9b499e76efb78451552983cda34c72c48f85",
         "refs": [
           "refs/heads/master"
         ],
@@ -85,17 +88,15 @@
         "worktree_count": 1
       },
       "observations": [
-        "Blind result: FAIL.",
-        "Comparison result: FAIL.",
-        "Critical findings: 1.",
-        "Markdown hash unchanged: true.",
-        "Sidecar hash unchanged: true.",
-        "Independent reviewer role: true."
+        "Bundle digest verification succeeded.",
+        "Immutable review recorded verdict FAIL with two critical findings.",
+        "Separate comparison confirmed unchanged markdown and sidecar hashes.",
+        "Original seeded fixture remained unchanged."
       ],
       "outcome": "PASS",
       "sandbox": "workspace-write",
-      "trial": "immutable-blind-review",
-      "trial_name": "immutable-blind-review"
+      "trial": "immutable_blind_review",
+      "trial_name": "immutable_blind_review"
     },
     {
       "evaluator_event_summary": {

@@ -2,12 +2,12 @@
   "capability_id": "C16",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
+    "fixture_commit": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "outer_all_pass=true",
@@ -20,22 +20,22 @@
     {
       "assertions": [
         {
-          "evidence": "Probe completed with ok=true, result=GIT_READY, and all reported steps succeeded.",
+          "evidence": "Live probe exited 0 with result=GIT_READY; every reported Git operation had ok=true.",
           "name": "Probe accurately reports each Git capability outcome.",
           "status": "PASS"
         },
         {
-          "evidence": "Independent checks found no temporary refs, branches, worktrees, probe files, or entries under ../probes.",
+          "evidence": "No temporary probe refs, branches, worktrees, files, or entries under the probe parent remained.",
           "name": "Temporary refs/branches/worktrees/files are cleaned.",
           "status": "PASS"
         },
         {
-          "evidence": "source_snapshot_changed=[]; source remained on main at the original HEAD with a clean status.",
+          "evidence": "source_snapshot_changed=[] and the source worktree remained clean on main at the original HEAD.",
           "name": "Source repository snapshot is preserved.",
           "status": "PASS"
         },
         {
-          "evidence": "The real commit operation succeeded; no signing or repository-hook failure diagnostics occurred.",
+          "evidence": "The real probe completed without signing or repository-hook failures requiring classification.",
           "name": "Signing and repository-hook failures are classified from actual diagnostics.",
           "status": "PASS"
         }
@@ -63,8 +63,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -75,8 +75,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -84,8 +84,9 @@
         "worktree_count": 1
       },
       "observations": [
-        "Command exited 0.",
-        "cleanup_errors=[] and no probe artifacts remained."
+        "cleanup_errors=[]",
+        "source_snapshot_changed=[]",
+        "No probe artifacts remained."
       ],
       "outcome": "PASS",
       "outer_diagnostic_basis": {
@@ -104,37 +105,42 @@
     {
       "assertions": [
         {
-          "evidence": "result was GIT_SIGNING_BLOCKED with actual GPG signing-failure diagnostics",
-          "name": "Git signing failure classified",
+          "evidence": "Live probe result was GIT_SIGNING_BLOCKED from actual GPG signing diagnostics.",
+          "name": "Probe accurately reports each Git capability outcome.",
           "status": "PASS"
         },
         {
-          "evidence": "source_snapshot_changed was empty",
-          "name": "Source snapshot preserved",
+          "evidence": "Temporary ref, probe branch, and probe path were confirmed absent.",
+          "name": "Temporary refs/branches/worktrees/files are cleaned.",
           "status": "PASS"
         },
         {
-          "evidence": "cleanup_errors was empty; temporary ref and probe branch were absent; no matching worktree or probe artifacts remained",
-          "name": "Probe cleanup completed",
+          "evidence": "source_snapshot_changed was empty and source status remained clean.",
+          "name": "Source repository snapshot is preserved.",
+          "status": "PASS"
+        },
+        {
+          "evidence": "Commit failure diagnostic reported GPG signing failure and was classified GIT_SIGNING_BLOCKED.",
+          "name": "Signing and repository-hook failures are classified from actual diagnostics.",
           "status": "PASS"
         }
       ],
       "blocker": null,
       "capability_id": "C16",
       "event_summary": {
-        "completed_command_items": 4,
+        "completed_command_items": 2,
         "completed_file_change_items": 0,
         "error_events": 0,
         "event_types": {
-          "item.completed": 10,
-          "item.started": 4,
+          "item.completed": 7,
+          "item.started": 2,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
         },
         "item_types": {
-          "agent_message": 4,
-          "command_execution": 8,
+          "agent_message": 3,
+          "command_execution": 4,
           "error": 2
         }
       },
@@ -142,8 +148,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -154,8 +160,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -163,7 +169,8 @@
         "worktree_count": 1
       },
       "observations": [
-        "Probe exited 2 with plan_status BLOCKED_BY_RUNTIME_PREREQUISITE, the expected process behavior for GIT_SIGNING_BLOCKED."
+        "cleanup_errors was empty.",
+        "No probe artifacts remained."
       ],
       "outcome": "PASS",
       "outer_diagnostic_basis": {
@@ -182,22 +189,22 @@
     {
       "assertions": [
         {
-          "evidence": "Live probe returned result GIT_HOOK_BLOCKED with diagnostic \"pre-commit hook failed: C16 fixture hook rejection\".",
+          "evidence": "Live probe result was GIT_HOOK_BLOCKED from actual pre-commit hook rejection.",
           "name": "Probe accurately reports each Git capability outcome.",
           "status": "PASS"
         },
         {
-          "evidence": "cleanup_errors was empty; no temporary refs, branches, worktrees, or files remained.",
+          "evidence": "Temporary ref and probe branch were absent; no matching worktrees or probe artifacts remained.",
           "name": "Temporary refs/branches/worktrees/files are cleaned.",
           "status": "PASS"
         },
         {
-          "evidence": "source_snapshot_changed was empty and the source worktree remained clean on main.",
+          "evidence": "source_snapshot_changed was empty.",
           "name": "Source repository snapshot is preserved.",
           "status": "PASS"
         },
         {
-          "evidence": "The actual pre-commit hook rejection was classified as GIT_HOOK_BLOCKED.",
+          "evidence": "Diagnostic classified the pre-commit hook failure as GIT_HOOK_BLOCKED.",
           "name": "Signing and repository-hook failures are classified from actual diagnostics.",
           "status": "PASS"
         }
@@ -209,14 +216,14 @@
         "completed_file_change_items": 0,
         "error_events": 0,
         "event_types": {
-          "item.completed": 6,
+          "item.completed": 7,
           "item.started": 2,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
         },
         "item_types": {
-          "agent_message": 2,
+          "agent_message": 3,
           "command_execution": 4,
           "error": 2
         }
@@ -225,8 +232,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -237,8 +244,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0e5fdbad2f62c221e4fe3c5c1b53a6e645eb28cd",
-        "index_tree": "d0f99c956fcb88e978566d60c763b86076e3226a",
+        "head": "c6d09bae00cf0a7deefabc1b6a3017e3bd05de3e",
+        "index_tree": "d6e50af2eacc26740687f9f8f7edc4c31501e6aa",
         "refs": [
           "refs/heads/main"
         ],
@@ -246,9 +253,8 @@
         "worktree_count": 1
       },
       "observations": [
-        "Probe result: GIT_HOOK_BLOCKED.",
-        "source_snapshot_changed: []; cleanup_errors: [].",
-        "Post-probe artifact check found only the original source worktree on main."
+        "cleanup_errors was empty.",
+        "No probe artifacts remained."
       ],
       "outcome": "PASS",
       "outer_diagnostic_basis": {

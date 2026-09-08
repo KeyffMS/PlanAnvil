@@ -1,5 +1,2 @@
-# From the disposable fixture repository root:
-codex --version
-codex
-# Paste the exact contents of prompt.txt as the first user message.
-# Save only sanitized structural observations into actual.sanitized.json.
+# Existing trusted self-hosted workflow: main -> c08 (targeted) or full.
+python3 tools/live_codex_qualification_recovery.py --only C08 --root <QUALIFICATION_REPO> --source-commit <FULL_MAIN_SHA> --run-id <RUN_ID> --output <SANITIZED_ARTIFACT_DIR> --allow-c13-non-ephemeral-fallback

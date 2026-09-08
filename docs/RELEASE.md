@@ -25,7 +25,7 @@ python tools/build_release.py --output dist
 
 Before a production tag, execute `docs/CODEX_SANDBOX_RUNBOOK.md`. Required entries in `capabilities/index.json` must be changed from `BLOCKED` to `REPRODUCED` only after their complete sanitized evidence package is committed and `python tools/validate_capabilities.py` passes.
 
-For the current C08 closure, use a NEW `mode=full` run on main, initiated by an account allowed by the self-hosted runner. The production validator requires a single complete full-run archive containing the finite C08 proof. A successful `c08` or `recovery` diagnostic is useful but its partial archive cannot replace that full run. See `docs/QUALIFICATION_STATUS.md` for the merged repair and the automated launch rejected before testing.
+Current full run #27 (`34140846679`) passed and its exact reviewed evidence is committed, including finite C08 stop/repair completion. No further live run is required merely to record this result. The production validator still requires one complete full-run archive; a `c08` or `recovery` diagnostic cannot replace it. See `docs/QUALIFICATION_STATUS.md` for provenance, tested scope and the retained C13 fallback limitation.
 
 ## Publish
 
@@ -54,16 +54,17 @@ The production `release_check.py` enforces clean-tree state in addition to versi
 
 Before production release, protect `main` as tracked in issue #6: PR-only changes, required CI, up-to-date branch, conversation resolution, and no force push/delete.
 
-## Qualification closure (2026-09-07)
+## Qualification closure (reviewed 2026-09-08)
 
 The baseline #25 evidence is preserved immutably. `qualifications/index.json`
 identifies the current reviewed full run; its source SHA always remains the
 actually executed commit, never the later evidence-import commit.
 `release_check.py` also validates the original archive digest/manifest, exact
 current capability packages, qualified .agents/.codex bytes, and finite C08
-negative-stop/positive-completion evidence. The old C08 timeout keeps production
-blocked until the new complete full-run result is committed. Candidate checks
-intentionally remain usable before that result exists.
+negative-stop/positive-completion evidence. Full #27 now supplies that proof;
+the old #25 timeout remains recorded as history. Candidate checks still do not
+substitute for strict production validation. Run `python tools/release_check.py`
+on the clean evidence-import commit before any signed publication.
 
 To import a successful new full result, preserve its exact archive, summary and
 verified provenance under `qualifications/<run-id>/`, import its exact C01-C16
@@ -78,7 +79,8 @@ seven required status checks, strict up-to-date branch, conversation resolution,
 no deletion or force push, no bypass actors. The protected distribution job now
 also requires real-CLI conformance to succeed. No policy is loosened for closure.
 
-After the complete new full-run evidence is imported and CI is green, preparation
-is complete; the signed annotated production tag remains a separate authorized
-publication. No unsigned or lightweight tag may substitute for the required
-verified signature.
+The complete #27 evidence is imported. After strict validation and green CI on
+the evidence-import commit, qualification preparation is complete; a signed
+annotated production tag remains a separate authorized publication. This import
+does not create a tag or release. No unsigned or lightweight tag may substitute
+for the required verified signature.

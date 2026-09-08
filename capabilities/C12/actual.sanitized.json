@@ -2,12 +2,12 @@
   "capability_id": "C12",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
+    "fixture_commit": "943327f5c2dbb6f5b85866de65974c840107d205",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "automatic_outcome=PASS",
@@ -53,8 +53,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
-        "index_tree": "09e441d25e916ca414a56e81fb918d21b92d4cbf",
+        "head": "943327f5c2dbb6f5b85866de65974c840107d205",
+        "index_tree": "d2c9828045a94cccc8f95194232c838165af8cfb",
         "refs": [
           "refs/heads/master"
         ],
@@ -65,8 +65,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "76348a12b0b01541ea5cc3ff7a5fb8942fd98fca",
-        "index_tree": "09e441d25e916ca414a56e81fb918d21b92d4cbf",
+        "head": "943327f5c2dbb6f5b85866de65974c840107d205",
+        "index_tree": "d2c9828045a94cccc8f95194232c838165af8cfb",
         "refs": [
           "refs/heads/master"
         ],
@@ -101,9 +101,9 @@
       "execution": "outer deterministic PlanAnvil map_instructions",
       "observations": [
         "fixture_bytes=4320",
-        "expected_sha256=sha256:e4915518d8e2e19cd371a38d72cd508976b2df05463513c3de4645a8cbb0b7ff",
+        "expected_sha256=sha256:79bb8900eb43c5cc8cee71fd0803553cadcdff2ab8d69b3ebd4da77f0cfea29c",
         "map_error=none",
-        "{\"automatic_byte_limit\": 1024, \"bytes\": 4320, \"full_read\": true, \"path\": \"AGENTS.md\", \"sha256\": \"sha256:e4915518d8e2e19cd371a38d72cd508976b2df05463513c3de4645a8cbb0b7ff\", \"truncation_risk\": true}"
+        "{\"automatic_byte_limit\": 1024, \"bytes\": 4320, \"full_read\": true, \"path\": \"AGENTS.md\", \"sha256\": \"sha256:79bb8900eb43c5cc8cee71fd0803553cadcdff2ab8d69b3ebd4da77f0cfea29c\", \"truncation_risk\": true}"
       ],
       "outcome": "PASS",
       "trial": "plananvil_explicit_full_file_hash",

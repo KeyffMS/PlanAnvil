@@ -11,10 +11,39 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import prepare_capabilities as prepare
 import qualification_closure as closure
-from qualification_artifact import build_archive
+import release_check
+from qualification_artifact import build_archive, verify_archive
 
 
 class ClosureTests(unittest.TestCase):
+    def test_reviewed_current_full_archive_and_summary_are_consistent(self):
+        # Verify archived evidence, not production eligibility of a development PR.
+        # Current product binding remains the responsibility of release_check.py.
+        index = json.loads((ROOT / 'qualifications/index.json').read_text())
+        self.assertEqual(index['c08_closure'], 'REPRODUCED')
+        folder = ROOT / 'qualifications' / index['current_run']
+        provenance = json.loads((folder / 'provenance.json').read_text())
+        self.assertEqual(provenance['qualification_mode'], 'full')
+        verify_archive(folder / 'evidence-artifact.zip')
+        with zipfile.ZipFile(folder / 'evidence-artifact.zip') as z:
+            summary_bytes = z.read('qualification-summary.json')
+            self.assertEqual((folder / 'qualification-summary.json').read_bytes(), summary_bytes)
+            summary = json.loads(summary_bytes)
+            self.assertEqual(summary['github_actions_run'], index['current_run'])
+            self.assertEqual(summary['source_commit'], provenance['source_commit'])
+            self.assertTrue(summary['release_gate_passed'])
+            self.assertEqual(summary['required_not_reproduced'], [])
+
+    def test_current_package_change_is_not_accepted_as_archived_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy_repo(tmp)
+            path = root / 'capabilities/C09/actual.sanitized.json'
+            # Even a JSON-preserving edit is not the original source-bound record.
+            with path.open('ab') as stream:
+                stream.write(b'\n')
+            self.assertTrue(any('current capability differs from archived run' in error
+                                for error in closure.closure_blockers(root)))
+
     def copy_repo(self, tmp):
         target = Path(tmp)/'repo'
         shutil.copytree(ROOT, target, ignore=shutil.ignore_patterns('.git', '__pycache__'))
@@ -40,6 +69,8 @@ class ClosureTests(unittest.TestCase):
             root=self.copy_repo(tmp)
             (root/'.agents/skills/plan-anvil/SKILL.md').write_text('changed')
             self.assertIn('product bytes changed since recorded live qualification', closure.closure_blockers(root))
+            # Ordinary candidate PRs stay usable before new main-only live qualification.
+            self.assertEqual(release_check.release_blockers(root, require_reproduced=False), [])
 
     def test_archive_digest_corruption_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
