@@ -74,7 +74,7 @@ the full index, edit old actual observations, or label the denied automated laun
 as tested. Validate archive integrity and production readiness on the resulting
 clean tree through a protected PR before any signed publication.
 
-The active main ruleset was verified on 2026-09-07: PR-only squash changes,
+The active main ruleset was reverified on 2026-09-08: PR-only squash changes,
 seven required status checks, strict up-to-date branch, conversation resolution,
 no deletion or force push, no bypass actors. The protected distribution job now
 also requires real-CLI conformance to succeed. No policy is loosened for closure.
@@ -84,3 +84,25 @@ the evidence-import commit, qualification preparation is complete; a signed
 annotated production tag remains a separate authorized publication. This import
 does not create a tag or release. No unsigned or lightweight tag may substitute
 for the required verified signature.
+
+## Remaining publication steps and follow-up
+
+All changes intended for the first 0.2.0 publication are grouped under its
+pending-publication section in `CHANGELOG.md`. `VERSION` remains 0.2.0;
+qualification reconciliation alone does not change the distribution version.
+
+Before tagging, merge the documentation reconciliation through protected CI,
+run strict release validation on the resulting clean checkout, and use the
+verified signed annotated-tag procedure above. The current qualification
+metadata and C08 compliance checkbox are compared with the archived summary
+and index by `tests/test_qualification_documentation.py` in PR and release CI.
+
+The baseline 2.3 contract and full #27 evidence resolve the C13 qualification
+question in [issue #17](https://github.com/KeyffMS/PlanAnvil/issues/17).
+Ephemeral custom-agent spawning remains a documented compatibility limitation;
+requalify it when the upstream runtime changes.
+
+[Issue #37](https://github.com/KeyffMS/PlanAnvil/issues/37) remains open for
+hosted C09 receipt-observer reliability. It does not invalidate the separate
+full #27 proof. Future Codex/model/OS support needs scoped requalification.
+Plugin packaging remains outside v1 under `IMPLEMENTATION_SPEC.md`.

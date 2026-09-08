@@ -4,22 +4,30 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
-### Qualification closure — 2026-09-07
-
-- full self-hosted run #27 (`34140846679`) reproduced all C01-C16 on executed source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`, Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13;
-- finite C08 now proves the intended missing-checkpoint stop and completed repaired recovery without timeout; C09/C10 regressions passed;
-- preserve the exact full archive and provenance, update current capability evidence, and retain historical #25 unchanged;
-- C13 retains the documented project-scoped, known-error-gated non-ephemeral fallback; no new transport claim or product/runtime/security change;
-- qualification is recorded; signed production publication remains a separate action.
+## [0.2.0] - Pending publication
 
 ### Added
 
+- standard-library repository distribution manager with install, verify, upgrade, status and uninstall operations;
+- transactional rollback, ownership/hash state, conservative Codex config merging, and structural hook merging;
+- distribution tests covering clean repositories, existing `AGENTS.md`, existing `.codex/config.toml`, unrelated hooks, upgrade conflicts and uninstall conflicts;
+- deterministic release archive builder, candidate/production release gate, and tag-driven GitHub Release workflow;
+- deterministic C01-C16 qualification template archive containing fixture, prompt, config, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
+- capability evidence materializer/validator/rehash tools and a live Codex sandbox runbook;
+- installation, troubleshooting, and release documentation;
 - add a controlled `workflow_dispatch`-only Codex qualification workflow for the trusted `plananvil-codex` self-hosted runner;
 - add a sequential C01-C16 live qualification controller that creates disposable fixture repositories, runs fresh ephemeral Codex trials, sanitizes structural evidence, rehashes/validates each package, and exports evidence only as a GitHub Actions artifact;
 - add regression tests ensuring the live qualification controller redacts private-looking data and never disables the Codex sandbox/approval boundary.
 
 ### Changed
 
+- refresh the Codex capability baseline through 2.2 (2026-08-28) to the qualified baseline 2.3 described below;
+- replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
+- enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
+- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker;
+- pin GitHub Actions to immutable SHAs and Node-24-based checkout/setup-python releases;
+- expand CI across Python 3.11 and the current upper supported interpreter on Ubuntu, macOS and Windows;
+- split distribution/release-candidate validation into a stable named CI check;
 - update pinned `actions/checkout` and `actions/setup-python` workflow SHAs to the current v7 releases while retaining immutable action pinning and Node 24 compatibility;
 - require the full Linux Codex qualification job to pass a system-`bubblewrap` user-namespace probe before C01-C16, so incompatible Podman runners fail fast instead of timing out capability-by-capability;
 - update the qualification evidence uploader to the Node-24-native `actions/upload-artifact` v6 immutable SHA;
@@ -33,38 +41,23 @@ All notable changes to PlanAnvil are documented here.
 - fail the production release gate closed when the release worktree is dirty or Git cleanliness cannot be verified;
 - document the controlled self-hosted Codex qualification path and keep the previous sandbox procedure as a manual fallback.
 
-## [0.2.0] - 2026-08-28
-
-### Added
-
-- standard-library repository distribution manager with install, verify, upgrade, status and uninstall operations;
-- transactional rollback, ownership/hash state, conservative Codex config merging, and structural hook merging;
-- distribution tests covering clean repositories, existing `AGENTS.md`, existing `.codex/config.toml`, unrelated hooks, upgrade conflicts and uninstall conflicts;
-- deterministic release archive builder, candidate/production release gate, and tag-driven GitHub Release workflow;
-- deterministic C01-C16 qualification template archive containing fixture, prompt, config, expected result, current sanitized BLOCKED result, evaluation and SHA-256 manifests;
-- capability evidence materializer/validator/rehash tools and a live Codex sandbox runbook;
-- installation, troubleshooting, and release documentation.
-
-### Changed
-
-- refresh the Codex capability baseline to 2.2 against current 2026-08-28 official documentation;
-- replace legacy agent concurrency/depth configuration with `agents.enabled` and `agents.max_concurrent_threads_per_session`;
-- enforce flat direct-child execution topology in the generated contract instead of relying on undocumented `agents.max_depth` behavior;
-- record the 2026-08-28 C01–C16 qualification attempt and its live Codex runtime blocker;
-- pin GitHub Actions to immutable SHAs and Node-24-based checkout/setup-python releases;
-- expand CI across Python 3.11 and the current upper supported interpreter on Ubuntu, macOS and Windows;
-- split distribution/release-candidate validation into a stable named CI check.
-
 ### Fixed
 
 - canonicalize event repository paths before active-run routing so source-worktree matching is stable across macOS symlink aliases and Windows path aliases;
 - keep checkpoint recovery assertions platform-neutral by comparing canonical paths;
 - update the artifact-sealing lock regression test to observe the current `validate_plan_contract` gate;
 - make the Git-hook probe fixture emit explicit hook diagnostics while preserving fail-closed classification for unrelated commit failures;
-- synchronize golden blind-review fixtures and dependent comparison hashes with the required independent `plan-anvil-reviewer` author role.
+- synchronize golden blind-review fixtures and dependent comparison hashes with the required independent `plan-anvil-reviewer` author role;
+- reconcile the compliance checklist and current qualification record with full run #27, retaining the historical #25 timeout and current C13 limitation;
+- check compliance metadata and finite C08 checklist status against the committed qualification index and summary in CI.
 
 ### Qualification closure — 2026-09-07
 
+- full self-hosted run #27 (`34140846679`) reproduced all C01-C16 on executed source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`, Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13;
+- finite C08 now proves the intended missing-checkpoint stop and completed repaired recovery without timeout; C09/C10 regressions passed;
+- preserve the exact full archive and provenance, update current capability evidence, and retain historical #25 unchanged;
+- C13 retains the documented project-scoped, known-error-gated non-ephemeral fallback; no new transport claim or product/runtime/security change;
+- qualification is recorded; signed production publication remains a separate action;
 - preserve complete baseline 2.3 live evidence from full run #25, `34060321283`, tested at `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3` with Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13; all C01–C16 were reproduced;
 - retain the exact source-bound archive, hashes and original limitations; C13 passed via the permitted project-native non-ephemeral fallback;
 - replace the old C08 repaired-path workload with a finite pressure/finish scenario and strict termination checks; the old positive timeout remains in historical evidence; full run #27 subsequently confirmed the replacement live;
@@ -74,7 +67,7 @@ All notable changes to PlanAnvil are documented here.
 
 ### Release status
 
-0.2.0 is qualified for the recorded configuration. Full run #27 (`34140846679`) confirmed C01-C16 and finite C08 stop/repair on source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`; its complete source-bound evidence is committed and #25 remains unchanged. Production publication remains a separate verified signed annotated-tag action after strict release validation. No tag or release has been published by this evidence import.
+0.2.0 is qualified for the recorded configuration. Full run #27 (`34140846679`) confirmed C01-C16 and finite C08 stop/repair on source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`; its complete source-bound evidence is committed and #25 remains unchanged. Production publication remains pending a verified signed annotated tag after strict release validation and green protected CI. No production tag or release is created by this documentation update.
 
 ## [0.1.0] - 2026-07-12
 
