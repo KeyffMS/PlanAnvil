@@ -11,18 +11,20 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 import prepare_capabilities as prepare
 import qualification_closure as closure
-from qualification_artifact import build_archive
+import release_check
+from qualification_artifact import build_archive, verify_archive
 
 
 class ClosureTests(unittest.TestCase):
-    def test_reviewed_current_full_archive_closes_evidence_gate(self):
-        # Read real committed evidence; no synthetic result or CLI simulation.
-        self.assertEqual(closure.closure_blockers(ROOT), [])
+    def test_reviewed_current_full_archive_and_summary_are_consistent(self):
+        # Verify archived evidence, not production eligibility of a development PR.
+        # Current product binding remains the responsibility of release_check.py.
         index = json.loads((ROOT / 'qualifications/index.json').read_text())
         self.assertEqual(index['c08_closure'], 'REPRODUCED')
         folder = ROOT / 'qualifications' / index['current_run']
         provenance = json.loads((folder / 'provenance.json').read_text())
         self.assertEqual(provenance['qualification_mode'], 'full')
+        verify_archive(folder / 'evidence-artifact.zip')
         with zipfile.ZipFile(folder / 'evidence-artifact.zip') as z:
             summary_bytes = z.read('qualification-summary.json')
             self.assertEqual((folder / 'qualification-summary.json').read_bytes(), summary_bytes)
@@ -67,6 +69,8 @@ class ClosureTests(unittest.TestCase):
             root=self.copy_repo(tmp)
             (root/'.agents/skills/plan-anvil/SKILL.md').write_text('changed')
             self.assertIn('product bytes changed since recorded live qualification', closure.closure_blockers(root))
+            # Ordinary candidate PRs stay usable before new main-only live qualification.
+            self.assertEqual(release_check.release_blockers(root, require_reproduced=False), [])
 
     def test_archive_digest_corruption_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
