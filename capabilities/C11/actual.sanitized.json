@@ -2,18 +2,17 @@
   "capability_id": "C11",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
+    "fixture_commit": "bb75a1c6f6302baa844c0fb78eb8d40e15b5da72",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "The completed trial showed both root and nested instruction markers active from the nested working directory.",
-    "The nested override marker was active, the sibling nested instruction marker was absent, and the effective conflict value was nested-wins.",
-    "The recorded precedence matched the supplied documentation baseline: root-to-working-directory merge, one selected instruction file per directory, and closer instructions taking precedence.",
-    "The instruction map selected the expected root and nested override files in order, recorded full reads, and included hashes for both applicable files."
+    "Root and nested instruction markers were both active, demonstrating root-to-CWD scope.",
+    "The nested conflict value won, and the lower-priority nested instruction was ignored when an override existed; this matches the recorded baseline.",
+    "The instruction map selected both applicable files in root-to-nested order, recorded full reads, and included a hash for each selected file."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -22,22 +21,22 @@
       "assertions": [
         {
           "evidence": "Present in active project instructions.",
-          "name": "ROOT_SCOPE_MARKER active",
+          "name": "ROOT_SCOPE_MARKER",
           "status": "PASS"
         },
         {
           "evidence": "Present in active project instructions.",
-          "name": "NESTED_OVERRIDE_MARKER active",
+          "name": "NESTED_OVERRIDE_MARKER",
           "status": "PASS"
         },
         {
-          "evidence": "Not present in active project instructions.",
-          "name": "NESTED_SHOULD_BE_IGNORED absent",
+          "evidence": "Absent from active project instructions.",
+          "name": "NESTED_SHOULD_BE_IGNORED",
           "status": "PASS"
         },
         {
-          "evidence": "Active project instructions specify CONFLICT_RULE=nested-wins after the root value.",
-          "name": "Effective conflicting value is nested-wins",
+          "evidence": "Active instruction states CONFLICT_RULE=nested-wins.",
+          "name": "effective_conflicting_value",
           "status": "PASS"
         }
       ],
@@ -77,8 +76,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
-        "index_tree": "a735a982cc55a9a70bec535494481be40c76eb33",
+        "head": "bb75a1c6f6302baa844c0fb78eb8d40e15b5da72",
+        "index_tree": "84005085100d1eddfdee96a268b27d5d2a0a5da3",
         "refs": [
           "refs/heads/master"
         ],
@@ -89,8 +88,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "afc1904ca4a7f42db30f25a9d7a0eaff92cec032",
-        "index_tree": "a735a982cc55a9a70bec535494481be40c76eb33",
+        "head": "bb75a1c6f6302baa844c0fb78eb8d40e15b5da72",
+        "index_tree": "84005085100d1eddfdee96a268b27d5d2a0a5da3",
         "refs": [
           "refs/heads/master"
         ],
@@ -98,7 +97,7 @@
         "worktree_count": 1
       },
       "observations": [
-        "Evaluated runtime-provided active project instructions from the nested working directory without opening AGENTS files or invoking tools."
+        "Both root and nested markers are active; the nested conflict value takes precedence."
       ],
       "outcome": "PASS",
       "outer_instruction_map": {

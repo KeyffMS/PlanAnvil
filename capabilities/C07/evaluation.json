@@ -3,5 +3,5 @@
   "expected_met": true,
   "result": "REPRODUCED",
   "schema_version": "1.0",
-  "summary": "The sanitized completed-trial evidence demonstrates both required assertions: unsafe Git corpus commands were denied, while the unrelated read-only Git command remained allowed."
+  "summary": "The completed trial demonstrates denial of every configured unsafe Git corpus command during an active run while allowing the safe read-only control, with unchanged Git state."
 }

@@ -2,12 +2,12 @@
   "capability_id": "C13",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+    "fixture_commit": "f144f9cfb6f67c4a1ba4e0bbf8b9a078c7b1401f",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "ephemeral_outcome=BLOCKED",
@@ -69,8 +69,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "526eb1c88f9bc8988e0b97f45d5263bbf03c524e",
-        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "head": "3a2fc75cab0e2e0d553223747d26ebbfcac1e64c",
+        "index_tree": "8feeea53689941b36e1968780d5969d9c2be7b0f",
         "refs": [
           "refs/heads/master"
         ],
@@ -81,8 +81,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "526eb1c88f9bc8988e0b97f45d5263bbf03c524e",
-        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "head": "3a2fc75cab0e2e0d553223747d26ebbfcac1e64c",
+        "index_tree": "8feeea53689941b36e1968780d5969d9c2be7b0f",
         "refs": [
           "refs/heads/master"
         ],
@@ -146,25 +146,25 @@
         "completed_file_change_items": 0,
         "error_events": 0,
         "event_types": {
-          "item.completed": 6,
+          "item.completed": 5,
           "item.started": 1,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
         },
         "item_types": {
-          "agent_message": 3,
+          "agent_message": 2,
           "collab_tool_call": 2,
           "error": 2
         }
       },
-      "fallback_fixture_commit": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
+      "fallback_fixture_commit": "f144f9cfb6f67c4a1ba4e0bbf8b9a078c7b1401f",
       "git_after": {
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
-        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "head": "f144f9cfb6f67c4a1ba4e0bbf8b9a078c7b1401f",
+        "index_tree": "8feeea53689941b36e1968780d5969d9c2be7b0f",
         "refs": [
           "refs/heads/master"
         ],
@@ -175,8 +175,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "65db081b125fa69f483a4ddb285ed73f41f7c0b9",
-        "index_tree": "28d00f3956074a6cd29d131d5fcfaabe904567a4",
+        "head": "f144f9cfb6f67c4a1ba4e0bbf8b9a078c7b1401f",
+        "index_tree": "8feeea53689941b36e1968780d5969d9c2be7b0f",
         "refs": [
           "refs/heads/master"
         ],

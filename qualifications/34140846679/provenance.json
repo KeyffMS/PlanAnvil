@@ -1,0 +1,18 @@
+{
+  "artifact_id": 10026707683,
+  "evidence_sha256": "83beb50d27198c2cc0ecd72bc6ca4b1ec2d6570bcb23cc0d56c12ec97408ec75",
+  "github_actions_run": "34140846679",
+  "integrity": {
+    "complete": true,
+    "file_count": 166,
+    "manifest_listed_hidden_files": 3,
+    "schema_version": "1.0"
+  },
+  "limitations": [
+    "C13 passed through the explicitly permitted project-scoped non-ephemeral fallback; ephemeral transport remains unsupported in this observed path."
+  ],
+  "outer_sha256": "9583393745fc8292de701c51064e5569f24092e978da7164c8f50070e7d35e73",
+  "qualification_mode": "full",
+  "schema_version": "1.0",
+  "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
+}

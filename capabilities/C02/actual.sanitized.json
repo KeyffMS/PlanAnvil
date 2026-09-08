@@ -2,17 +2,17 @@
   "capability_id": "C02",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+    "fixture_commit": "ac01932c34c0e42bb7a84fe986452f011ffae50f",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "Implicit-activation trial completed and passed: a semantically matching prompt without the skill name produced no skill-specific activation token.",
-    "Explicit-activation trial completed and passed: the explicit $fixture-capability prompt supplied the expected FIXTURE_SKILL_ACTIVE token.",
-    "Both material assertions in the expected specification were directly exercised; neither trial reported a blocker or runtime error."
+    "The completed implicit-invocation trial used a semantically matching request without the skill name and observed no skill-specific activation token.",
+    "The completed explicit-invocation trial used $fixture-capability and observed the required literal proof token FIXTURE_SKILL_ACTIVE.",
+    "Both expected assertions are individually marked PASS; both trials report PASS with no blocker or error events."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -20,7 +20,7 @@
     {
       "assertions": [
         {
-          "evidence": "The semantic match did not place any skill-specific activation token in the active instructions.",
+          "evidence": "The semantically matching request produced no skill-specific activation token in the active instructions.",
           "name": "A semantically matching prompt without the skill name does not activate the fixture skill.",
           "status": "PASS"
         }
@@ -48,7 +48,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "head": "ac01932c34c0e42bb7a84fe986452f011ffae50f",
         "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
         "refs": [
           "refs/heads/master"
@@ -60,7 +60,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "head": "ac01932c34c0e42bb7a84fe986452f011ffae50f",
         "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
         "refs": [
           "refs/heads/master"
@@ -84,7 +84,7 @@
     {
       "assertions": [
         {
-          "evidence": "Activated skill context required and supplied `FIXTURE_SKILL_ACTIVE`.",
+          "evidence": "Activated skill context required and supplied the literal proof token: FIXTURE_SKILL_ACTIVE",
           "name": "An explicit $fixture-capability prompt activates the fixture skill.",
           "status": "PASS"
         }
@@ -112,7 +112,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "head": "ac01932c34c0e42bb7a84fe986452f011ffae50f",
         "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
         "refs": [
           "refs/heads/master"
@@ -124,7 +124,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "b006122b504e9bdf38fa9d0a21c35ab866fba584",
+        "head": "ac01932c34c0e42bb7a84fe986452f011ffae50f",
         "index_tree": "6455a6dfb42207be3ad780cca165fa8f60e78d57",
         "refs": [
           "refs/heads/master"
@@ -133,7 +133,7 @@
         "worktree_count": 1
       },
       "observations": [
-        "FIXTURE_SKILL_ACTIVE"
+        "Explicit invocation activated fixture-capability; the skill file was not directly inspected and no files were modified."
       ],
       "outcome": "PASS",
       "outer_skill_policy": {

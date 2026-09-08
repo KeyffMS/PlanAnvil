@@ -2,17 +2,17 @@
   "capability_id": "C01",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "4df35777e3afd6f5b6a9aecfe22793e65bba83ea",
+    "fixture_commit": "00f746c24feb4ecc943c59cbe8006db2a01e9cd3",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "The explicit activation trial resolved the repository fixture skill and produced the activation proof `FIXTURE_SKILL_ACTIVE`.",
-    "The nested-working-directory trial verified repository identity, discovered the same fixture skill, and produced `FIXTURE_SKILL_ACTIVE`.",
-    "Both trials completed with PASS outcomes, no blocker, and no recorded error events."
+    "The explicit-activation trial resolved the fixture skill from the repository skill directory and recorded activation proof `FIXTURE_SKILL_ACTIVE`.",
+    "The nested-working-directory trial verified repository identity from its nested start location, discovered and invoked the fixture skill, and recorded the same activation proof.",
+    "The first trial did not exercise nested discovery, but the completed second trial directly exercised and passed that assertion."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -20,9 +20,14 @@
     {
       "assertions": [
         {
-          "evidence": "Explicit invocation resolved `fixture-capability` from `.agents/skills/fixture-capability/SKILL.md`; activation proof: FIXTURE_SKILL_ACTIVE.",
-          "name": "Repository skill resolution and explicit activation",
+          "evidence": "`fixture-capability` was resolved from `.agents/skills/fixture-capability/SKILL.md` and explicitly activated with proof `FIXTURE_SKILL_ACTIVE`.",
+          "name": "The fixture skill appears in repository skill discovery.",
           "status": "PASS"
+        },
+        {
+          "evidence": "Not exercised by this root-level explicit-activation trial.",
+          "name": "Discovery works when Codex starts from a nested working directory inside the same repository.",
+          "status": "BLOCKED"
         }
       ],
       "blocker": null,
@@ -48,7 +53,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4df35777e3afd6f5b6a9aecfe22793e65bba83ea",
+        "head": "00f746c24feb4ecc943c59cbe8006db2a01e9cd3",
         "index_tree": "715ef280db9d5ab81405996e12aa2be15877d964",
         "refs": [
           "refs/heads/master"
@@ -60,7 +65,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4df35777e3afd6f5b6a9aecfe22793e65bba83ea",
+        "head": "00f746c24feb4ecc943c59cbe8006db2a01e9cd3",
         "index_tree": "715ef280db9d5ab81405996e12aa2be15877d964",
         "refs": [
           "refs/heads/master"
@@ -79,12 +84,12 @@
     {
       "assertions": [
         {
-          "evidence": "Explicit invocation produced activation proof FIXTURE_SKILL_ACTIVE.",
+          "evidence": "$fixture-capability was discovered and invoked; activation proof: FIXTURE_SKILL_ACTIVE.",
           "name": "The fixture skill appears in repository skill discovery.",
           "status": "PASS"
         },
         {
-          "evidence": "Repository identity was verified from the nested working directory, and the repository skill was then discovered and activated.",
+          "evidence": "Git repository identity was verified from the nested starting directory without reporting its absolute path.",
           "name": "Discovery works when Codex starts from a nested working directory inside the same repository.",
           "status": "PASS"
         }
@@ -92,19 +97,19 @@
       "blocker": null,
       "capability_id": "C01",
       "event_summary": {
-        "completed_command_items": 3,
+        "completed_command_items": 2,
         "completed_file_change_items": 0,
         "error_events": 0,
         "event_types": {
-          "item.completed": 8,
-          "item.started": 3,
+          "item.completed": 7,
+          "item.started": 2,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
         },
         "item_types": {
           "agent_message": 3,
-          "command_execution": 6,
+          "command_execution": 4,
           "error": 2
         }
       },
@@ -112,7 +117,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4df35777e3afd6f5b6a9aecfe22793e65bba83ea",
+        "head": "00f746c24feb4ecc943c59cbe8006db2a01e9cd3",
         "index_tree": "715ef280db9d5ab81405996e12aa2be15877d964",
         "refs": [
           "refs/heads/master"
@@ -124,7 +129,7 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "4df35777e3afd6f5b6a9aecfe22793e65bba83ea",
+        "head": "00f746c24feb4ecc943c59cbe8006db2a01e9cd3",
         "index_tree": "715ef280db9d5ab81405996e12aa2be15877d964",
         "refs": [
           "refs/heads/master"

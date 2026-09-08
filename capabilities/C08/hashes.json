@@ -1,15 +1,16 @@
 {
   "algorithm": "sha256",
   "files": {
-    "README.md": "243f10c1306f04d0dd770e16825f67b744323f64f99ae5de46e7efa2df740065",
-    "actual.sanitized.json": "853d10da62d56eef7863250737c6ea821e756434e70f3419fb5dbd50ce90911e",
+    "README.md": "c490a4acccb764b2ac6cc3bbcf24e891ad173bbb973ddc2147f48465c1675ad9",
+    "actual.sanitized.json": "389534f00ef48b38e4868eb274d68d298684bcc44d35fbfe375f5907c5c6208a",
     "config/README.md": "aa7b16d9e51ca980af4d2c1085c781422f3b5534e239b3c0e8c65ec1dbd27e3e",
-    "evaluation.json": "ce887836d5748aeae9baffd359b1432586c1726395068d236dadfe4c8a65f4f7",
+    "evaluation.json": "096ac0367750d4029305b037e48b449f86e120378a2065997ae58f9dafab24f8",
     "expected.json": "e827552a2b3c960c8d4c05b4432d82270692789ed3fc1df6b099ee7a0d163387",
-    "fixture/README.md": "da5fe3acec70bc16edcec175bf81f61b6d8614d1164ccd4a6274a593e28161ac",
+    "fixture/README.md": "f317a73a056deb95682f14fbe78285cbf6cbb1c5471350ea5425ce548caee87d",
+    "fixture/c08_probe.py": "ea3dc458b18a00888fb9097b4c5e4c6dd6edd39f64da5cd3a36e3dc11d46c895",
     "fixture/state.json": "034bea3b3971bce32b122b91b65decc257a39002fff16e339a6b44396c407183",
-    "prompt.txt": "4cd5d9837e3bfbf7bbefaa9736c90adabebc6b94747b6609693fbdc8bec54d64",
-    "run-command.txt": "0683eb1cb9ff624f8923fce722ffdd05ea4c592509cf2d25c0879b43e8fb56af"
+    "prompt.txt": "78d187bb93c5fe7f73e4911dfbf94a8c2ae8a5ee95d1a6ecc92cad3c59e478f2",
+    "run-command.txt": "22ecaa42a00c73081570f6e3ca1f99a52fbc99a79fa6e5ef410b7c5df7a6bab7"
   },
   "schema_version": "1.0"
 }

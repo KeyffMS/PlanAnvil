@@ -21,11 +21,11 @@ A missing `apply_patch` hook event is never evidence that a completed mutation i
 
 ## Live qualification
 
-- Date: `2026-09-06`
+- Date: `2026-09-07`
 - Codex: `codex-cli 0.153.4`
 - Model: `gpt-5.6-sol`
 - OS: `Debian GNU/Linux 13 (trixie)`
 - Permission mode: `approval=never; sandbox=per-trial; model-tool network disabled`
 - Project trust: `trusted via CLI override for disposable fixture repositories`
-- Source commit: `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`
+- Source commit: `a9cdcdc1e0cad70e88b60869e75e4166046dd306`
 - Result: `REPRODUCED`

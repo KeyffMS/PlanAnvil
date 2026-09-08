@@ -1,10 +1,10 @@
 {
   "algorithm": "sha256",
   "files": {
-    "README.md": "422e8b7912cf13e186c621d5eeae747575e5389e5b135b157596ee4201819565",
-    "actual.sanitized.json": "9042d7e35a10682bff746c4313193baf4d1947dfd814853ca03f78555825aba9",
+    "README.md": "f0379083ccec22707ec999a82f6cda7971024e970b17f2276d74b478340bde81",
+    "actual.sanitized.json": "9efbd720ac6e947272ef1b998ad3b51c36b1b3ab3cd652ffab368a456bc443ba",
     "config/README.md": "2b6beca33571ad108adcdbac9becc82a7fe658cf672305f01f58f4ea54565b4e",
-    "evaluation.json": "12aeecb91deeaef38f633d67f60451a07ba176539a5430cfc16c82c8bafa7ee5",
+    "evaluation.json": "46bf08a3331e054e3dccd8a2822e6526994e85b7de2bfd4f04e61a7a2c1cd62e",
     "expected.json": "c41329fbf6892a65b85cfe1166e86d2a3b59b684a9a81601974fca0c54a0cee7",
     "fixture/.agents/skills/fixture-capability/SKILL.md": "0c4c7985ed4a06a2fa45d0d6a1887fec0f5a59892ae1d0d88317ac1c82a7a4ff",
     "fixture/README.md": "a3ac65c07ebf67442b31cf3bc1d28ac5c849bd08fee9cba93b0a31339e7602d8",

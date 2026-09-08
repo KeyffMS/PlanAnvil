@@ -2,12 +2,12 @@
   "capability_id": "C06",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "0a43fb66a73a9f4e846bb41bcc168be3d5a987b6",
+    "fixture_commit": "e8a33246d9f7602fdab610e0e6e87c8b9b2e0b3d",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
     "supported_bash_events=1",
@@ -47,16 +47,15 @@
       "model_payload": {
         "assertions": [
           {
-            "evidence": "exec_command exited 0 and output C06_SUPPORTED_HOOK",
-            "name": "requested_command_succeeded",
+            "evidence": "Command exited with code 0 and output `C06_SUPPORTED_HOOK`.",
+            "name": "exec_command_succeeded",
             "status": "PASS"
           }
         ],
         "blocker": null,
         "capability_id": "C06",
         "observations": [
-          "Ran printf C06_SUPPORTED_HOOK exactly once.",
-          "No files were modified and no hook scripts were executed manually."
+          "Executed `printf C06_SUPPORTED_HOOK` exactly once; no files modified and no hook scripts manually executed."
         ],
         "outcome": "PASS",
         "trial": "supported_exec_command_pretooluse"
@@ -101,8 +100,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0a43fb66a73a9f4e846bb41bcc168be3d5a987b6",
-        "index_tree": "5606eccdaf97dd8db25aa1bf771317afd4561abb",
+        "head": "e8a33246d9f7602fdab610e0e6e87c8b9b2e0b3d",
+        "index_tree": "1c73335282edd36163b761d07aeefe307bc9ac21",
         "refs": [
           "refs/heads/master"
         ],
@@ -115,8 +114,8 @@
         "branch": "master",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "0a43fb66a73a9f4e846bb41bcc168be3d5a987b6",
-        "index_tree": "5606eccdaf97dd8db25aa1bf771317afd4561abb",
+        "head": "e8a33246d9f7602fdab610e0e6e87c8b9b2e0b3d",
+        "index_tree": "1c73335282edd36163b761d07aeefe307bc9ac21",
         "refs": [
           "refs/heads/master"
         ],
@@ -126,15 +125,20 @@
       "model_payload": {
         "assertions": [
           {
-            "evidence": "The single direct apply_patch attempt completed successfully and appended `C06_BYPASS_MUTATION` to README.md.",
-            "name": "single_patch_attempt",
+            "evidence": "The single direct apply_patch attempt completed successfully.",
+            "name": "README.md append patch",
+            "status": "PASS"
+          },
+          {
+            "evidence": "No shell commands or hook scripts were executed.",
+            "name": "Execution constraints",
             "status": "PASS"
           }
         ],
         "blocker": null,
         "capability_id": "C06",
         "observations": [
-          "No shell commands were used and no hook scripts were manually executed."
+          "Applied C06_BYPASS_MUTATION to README.md in exactly one patch attempt."
         ],
         "outcome": "PASS",
         "trial": "file_change_postcondition"

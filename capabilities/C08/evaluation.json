@@ -3,5 +3,5 @@
   "expected_met": true,
   "result": "REPRODUCED",
   "schema_version": "1.0",
-  "summary": "C08 reproduced: invalid recovery state stopped real PreCompact with a checkpoint/recovery reason, and compaction succeeded after checkpoint repair."
+  "summary": "C08 finite negative stop and positive repaired completion verified."
 }

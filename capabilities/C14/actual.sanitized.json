@@ -2,18 +2,18 @@
   "capability_id": "C14",
   "environment": {
     "codex_version": "codex-cli 0.153.4",
-    "fixture_commit": "88cb2bbb6323953441802f4ecb9ce59882f93371",
+    "fixture_commit": "d6f3d12094858637bebf0a8bca23c2f552faf139",
     "model": "gpt-5.6-sol",
     "os": "Debian GNU/Linux 13 (trixie)",
     "permission_mode": "approval=never; sandbox=per-trial; model-tool network disabled",
     "project_trust": "trusted via CLI override for disposable fixture repositories",
-    "source_commit": "d0384f76bc4150d33bb8f51ef5981f3243b3cfb3"
+    "source_commit": "a9cdcdc1e0cad70e88b60869e75e4166046dd306"
   },
   "observations": [
-    "The completed trial recorded the source branch and HEAD as identical before and after.",
-    "The source index tree, status, cached paths, and tracked source-file hash were unchanged.",
-    "A distinct linked planning worktree and branch were created; planning artifacts and changes were present there while the source remained clean and unchanged.",
-    "All three expected assertions received direct PASS evidence with no reported trial errors or blocker."
+    "Source branch remained main and HEAD was identical before and after.",
+    "Source index tree was identical before and after; status and cached paths remained empty.",
+    "A distinct planning branch and linked worktree were created, with planning changes present there and absent from the source worktree.",
+    "The completed trial reported all isolation checks passing with no blocker."
   ],
   "result": "REPRODUCED",
   "schema_version": "1.0",
@@ -21,17 +21,17 @@
     {
       "assertions": [
         {
-          "evidence": "Pre/post comparisons: branch=true and HEAD=true.",
+          "evidence": "Source remained on main at HEAD d6f3d12094858637bebf0a8bca23c2f552faf139.",
           "name": "Source branch and HEAD are unchanged.",
           "status": "PASS"
         },
         {
-          "evidence": "Pre/post comparisons: index tree=true, status hash=true, source.txt hash=true.",
+          "evidence": "Index tree remained cfdbf1b513a55619f2d834d40624867a8eea6c96; status remained clean; source.txt SHA-256 remained 496688b86291a24cc50c23fe4a5ef0874f5c78938d9ace7714c9ae30124fb60e.",
           "name": "Source index/status hashes are unchanged.",
           "status": "PASS"
         },
         {
-          "evidence": "Controller returned ok=true/PROFILE_READY; distinct planning branch=true; requested linked worktree=true; branch match=true; plan and scaffold present=true; planning changes present=true while source remained unchanged.",
+          "evidence": "Controller returned PROFILE_READY. The registered linked worktree exists at ../worktrees/planning on distinct branch pursue/plan/PG-20260907-161916-D637/qualify-planning-isolation; .pursue scaffold and generated .gitignore exist there and not in source.",
           "name": "Planning changes exist only in the isolated planning worktree/branch.",
           "status": "PASS"
         }
@@ -39,19 +39,19 @@
       "blocker": null,
       "capability_id": "C14",
       "event_summary": {
-        "completed_command_items": 3,
+        "completed_command_items": 4,
         "completed_file_change_items": 0,
         "error_events": 0,
         "event_types": {
-          "item.completed": 9,
-          "item.started": 3,
+          "item.completed": 10,
+          "item.started": 4,
           "thread.started": 1,
           "turn.completed": 1,
           "turn.started": 1
         },
         "item_types": {
           "agent_message": 4,
-          "command_execution": 6,
+          "command_execution": 8,
           "error": 2
         }
       },
@@ -59,11 +59,11 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "88cb2bbb6323953441802f4ecb9ce59882f93371",
-        "index_tree": "e7827d168ec97a90dc89c96688c100ba8df6a2f6",
+        "head": "d6f3d12094858637bebf0a8bca23c2f552faf139",
+        "index_tree": "cfdbf1b513a55619f2d834d40624867a8eea6c96",
         "refs": [
           "refs/heads/main",
-          "refs/heads/pursue/plan/PG-20260906-213658-6642/qualify-planning-isolation"
+          "refs/heads/pursue/plan/PG-20260907-161916-D637/qualify-planning-isolation"
         ],
         "status": [],
         "worktree_count": 2
@@ -72,8 +72,8 @@
         "branch": "main",
         "cached_paths": [],
         "commit_count": 2,
-        "head": "88cb2bbb6323953441802f4ecb9ce59882f93371",
-        "index_tree": "e7827d168ec97a90dc89c96688c100ba8df6a2f6",
+        "head": "d6f3d12094858637bebf0a8bca23c2f552faf139",
+        "index_tree": "cfdbf1b513a55619f2d834d40624867a8eea6c96",
         "refs": [
           "refs/heads/main"
         ],
@@ -81,9 +81,9 @@
         "worktree_count": 1
       },
       "observations": [
-        "The real deterministic controller completed successfully.",
-        "The reported planning worktree exists at ../worktrees/planning on a distinct linked branch.",
-        "outer_source_head=88cb2bbb6323953441802f4ecb9ce59882f93371",
+        "The real deterministic controller exited 0 with ok=true and implementation_executed=false.",
+        "All post-run isolation checks passed.",
+        "outer_source_head=d6f3d12094858637bebf0a8bca23c2f552faf139",
         "outer_source_branch=main",
         "outer_planning_worktree_exists=true",
         "outer_planning_branch_distinct=true",
