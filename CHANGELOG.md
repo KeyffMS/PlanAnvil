@@ -4,6 +4,14 @@ All notable changes to PlanAnvil are documented here.
 
 ## [Unreleased]
 
+### Qualification closure — 2026-09-07
+
+- full self-hosted run #27 (`34140846679`) reproduced all C01-C16 on executed source `a9cdcdc1e0cad70e88b60869e75e4166046dd306`, Codex CLI 0.153.4, `gpt-5.6-sol`, Debian 13;
+- finite C08 now proves the intended missing-checkpoint stop and completed repaired recovery without timeout; C09/C10 regressions passed;
+- preserve the exact full archive and provenance, update current capability evidence, and retain historical #25 unchanged;
+- C13 retains the documented project-scoped, known-error-gated non-ephemeral fallback; no new transport claim or product/runtime/security change;
+- qualification is recorded; signed production publication remains a separate action.
+
 ### Added
 
 - add a controlled `workflow_dispatch`-only Codex qualification workflow for the trusted `plananvil-codex` self-hosted runner;

@@ -1,6 +1,6 @@
 # Codex sandbox qualification runbook
 
-Full run #25 is archived and passed baseline 2.3 on Codex CLI 0.153.4. The finite C08 stop/repair replacement is merged. Publication now requires a successful new full run and import of its complete evidence. `QUALIFICATION_STATUS.md` is the current status; this runbook describes both full requalification and targeted checks.
+Full run #27 is reviewed and archived: baseline 2.3 C01-C16 and finite C08 stop/repair passed on Codex CLI 0.153.4. Its complete evidence is recorded in the repository; no new run is needed just to import it. Historical #25 remains unchanged. `QUALIFICATION_STATUS.md` records the tested configuration, limitations and publication boundary. This runbook describes future full requalification and targeted checks.
 
 ## Sandbox prerequisites
 
@@ -27,9 +27,9 @@ If the probe fails with `setting up uid map: Operation not permitted`, fix the P
 
 The preferred qualification path is `.github/workflows/plananvil-codex-qualification.yml`. The workflow is intentionally `workflow_dispatch`-only, accepts execution only from `main`, uses Environment `plananvil-codex`, and targets `[self-hosted, linux, x64, plananvil, codex]`.
 
-Use **mode=full** for the next publication-closing C01-C16 sequence. The production validator requires one complete source-bound full-run archive with the finite C08 result, not a combination of partial archives. `mode=c08` is available to diagnose only the finite stop/repair replacement. `mode=recovery` retains C09/C10/C13; `mode=c13` selects C13 only. `mode=smoke` verifies basic runtime/authentication. The precision/variant matrices are diagnostics, not release evidence. All targeted modes keep `release_gate_passed=false`, even when their selected checks pass.
+Use **mode=full** when a new publication-closing C01-C16 qualification is needed. The production validator requires one complete source-bound full-run archive with the finite C08 result, not a combination of partial archives. `mode=c08` is available to diagnose only the finite stop/repair replacement. `mode=recovery` retains C09/C10/C13; `mode=c13` selects C13 only. `mode=smoke` verifies basic runtime/authentication. The precision/variant matrices are diagnostics, not release evidence. All targeted modes keep `release_gate_passed=false`, even when their selected checks pass.
 
-Start a NEW **PlanAnvil Codex qualification -> Run workflow -> main -> full** from an account allowed by the local runner's initiating-actor policy. Automated run #26 (`34109662176`) was rejected by that policy before any Codex trial; do not rerun it or relax the allowlist. The repair is on main, but that rejected launch provides no model-backed result.
+For requalification, start a NEW **PlanAnvil Codex qualification -> Run workflow -> main -> full** from an account allowed by the local runner's initiating-actor policy. Automated run #26 (`34109662176`) was rejected before any Codex trial. Owner-initiated #27 then passed; do not rerun the rejected launch or relax the allowlist.
 
 Both `full` and `c08` use the same active v7 C08 runtime with real live model inference. The outer harness deliberately starts without a checkpoint, observes the actual PreCompact stop and termination, creates/validates a real checkpoint, then requires one pressure -> compaction -> SessionStart(compact) -> finish sequence and a completed positive result. The disposable fixture excludes ordinary startup recovery only; product files and C10 startup coverage remain unchanged.
 
@@ -117,7 +117,7 @@ C04 is informational/non-gating in baseline 2.3 but should still be observed if 
 
 ## Final gate
 
-Full capability qualification and publication closure are separate. Preserve the original #25 archive unchanged. For publication, review and commit a new successful full-run archive whose C08 has finite completion evidence, along with its exact C01-C16 packages and actual executed source SHA. Update `qualifications/index.json` to that full run as described in `RELEASE.md`. Never replace the full-run index with a partial-mode index or splice a targeted result into an older archive.
+Full capability qualification and signed publication are separate. Current full run #27 supplies finite C08 completion and exact C01-C16 packages; `qualifications/index.json` identifies it. Preserve both #25 and #27 archives unchanged. Any future qualification must be imported as one complete source-bound full archive as described in `RELEASE.md`. Never replace the full-run index with a partial-mode index or splice a targeted result into an older archive.
 
 When the complete current full-run evidence is committed:
 

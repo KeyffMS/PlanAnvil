@@ -10,9 +10,9 @@ It **generates and validates a plan but never executes it**. Product implementat
 
 The deterministic generator core, schemas, templates, tests, optional planning agents, defense-in-depth hooks, repository installer/upgrader/uninstaller, release tooling, and a deterministic C01-C16 live-qualification template archive/materializer are implemented.
 
-**Full baseline 2.3 qualification passed:** run [#25](https://github.com/KeyffMS/PlanAnvil/actions/runs/34060321283) reproduced C01–C16 on source commit `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`, with Codex CLI `0.153.4`, model `gpt-5.6-sol`, and Debian 13. C04 is informational; the other fifteen capabilities gate qualification. The complete sanitized evidence is committed under `capabilities/` and preserved unchanged under `qualifications/34060321283/`.
+**Full baseline 2.3 qualification and finite C08 closure passed:** run [#27](https://github.com/KeyffMS/PlanAnvil/actions/runs/34140846679) reproduced C01–C16 on source commit `a9cdcdc1e0cad70e88b60869e75e4166046dd306`, with Codex CLI `0.153.4`, model `gpt-5.6-sol`, and Debian 13. C04 is informational; the other fifteen capabilities gate qualification. The exact sanitized packages are committed under `capabilities/`; the original archive, summary and provenance are preserved under `qualifications/34140846679/`. Historical run #25 remains unchanged.
 
-**Release status remains candidate.** The old C08 positive trial proved its narrow unblock assertion but later timed out. Its finite replacement must finish in a new live `mode=c08` run and its evidence must be committed before production publication. C13 was reproduced through the explicit known-error-gated non-ephemeral fallback, not by proving ephemeral spawning works.
+**Qualification is complete for that tested configuration; signed publication is a separate step.** C08 now proves both the expected missing-checkpoint stop and a completed repaired recovery, without timeout. C09 and both C10 probes also completed without timeout. C13 was reproduced through the explicit known-error-gated, project-scoped non-ephemeral fallback; ephemeral spawning is not claimed as working. This evidence import does not create a production tag or GitHub Release.
 
 See [current qualification and release status](https://github.com/KeyffMS/PlanAnvil/blob/main/docs/QUALIFICATION_STATUS.md) for the precise evidence boundary and next step. Deterministic CI and loopback CLI conformance are regression checks, not substitutes for live model evidence. Production publication also retains protected-main, clean-tree and verified signed annotated-tag requirements.
 
@@ -104,6 +104,8 @@ python -m unittest discover -s .agents/skills/plan-anvil/tests -v
 python -m unittest discover -s tests -v
 python -m compileall -q .agents/skills/plan-anvil .codex/hooks tools tests
 python tools/release_check.py --candidate
+# On a clean checkout containing the reviewed live evidence:
+python tools/release_check.py
 ```
 
 ## Release and live qualification

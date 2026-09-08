@@ -15,6 +15,33 @@ from qualification_artifact import build_archive
 
 
 class ClosureTests(unittest.TestCase):
+    def test_reviewed_current_full_archive_closes_evidence_gate(self):
+        # Read real committed evidence; no synthetic result or CLI simulation.
+        self.assertEqual(closure.closure_blockers(ROOT), [])
+        index = json.loads((ROOT / 'qualifications/index.json').read_text())
+        self.assertEqual(index['c08_closure'], 'REPRODUCED')
+        folder = ROOT / 'qualifications' / index['current_run']
+        provenance = json.loads((folder / 'provenance.json').read_text())
+        self.assertEqual(provenance['qualification_mode'], 'full')
+        with zipfile.ZipFile(folder / 'evidence-artifact.zip') as z:
+            summary_bytes = z.read('qualification-summary.json')
+            self.assertEqual((folder / 'qualification-summary.json').read_bytes(), summary_bytes)
+            summary = json.loads(summary_bytes)
+            self.assertEqual(summary['github_actions_run'], index['current_run'])
+            self.assertEqual(summary['source_commit'], provenance['source_commit'])
+            self.assertTrue(summary['release_gate_passed'])
+            self.assertEqual(summary['required_not_reproduced'], [])
+
+    def test_current_package_change_is_not_accepted_as_archived_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy_repo(tmp)
+            path = root / 'capabilities/C09/actual.sanitized.json'
+            # Even a JSON-preserving edit is not the original source-bound record.
+            with path.open('ab') as stream:
+                stream.write(b'\n')
+            self.assertTrue(any('current capability differs from archived run' in error
+                                for error in closure.closure_blockers(root)))
+
     def copy_repo(self, tmp):
         target = Path(tmp)/'repo'
         shutil.copytree(ROOT, target, ignore=shutil.ignore_patterns('.git', '__pycache__'))

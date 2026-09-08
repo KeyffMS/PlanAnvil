@@ -1,81 +1,92 @@
 # Qualification status
 
-## Recorded live result
+## Current reviewed full result
 
-Full run #25 (`34060321283`) passed baseline 2.3 C01-C16 on product source
-`d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`, Codex CLI 0.153.4,
-`gpt-5.6-sol`, Debian 13. C04 is informational. The immutable original archive,
-summary, checksums and caveats are in `qualifications/34060321283/`.
+**Live qualification is complete for the tested configuration.** Owner-initiated
+full run #27 (`34140846679`) passed baseline 2.3 C01-C16 on executed source
+`a9cdcdc1e0cad70e88b60869e75e4166046dd306`, Codex CLI 0.153.4,
+model `gpt-5.6-sol`, Debian GNU/Linux 13. C04 is informational; fifteen
+capabilities are required. The full run reports `release_gate_passed=true`.
+All model-backed trials ran on the authenticated self-hosted runner.
 
-## Implemented closure
+The original archive, exact summary and verified provenance are preserved in
+`qualifications/34140846679/`. `qualifications/index.json.current_run` points to
+that run. Current `capabilities/C01` through `C16` are exact archive copies,
+not rewritten observations or a combination of partial runs. The executed source
+SHA remains the original SHA, never the later evidence-import commit.
 
-PR #34 merged the finite C08 repair and the reviewed evidence into main at
-`ba3f56a644a385c8aa2e8e5c9c934999184cc282`. PR CI #118 and post-merge CI #119
-passed all eight jobs, including actual Codex CLI loopback conformance. These
-are implementation/integration checks, not a new live-model result.
+## C08 closure and recovery regressions
 
-The historical positive C08 trial timed out after meeting its narrow unblock
-assertion. It remains unchanged in the archive. The finite replacement requires
-the same canonical run to stop at PreCompact without a checkpoint, then, after
-outer checkpoint repair, complete pressure -> compact recovery -> finish with
-exit zero. Timeout or incomplete telemetry cannot pass.
+C08 completed its finite stop/repair protocol in the same canonical run:
 
-C13 passed in the explicitly allowed project-scoped non-ephemeral fallback.
-Ephemeral spawning is not claimed as working. The product .agents/.codex payload
-and the C09/C10/C13 runtime paths are unchanged by this closure.
+- Without a checkpoint: one completed pressure command, an actual automatic
+  PreCompact `continue=false`, expected process exit 1 after 10.643 seconds,
+  no PostCompact and no timeout.
+- After the outer harness created a real valid checkpoint: pressure, one
+  automatic PreCompact/PostCompact cycle, SessionStart(source=compact), finish
+  reconciliation and positive structured completion; exit 0 after 36.265 seconds,
+  no timeout. All nine positive protocol checks passed.
 
-## Required operator action
+C09 completed all three reconciliations and two ordered automatic recovery
+cycles with exit 0 in 60.679 seconds. Both independent C10 context-delivery
+probes completed with exact recovery values and exit 0. Process cleanup and
+checkpoint/source immutability checks passed for the recovery probes.
 
-The automated full launch #26 (`34109662176`) used the repaired main commit,
-but the self-hosted runner's job-start policy rejected its initiating actor:
+There are no recorded `timeout=true` values in the current actual evidence.
+This is not a guarantee of future model behavior or support for untested
+Codex/model/operating-system combinations.
 
-```text
-PlanAnvil runner policy denied this job: initiating actor is not allowed
-```
+## Retained compatibility limitation
 
-The hook exited 77 before runner preflight, fixture preparation or any Codex
-trial. This run has no new capability evidence and is not a C08 test failure.
-Do not change the runner allowlist, spoof the actor or relax the trusted-workflow
-policy to make an automated launch pass.
+C13 passed using the explicitly allowed project-scoped non-ephemeral fallback
+after the recognized ephemeral parent-thread failure. Agent and SubagentStart
+hook remained project-scoped; child context, cleanup and authentication
+invariants passed. Ephemeral spawning is not claimed as working.
 
-An operator whose account is allowed by the runner policy must start a NEW run:
+## Integrity and publication boundary
 
-**Actions -> PlanAnvil Codex qualification -> Run workflow -> main -> full**.
+The archive contains 166 manifest-listed files plus the manifest, including
+three hidden fixture files. All SHA-256 checks, per-capability package validation
+and source identities were verified before import. The qualified .agents/.codex
+product bytes, runtime implementations, permission policy and release guards
+are unchanged by this evidence/documentation update.
 
-Use Run workflow, not Re-run of the denied automated run. GitHub Actions
-orchestrates the job; all model-backed trials run on the existing authenticated
-self-hosted runner, not on a GitHub-hosted machine.
+On a clean checkout, run `python tools/validate_capabilities.py` and
+`python tools/release_check.py` without `--candidate`. The latter requires the
+complete full-run archive, exact packages, unchanged qualified product bytes
+and finite C08 completion. Freshly materialized unexecuted templates still start
+BLOCKED and cannot inherit the archived success.
 
-## Evidence required for publication
+No additional live run is required merely to record these same results or
+update documentation. Requalify when relevant product/runtime inputs change.
+Production publication remains a separate owner-authorized verified signed
+annotated tag and release workflow, as described in `RELEASE.md`. No production
+tag or release is created by the evidence import.
 
-The current production validator requires ONE complete, source-bound full-run
-archive, exact matching current capability packages, unchanged qualified product
-bytes, and finite C08 stop/repair proof in that same archive. Therefore the next
-publication proof must be a successful new `full` run. The `c08` mode remains a
-useful targeted diagnostic, but its partial archive alone cannot close the
-production gate. Do not splice it into or relabel the immutable #25 archive.
+## Preserved history
 
-After success, review and verify the new sanitized archive, preserve it under
-`qualifications/<run-id>/`, import its exact C01-C16 packages, and update
-`qualifications/index.json` through a protected PR. Keep #25 unchanged as history.
-Record the actually executed source SHA, not the later import commit. Run the
-strict release check on a clean tree after import. No production tag or release
-has been created by these preparation steps.
+Run #25 (`34060321283`, source `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`)
+passed the older narrow assertions but its positive C08 trial later timed out.
+Its original archive, summary, provenance and caveat remain unchanged under
+`qualifications/34060321283/`; it is not the current publication evidence.
 
-## Verification layers
+PR #34 merged the finite C08 repair. Automated run #26 (`34109662176`) was
+rejected by the local initiating-actor policy before Codex. It provides no live
+result. The owner-initiated #27 completed without changing or bypassing that
+policy. PR #35 clarified the requirement for one complete full archive.
 
-Unit/process tests and pinned real-CLI loopback tests check implementation and
-protocol behavior. Only the authenticated self-hosted qualification workflow
-provides live-model evidence. Newly materialized templates always start BLOCKED;
-archived evidence cannot silently qualify a fresh fixture or changed product.
+## Verification layers and audit index
 
-## Audit index
+Unit/process tests and real-CLI loopback conformance check implementation and
+protocol behavior. Only the authenticated self-hosted run supplies live-model
+evidence. The archived full result does not imply execution of every possible
+application plan; PlanAnvil generates and validates plans, never implements them.
 
 - `CODEX_CAPABILITY_QUALIFICATION_2026-08-28.md`: historical prerequisite-limited attempt.
 - `CODEX_QUALIFICATION_EXECUTION_AUDIT_2026-09-05.md`: C13 argv and C10 worktree discovery.
-- `CODEX_RECOVERY_DELIVERY_AUDIT_2026-09-05.md`: supported context delivery and diagnostics.
-- `CODEX_C09_FINITE_RECOVERY_AUDIT_2026-09-06.md`: completed finite C09 repair.
-- `CODEX_C08_CLOSURE_AUDIT_2026-09-07.md`: finite C08 and evidence closure.
+- `CODEX_RECOVERY_DELIVERY_AUDIT_2026-09-05.md`: context delivery and diagnostics.
+- `CODEX_C09_FINITE_RECOVERY_AUDIT_2026-09-06.md`: finite C09 repair.
+- `CODEX_C08_CLOSURE_AUDIT_2026-09-07.md`: finite C08 implementation.
 
-Older harness modules are retained because v7 still imports them. They are not
-independent supported entry points. Do not delete imported layers as cosmetic cleanup.
+Older harness modules remain active v7 dependencies, not separate supported
+entry points. They must not be removed as cosmetic cleanup.
