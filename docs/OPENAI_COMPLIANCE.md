@@ -1,6 +1,6 @@
 # PlanAnvil — OpenAI Codex Compliance Record
 
-> **Original contract review:** 2026-07-12; scoped recovery/source review: 2026-09-05; live qualification: 2026-09-06
+> **Original contract review:** 2026-07-12; scoped recovery/source review: 2026-09-05; live qualification: 2026-09-07; qualification-record reconciliation: 2026-09-08
 > **Scope:** contract 2.1; baseline 2.3 qualification of the 0.2.0 release candidate
 > **Rule:** current official OpenAI documentation is authoritative for Codex behavior.
 
@@ -199,13 +199,70 @@ A relevant documentation change blocks release until the affected record and tes
 - [x] Local profile and local state are ignored
 - [x] Machine-state formats defined
 - [x] Unsupported behaviors excluded from the active contract
-- [x] Complete source-scoped live C01–C16 evidence committed for run #25
-- [ ] Finite C08 repaired-path completion verified live and committed for production closure
+- [x] Complete source-scoped live C01–C16 evidence committed for current full run #27
+- [x] Finite C08 repaired-path completion verified live and committed for production closure
 
-## 7. Source-scoped qualification and release closure — 2026-09-07
+## 7. Source-scoped qualification and release closure — reconciled 2026-09-08
 
-Run `34060321283` reproduced all baseline 2.3 capabilities with Codex CLI `0.153.4`, model `gpt-5.6-sol`, Debian 13, at PlanAnvil `d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`. The archived result retains its original source identifier and hashes. Current status and remaining constraints are in `QUALIFICATION_STATUS.md`; earlier audits are historical, not current blockers by default.
+### Current qualification
 
-C10 delivers recovery through `SessionStart(source=compact)`; `PostCompact` remains advisory. C13's project-native agent and hook pass via the allowed non-ephemeral retry, not an unrestricted home-scoped replacement. C08's historical positive trial timed out after proving unblocking. The stricter finite C08 follow-up has not yet produced live evidence and remains a production-publication prerequisite.
+The current reviewed full result is selected by `qualifications/index.json.current_run`.
+These fields mirror its committed `qualification-summary.json`; the source is
+the actually executed commit, not the later evidence-import commit.
 
-The C08 fixture now isolates the deliberate invalid-checkpoint trigger from ordinary startup recovery by narrowing SessionStart to `^compact$` in the disposable root checkout before bootstrap. It does not change product hook behavior. Repaired recovery still runs through the real compact source. A correct stop is an expected terminal failure of the negative CLI invocation, whereas the positive invocation must complete normally. No timeout is accepted as completed repair.
+| Field | Recorded value |
+|---|---|
+| Run | `34140846679` |
+| Source commit | `a9cdcdc1e0cad70e88b60869e75e4166046dd306` |
+| Live date | `2026-09-07` |
+| Codex | `codex-cli 0.153.4` |
+| Model | `gpt-5.6-sol` |
+| OS | `Debian GNU/Linux 13 (trixie)` |
+| Full release gate | `true` |
+| Finite C08 closure | `REPRODUCED` |
+
+Full run #27 reproduced all C01–C16, including the finite C08 stop/repair
+protocol without timeout. Its exact archive, summary and provenance are committed
+under `qualifications/34140846679/`; current capability packages are exact
+archive copies. C04 remains informational and fifteen capabilities gate release.
+
+C08's missing-checkpoint invocation stopped as intended with exit 1. After
+checkpoint repair, the positive invocation completed with exit 0; all nine
+positive protocol checks passed. C09 completed three reconciliations and two
+ordered automatic recovery cycles. Both independent C10 context-delivery probes
+completed with exact recovery values. See `QUALIFICATION_STATUS.md` for details.
+
+C10 delivers recovery through `SessionStart(source=compact)`; `PostCompact`
+remains advisory. C13's real project-scoped agent and hook passed via the
+explicitly allowed, known-error-gated non-ephemeral retry. Ephemeral custom-agent
+spawning is not claimed as working. Qualification applies only to the recorded
+Codex/model/OS configuration and does not guarantee future model behavior.
+
+### Preserved history
+
+Run #25 (`34060321283`, source
+`d0384f76bc4150d33bb8f51ef5981f3243b3cfb3`) passed the older narrow assertions,
+but its positive C08 trial timed out after proving unblocking. Its original
+archive, source identifier, hashes and limitation remain unchanged. It is
+historical evidence, not the current finite C08 publication proof.
+
+The replacement C08 fixture isolates the deliberate invalid-checkpoint trigger
+from ordinary startup recovery by narrowing SessionStart to `^compact$` in the
+disposable root checkout before bootstrap. It does not change product hook
+behavior. Full #27 verified this finite protocol live; no timeout is accepted
+as completed repair.
+
+### Publication and follow-up
+
+The finite C08 evidence prerequisite is satisfied. Production publication still
+requires strict validation on a clean tree, green protected CI, and a
+GitHub-verified signed annotated tag under `RELEASE.md`. A documentation
+reconciliation does not itself publish a release or require another live run
+when the qualified product/runtime inputs remain unchanged.
+
+[Issue #37](https://github.com/KeyffMS/PlanAnvil/issues/37) tracks intermittent
+receipt observation in hosted C09 loopback conformance. It remains open; a
+passing rerun does not establish the cause or fix the observer. The independent
+full #27 evidence remains valid and immutable. C13's retained transport
+limitation and its baseline 2.3 resolution are tracked in
+[issue #17](https://github.com/KeyffMS/PlanAnvil/issues/17).
